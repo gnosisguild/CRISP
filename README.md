@@ -1,2 +1,3 @@
-# rfv
-Receipt Free Voting (RFV)
+# Receipt Free Voting (RFV)
+
+This repo houses experiments on Receipt Free Voting (RFV).
