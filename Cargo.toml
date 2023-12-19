@@ -1,0 +1,13 @@
+[package]
+name = "rfv"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+console = "0.15.7"
+fhe = { git = "https://github.com/tlepoint/fhe.rs", version = "0.1.0-beta.7" }
+fhe-traits = "0.1.0-beta.7"
+fhe-util = "0.1.0-beta.7"
+rand = "0.8.5"
