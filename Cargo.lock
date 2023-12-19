@@ -157,8 +157,8 @@ source = "git+https://github.com/tlepoint/fhe.rs#a6976c51be3e17d8b0d834b076c3993
 dependencies = [
  "doc-comment",
  "fhe-math",
- "fhe-traits 0.1.0-beta.7 (git+https://github.com/tlepoint/fhe.rs)",
- "fhe-util 0.1.0-beta.7 (git+https://github.com/tlepoint/fhe.rs)",
+ "fhe-traits",
+ "fhe-util",
  "itertools 0.12.0",
  "ndarray",
  "num-bigint",
@@ -178,8 +178,8 @@ version = "0.1.0-beta.7"
 source = "git+https://github.com/tlepoint/fhe.rs#a6976c51be3e17d8b0d834b076c399346982d489"
 dependencies = [
  "ethnum",
- "fhe-traits 0.1.0-beta.7 (git+https://github.com/tlepoint/fhe.rs)",
- "fhe-util 0.1.0-beta.7 (git+https://github.com/tlepoint/fhe.rs)",
+ "fhe-traits",
+ "fhe-util",
  "itertools 0.12.0",
  "ndarray",
  "num-bigint",
@@ -197,29 +197,8 @@ dependencies = [
 [[package]]
 name = "fhe-traits"
 version = "0.1.0-beta.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63cc46c719153ae2bface1edcff9772bcca506658bcdf1f393dbbca54df1f8a2"
-dependencies = [
- "rand",
-]
-
-[[package]]
-name = "fhe-traits"
-version = "0.1.0-beta.7"
 source = "git+https://github.com/tlepoint/fhe.rs#a6976c51be3e17d8b0d834b076c399346982d489"
 dependencies = [
- "rand",
-]
-
-[[package]]
-name = "fhe-util"
-version = "0.1.0-beta.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12b436df554f78119fac2ca5f4c5af339679fa612ca74f712b2ecba2c94ccfa6"
-dependencies = [
- "itertools 0.11.0",
- "num-bigint-dig",
- "num-traits",
  "rand",
 ]
 
@@ -629,8 +608,8 @@ version = "0.1.0"
 dependencies = [
  "console",
  "fhe",
- "fhe-traits 0.1.0-beta.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "fhe-util 0.1.0-beta.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "fhe-traits",
+ "fhe-util",
  "rand",
 ]
 

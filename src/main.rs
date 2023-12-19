@@ -48,8 +48,8 @@ fn main() -> Result<(), Box<dyn Error>> {
         print_notice_and_exit(None)
     }
 
-    let mut num_voters = 8000;
-    let mut num_parties = 10000;
+    let mut num_voters = 1000;
+    let mut num_parties = 10;
 
     // Update the number of voters and/or number of parties depending on the
     // arguments provided.
