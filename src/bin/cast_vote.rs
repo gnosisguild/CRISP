@@ -6,7 +6,7 @@ use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
 };
-use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter};
+use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng};
 use util::timeit::{timeit, timeit_n};
 
