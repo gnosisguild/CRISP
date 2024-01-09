@@ -74,7 +74,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         .sample_iter(&mut thread_rng())
         .take(num_voters)
         .collect();
-    println!("{:?}", votes);
+    println!("plaintext vote: {:?}", votes);
     let mut votes_encrypted = Vec::with_capacity(num_voters);
     let mut _i = 0;
     timeit_n!("Vote casting (single vote)", num_voters as u32, {
@@ -85,12 +85,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
         _i += 1;
     });
 
-    println!("{:?}", votes_encrypted.len());
+    //println!("{:?}", votes_encrypted[0]);
+    //println!("{:?}", votes_encrypted[0].to_bytes());
     let sol_vote = Bytes::from(votes_encrypted[0].to_bytes());
     //println!("{:?}", votes_encrypted[0].to_bytes());
     //println!("{:?}", sol_vote);
 
-    const RPC_URL: &str = "";
+    const RPC_URL: &str = "https://goerli.infura.io/v3/8987bc25c1b34ad7b0a6d370fc287ef9";
 
     let provider = Provider::<Http>::try_from(RPC_URL)?;
     // let block_number: U64 = provider.get_block_number().await?;
@@ -102,6 +103,14 @@ async fn main() -> Result<(), Box<dyn Error>> {
             function id() external view returns (uint256)
             function voteEncrypted(bytes memory encVote) public
             function getVote(address id) public returns(bytes memory)
+            function totalSupply() external view returns (uint256)
+            function balanceOf(address account) external view returns (uint256)
+            function transfer(address recipient, uint256 amount) external returns (bool)
+            function allowance(address owner, address spender) external view returns (uint256)
+            function approve(address spender, uint256 amount) external returns (bool)
+            function transferFrom( address sender, address recipient, uint256 amount) external returns (bool)
+            event Transfer(address indexed from, address indexed to, uint256 value)
+            event Approval(address indexed owner, address indexed spender, uint256 value)
         ]"#,
     );
 
@@ -109,7 +118,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     const WETH_ADDRESS: &str = "0xa5839eaFDc528D977BaEd88172929E71A16c49Ee";
 
     let provider = Provider::<Http>::try_from(RPC_URL)?;
-    let wallet: LocalWallet = ""
+    let wallet: LocalWallet = "66c6c4603b762de30ec1eedaa7c865ba29308218648980efdcf0b35f887db644"
         .parse::<LocalWallet>()?
         .with_chain_id(5 as u64);
 
