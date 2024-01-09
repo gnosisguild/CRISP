@@ -11,3 +11,6 @@ fhe = { git = "https://github.com/tlepoint/fhe.rs", version = "0.1.0-beta.7" }
 fhe-traits = { git = "https://github.com/tlepoint/fhe.rs", version = "0.1.0-beta.7" }
 fhe-util = { git = "https://github.com/tlepoint/fhe.rs", version = "0.1.0-beta.7" }
 rand = "0.8.5"
+ethers = "2.0"
+# Ethers' async features rely upon the Tokio async runtime.
+tokio = { version = "1", features = ["full"] }

@@ -10,22 +10,29 @@ use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng};
 use util::timeit::{timeit, timeit_n};
 use ethers::{
-    prelude::{abigen, Abigen},
-    providers::{Http, Provider},
+    prelude::{Abigen, Contract, EthEvent},
+    providers::{Http, Provider, StreamExt},
     middleware::SignerMiddleware,
     signers::{LocalWallet, Signer, Wallet},
     types::{Address, U256, Bytes},
     core::k256,
     utils,
+    contract::abigen,
 };
 use std::fs;
 use std::path::Path;
 
 type Client = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
 
+#[derive(Debug, Clone, EthEvent)]
+pub struct Voted {
+    pub voter: Address,
+    pub vote: Bytes,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
-    println!("casting encrypted vote");
+    println!("listening for votes");
 
     let mut num_parties = 10;
     let mut num_voters = 1;
@@ -64,31 +71,6 @@ async fn main() -> Result<(), Box<dyn Error>> {
         let pk: PublicKey = parties.iter().map(|p| p.pk_share.clone()).aggregate()?;
         pk
     });
-    //println!("{:?}", pk);
-    //let () = pk;
-    let test = pk.to_bytes();
-    //xsprintln!("{:?}", test);
-    // voting	
-    let dist = Uniform::new_inclusive(0, 1);
-    let votes: Vec<u64> = dist
-        .sample_iter(&mut thread_rng())
-        .take(num_voters)
-        .collect();
-    println!("{:?}", votes);
-    let mut votes_encrypted = Vec::with_capacity(num_voters);
-    let mut _i = 0;
-    timeit_n!("Vote casting (single vote)", num_voters as u32, {
-        #[allow(unused_assignments)]
-        let pt = Plaintext::try_encode(&[votes[_i]], Encoding::poly(), &params)?;
-        let ct = pk.try_encrypt(&pt, &mut thread_rng())?;
-        votes_encrypted.push(ct);
-        _i += 1;
-    });
-
-    println!("{:?}", votes_encrypted.len());
-    let sol_vote = Bytes::from(votes_encrypted[0].to_bytes());
-    //println!("{:?}", votes_encrypted[0].to_bytes());
-    //println!("{:?}", sol_vote);
 
     const RPC_URL: &str = "";
 
@@ -102,44 +84,47 @@ async fn main() -> Result<(), Box<dyn Error>> {
             function id() external view returns (uint256)
             function voteEncrypted(bytes memory encVote) public
             function getVote(address id) public returns(bytes memory)
+            event Voted(address indexed voter, bytes vote)
         ]"#,
     );
 
     //const RPC_URL: &str = "https://eth.llamarpc.com";
-    const WETH_ADDRESS: &str = "0xa5839eaFDc528D977BaEd88172929E71A16c49Ee";
 
     let provider = Provider::<Http>::try_from(RPC_URL)?;
-    let wallet: LocalWallet = ""
-        .parse::<LocalWallet>()?
-        .with_chain_id(5 as u64);
+    let path = env::current_dir()?;
+    let abi_source = "./home/ubuntu/guild/rfv/abi/rfv.json";
+    //println!("The current directory is {}", path.display());
+    
+    let contract_address = "0xa5839eaFDc528D977BaEd88172929E71A16c49Ee".parse::<Address>()?;
+    let client = Arc::new(provider);
+    let contract = IERC20::new(contract_address, Arc::new(client.clone()));
+    //let event = contract.event::<Voted>()?;
+    // let events = Contract::event_of_type::<Voted>(client)
+    // .from_block(17187607);
+    let events = contract.events().from_block(10344771);
+    let mut stream = events.stream().await?.with_meta().take(10);
+    while let Some(Ok((event, meta))) = stream.next().await {
+        //let e_vent = event.VotedFiltered;
+        println!("voter: {:?}", event.voter);
 
-    // 6. Wrap the provider and wallet together to create a signer client
-    let client = SignerMiddleware::new(provider.clone(), wallet.clone());
-    //let client = Arc::new(provider);
-    let address: Address = WETH_ADDRESS.parse()?;
-    let contract = IERC20::new(address, Arc::new(client.clone()));
+        println!(
+            r#"
+               address: {:?}, 
+               block_number: {:?}, 
+               block_hash: {:?}, 
+               transaction_hash: {:?}, 
+               transaction_index: {:?}, 
+               log_index: {:?}
+            "#,
+            meta.address,
+            meta.block_number,
+            meta.block_hash,
+            meta.transaction_hash,
+            meta.transaction_index,
+            meta.log_index
+        );
 
-    if let Ok(total_supply) = contract.tester().call().await {
-        println!("Test value is {total_supply:?}");
+
     }
-
-    let address_from = "0x8B3B79D6953C9B68E534309ab19047cB37b81249".parse::<Address>()?;
-    let address_coord = "0x7735b940d673344845aC239CdDddE1D73b5d5627".parse::<Address>()?;
-
-    //contract.increment(address_from, U256::from(utils::parse_ether(1)?)).send().await?;
-
-    contract.vote_encrypted(sol_vote).send().await?.await?;
-
-    if let Ok(id) = contract.id().call().await {
-        println!("id is {id:?}");
-    }
-
-    // if let Ok(chain_vote_bytes) = contract.getVote(address_coord).call().await {
-    //     println!("{:?}", chain_vote_bytes);
-    // }
-
-    //let path = "vote.txt";
-    //fs::write(path, votes_encrypted[0].to_bytes()).unwrap();
-
     Ok(())
 }
