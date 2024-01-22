@@ -7,7 +7,7 @@ Systems built with CRISP make collusion among participants highly trustful, whil
 ## High-Level Description
 
 1. Anyone can create a poll by calling a smart contract function.
-2. A group of "coordinators" a selected for the poll. They create a share public using a threshold cryptography scheme.
+2. A group of "coordinators" are selected for the poll. They create a share public using a threshold cryptography scheme.
 3. Allow-listed voters register to vote by sending their public voting key to a smart contract.
 4. Voters cast their vote by signing a vote command with their private key, encrypting the signed vote command to the coordinator's shared public key, and publishing the cyphertext onchain.
 5. Voters may change their public voting key at any time by signing a key-change command, encrypting the signed key-change command to the coordinator's shared public key, and publishing the cyphertext onchain.
