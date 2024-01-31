@@ -42,7 +42,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     println!("listening for votes");
 
     let mut num_parties = 10;
-    let mut num_voters = 1;
+    let mut num_voters = 2;
 
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;

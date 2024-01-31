@@ -67,7 +67,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     //println!("{:?}", pk);
     //let () = pk;
     let test = pk.to_bytes();
-    //xsprintln!("{:?}", test);
+    //println!("{:?}", test);
     // voting	
     let dist = Uniform::new_inclusive(0, 1);
     let votes: Vec<u64> = dist
@@ -137,11 +137,13 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
     //contract.increment(address_from, U256::from(utils::parse_ether(1)?)).send().await?;
 
-    contract.vote_encrypted(sol_vote).send().await?.await?;
+    // -----
+    // contract.vote_encrypted(sol_vote).send().await?.await?;
 
-    if let Ok(id) = contract.id().call().await {
-        println!("id is {id:?}");
-    }
+    // if let Ok(id) = contract.id().call().await {
+    //     println!("id is {id:?}");
+    // }
+    // -----
 
     // if let Ok(chain_vote_bytes) = contract.getVote(address_coord).call().await {
     //     println!("{:?}", chain_vote_bytes);
