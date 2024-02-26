@@ -33,7 +33,8 @@ fn main() -> Result<(), Box<dyn Error>> {
             .set_moduli(&moduli)
             .build_arc()?
     );
-    let crp = CommonRandomPoly::new(&params, &mut thread_rng())?;
+    //let crp = CommonRandomPoly::new(&params, &mut thread_rng())?;
+    let crp = CommonRandomPoly::new_deterministic(&params, seed)?;
     let mut rng = thread_rng();
     println!("{:?}", rng);
     //let test = crp.to_bytes();
