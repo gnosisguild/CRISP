@@ -1,6 +1,6 @@
 mod util;
 
-use std::{env, error::Error, process::exit, sync::Arc};
+use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path};
 use console::style;
 use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
@@ -9,6 +9,7 @@ use fhe::{
 use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng};
 use util::timeit::{timeit, timeit_n};
+//use serde::{Deserialize, Serialize};
 
 fn main() -> Result<(), Box<dyn Error>> {
     println!("generating validator keyshare");
@@ -30,9 +31,13 @@ fn main() -> Result<(), Box<dyn Error>> {
             .build_arc()?
     );
     let crp = CommonRandomPoly::new(&params, &mut thread_rng())?;
+    let mut rng = thread_rng();
+    println!("{:?}", rng);
+    let test = crp.to_bytes();
 
     // Party setup: each party generates a secret key and shares of a collective
     // public key.
+    //#[derive(Serialize, Deserialize)]
     struct Party {
         sk_share: SecretKey,
         pk_share: PublicKeyShare,
@@ -41,6 +46,8 @@ fn main() -> Result<(), Box<dyn Error>> {
     timeit_n!("Party setup (per party)", num_parties as u32, {
         let sk_share = SecretKey::random(&params, &mut OsRng);
         let pk_share = PublicKeyShare::new(&sk_share, crp.clone(), &mut thread_rng())?;
+        //let bytes = bincode::serialize(&pk_share).unwrap();
+        //let test = pk_share.to_bytes();
         parties.push(Party { sk_share, pk_share });
     });
 
@@ -50,11 +57,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         let pk: PublicKey = parties.iter().map(|p| p.pk_share.clone()).aggregate()?;
         pk
     });
-    println!("{:?}", pk_share);
     //println!("{:?}", pk);
     //let () = pk;
     //let test = pk_share.to_bytes();
     //println!("{:?}", test);
+    //let test = pk.to_bytes();
+
+    //let path: &Path = ...;
+    //fs::write(path, file_contents_base64).unwrap();
 
     Ok(())
 }
