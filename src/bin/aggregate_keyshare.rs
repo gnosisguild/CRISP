@@ -15,6 +15,9 @@ use util::timeit::{timeit, timeit_n};
 fn main() -> Result<(), Box<dyn Error>> {
     println!("generating validator keyshare");
 
+    let mut num_parties = 10;
+    let mut num_voters = 2;
+
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;
     let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
@@ -42,10 +45,25 @@ fn main() -> Result<(), Box<dyn Error>> {
         pk_share: PublicKeyShare,
     }
     let mut parties = Vec::with_capacity(num_parties);
+    timeit_n!("Party setup (per party)", num_parties as u32, {
+        let sk_share = SecretKey::random(&params, &mut OsRng);
+        let pk_share = PublicKeyShare::new(&sk_share, crp.clone(), &mut thread_rng())?;
+        parties.push(Party { sk_share, pk_share });
+    });
 
-    let sk_share = SecretKey::random(&params, &mut OsRng);
-    let pk_share = PublicKeyShare::new(&sk_share, crp.clone(), &mut thread_rng())?;
-    parties.push(Party { sk_share, pk_share });
+    // Aggregation: this could be one of the parties or a separate entity. Or the
+    // parties can aggregate cooperatively, in a tree-like fashion.
+    let pk = timeit!("Public key aggregation", {
+        let pk: PublicKey = parties.iter().map(|p| p.pk_share.clone()).aggregate()?;
+        pk
+    });
+    //println!("{:?}", pk);
+    //let test = pk_share.to_bytes();
+    //println!("{:?}", test);
+    let test = pk.to_bytes();
+
+    //let path: &Path = ...;
+    //fs::write(path, file_contents_base64).unwrap();
 
     Ok(())
 }
