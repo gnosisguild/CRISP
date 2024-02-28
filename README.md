@@ -1,3 +1,1 @@
-# Receipt Free Voting (RFV)
-
-This repo houses experiments on Receipt Free Voting (RFV).
+# Collusion Resistant Impartial Selection Protocol (CRISP)

@@ -1,1 +1,11 @@
-/target
+
+# directories
+node_modules
+target
+
+# files
+*.env
+*.log
+.pnp.*
+package-lock.json
+yarn.lock
