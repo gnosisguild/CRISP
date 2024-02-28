@@ -33,7 +33,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     );
 
     let crp = CommonRandomPoly::new_deterministic(&params, seed)?;
-    println!("{:?}", crp);
+    //println!("{:?}", crp);
 
     // Party setup: each party generates a secret key and shares of a collective
     // public key.
@@ -41,10 +41,11 @@ fn main() -> Result<(), Box<dyn Error>> {
         sk_share: SecretKey,
         pk_share: PublicKeyShare,
     }
-    let mut parties = Vec::with_capacity(num_parties);
+    let mut parties = Vec::with_capacity(1);
 
     let sk_share = SecretKey::random(&params, &mut OsRng);
     let pk_share = PublicKeyShare::new(&sk_share, crp.clone(), &mut thread_rng())?;
+    //print!("{:?}", &pk_share.p0_share.to_bytes());
     parties.push(Party { sk_share, pk_share });
 
     Ok(())
