@@ -7,6 +7,7 @@ use fhe::{
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
 };
 use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize};
+//use fhe_math::rq::{Poly};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use util::timeit::{timeit, timeit_n};
@@ -45,7 +46,14 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let sk_share = SecretKey::random(&params, &mut OsRng);
     let pk_share = PublicKeyShare::new(&sk_share, crp.clone(), &mut thread_rng())?;
-    //print!("{:?}", &pk_share.p0_share.to_bytes());
+    print!("{:?}", pk_share.to_bytes());
+    let test = pk_share.to_bytes();
+    let crp_des = PublicKeyShare::deserialize(&test, &params, crp).unwrap();
+    println!("-------------------------");
+    print!("{:?}", crp_des.to_bytes());
+    //let ctx = params.ctx_at_level(0).to_bytes();
+    //let test2 = 
+    //let pk_2 = PublicKeyShare { par: params, crp: crp, p0_share: pk_share.p0_share };
     parties.push(Party { sk_share, pk_share });
 
     Ok(())

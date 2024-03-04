@@ -59,7 +59,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     });
     //println!("{:?}", pk);
     //let test = pk_share.to_bytes();
-    //println!("{:?}", test);
+    //println!("{:?}", pk.c);
     let test = pk.to_bytes();
 
     //let path: &Path = ...;
