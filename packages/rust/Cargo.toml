@@ -19,3 +19,6 @@ ethers = "2.0"
 # Ethers' async features rely upon the Tokio async runtime.
 tokio = { version = "1", features = ["full"] }
 bincode = "1.0"
+hyper = { version = "1", features = ["full"] }
+http-body-util = "0.1"
+hyper-util = { version = "0.1", features = ["full"] }
