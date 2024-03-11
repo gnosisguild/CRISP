@@ -48,64 +48,19 @@ struct JsonRequest {
     response: String,
     pk_share: Vec<u8>,
     id: u32,
+    round_id: u32,
 }
 
-fn handler(req: &mut Request) -> IronResult<Response> {
-    let response = JsonResponse { response: pick_response() };
-    let out = json::encode(&response).unwrap();
-
-    let content_type = "application/json".parse::<Mime>().unwrap();
-    Ok(Response::with((content_type, status::Ok, out)))
+fn init_crisp_round() {
+    // create a new dir for the round
+    // use a round_id to lable dir
 }
 
-// async fn gen_pk_shares() -> {
 
-// }
+async fn aggregate_pk_shares() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    println!("aggregating validator keyshare");
 
-fn post_handler(req: &mut Request) -> IronResult<Response> {
-    let mut payload = String::new();
-
-    // read the POST body
-    req.body.read_to_string(&mut payload).unwrap();
-    print!("weeee got the payload");
-    //println!("{:?}", payload);
-
-    // we're expecting the POST to match the format of our JsonRequest struct
-    let incoming: JsonRequest = json::decode(&payload).unwrap();
-    println!("{:?}", incoming.response);
-    println!("ID: {:?}", incoming.id);
-
-    let path = env::current_dir().unwrap();
-    let mut keypath = path.display().to_string();
-    keypath.push_str("/keyshares");
-    let mut pathst = path.display().to_string();
-    pathst.push_str("/keyshares/test-");
-    pathst.push_str(&incoming.id.to_string());
-    println!("The current directory is {}", pathst);
-    fs::write(pathst.clone(), incoming.pk_share).unwrap();
-
-    let share_count = WalkDir::new(keypath.clone()).into_iter().count();
-    println!("Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
-    if(share_count == 3) {
-        println!("All shares received");
-    }
-    //let data = fs::read(pathst).expect("Unable to read file");
-    //let test_1_des = PublicKeyShare::deserialize(&incoming.pk_share, &params, crp.clone()).unwrap();
-
-    // create a response with our random string, and pass in the string from the POST body
-    let response = JsonResponse { response: pick_response() };
-    let out = json::encode(&response).unwrap();
-
-    let content_type = "application/json".parse::<Mime>().unwrap();
-    Ok(Response::with((content_type, status::Ok, out)))
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("generating validator keyshare");
-
-    let mut num_parties = 10;
-    let mut num_voters = 2;
+    let mut num_parties = 2;
 
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;
@@ -129,15 +84,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Party setup: each party generates a secret key and shares of a collective
     // public key.
     struct Party {
-        sk_share: SecretKey,
         pk_share: PublicKeyShare,
     }
-    let mut parties = Vec::with_capacity(num_parties);
-    timeit_n!("Party setup (per party)", num_parties as u32, {
-        let sk_share = SecretKey::random(&params, &mut OsRng);
-        let pk_share = PublicKeyShare::new(&sk_share, crp.clone(), &mut thread_rng())?;
-        parties.push(Party { sk_share, pk_share });
-    });
+    //let mut parties = Vec::with_capacity(num_parties);
+    let mut parties :Vec<Party> = Vec::new();
+    for i in 0..num_parties {
+        // read in pk_shares from storage
+        let path = env::current_dir().unwrap();
+        let mut keypath = path.display().to_string();
+        keypath.push_str("/keyshares");
+        let mut pathst = path.display().to_string();
+        pathst.push_str("/keyshares/test-");
+        pathst.push_str(&i.to_string());
+        println!("The current directory is {}", pathst);
+        let data = fs::read(pathst).expect("Unable to read file");
+        let data_des = PublicKeyShare::deserialize(&data, &params, crp.clone()).unwrap();
+        // let pk_share = PublicKeyShare::new(&sk_share, crp.clone(), &mut thread_rng())?;
+        parties.push(Party { pk_share: data_des });
+    }
 
     // Aggregation: this could be one of the parties or a separate entity. Or the
     // parties can aggregate cooperatively, in a tree-like fashion.
@@ -145,22 +109,65 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let pk: PublicKey = parties.iter().map(|p| p.pk_share.clone()).aggregate()?;
         pk
     });
-    //println!("{:?}", pk);
+    println!("{:?}", pk);
+    //let store_pk = pk.to_bytes();
+    // store the public key
+    Ok(())
+}
 
-    let test = pk.to_bytes();
+fn handler(req: &mut Request) -> IronResult<Response> {
+    let response = JsonResponse { response: pick_response() };
+    let out = json::encode(&response).unwrap();
 
-    //let path = env::current_dir().unwrap();
-    //let mut pathst = path.display().to_string();
-    //pathst.push_str("/test");
-    //println!("The current directory is {}", pathst);
-    //let data = fs::read(pathst).expect("Unable to read file");
-    //let test_1_des = PublicKeyShare::deserialize(&data, &params, crp.clone()).unwrap();
-    //print!("{:?}", test_1_des);
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
 
+#[tokio::main]
+async fn post_handler(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    print!("weeee got the payload");
+    //println!("{:?}", payload);
+
+    // we're expecting the POST to match the format of our JsonRequest struct
+    let incoming: JsonRequest = json::decode(&payload).unwrap();
+    println!("{:?}", incoming.response);
+    println!("ID: {:?}", incoming.id);
+
+    let path = env::current_dir().unwrap();
+    let mut keypath = path.display().to_string();
+    keypath.push_str("/keyshares");
+    let mut pathst = path.display().to_string();
+    pathst.push_str("/keyshares/test-");
+    pathst.push_str(&incoming.id.to_string());
+    println!("The current directory is {}", pathst);
+    fs::write(pathst.clone(), incoming.pk_share).unwrap();
+
+    let share_count = WalkDir::new(keypath.clone()).into_iter().count();
+    println!("Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
+    
+    if(share_count == 3) {
+        println!("All shares received");
+        aggregate_pk_shares().await;
+    }
+
+    // create a response with our random string, and pass in the string from the POST body
+    let response = JsonResponse { response: pick_response() };
+    let out = json::encode(&response).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Server Code
     let mut router = Router::new();
     router.get("/", handler, "index");
-    router.post("/", post_handler, "post_name");
+    router.post("/register_keyshare", post_handler, "post_name");
 
     Iron::new(router).http("localhost:3000").unwrap();
 

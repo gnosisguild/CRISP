@@ -21,6 +21,8 @@ use http_body_util::BodyExt;
 use tokio::io::{AsyncWriteExt as _, self};
 use rustc_serialize::json;
 
+use std::{thread, time};
+
 // use hyper::Client;
 // use hyper::header::Connection;
 // use hyper::header::Basic;
@@ -35,6 +37,7 @@ struct JsonRequest {
     response: String,
     pk_share: Vec<u8>,
     id: u32,
+    round_id: u32,
 }
 
 #[tokio::main]
@@ -69,51 +72,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         pk_share: PublicKeyShare,
     }
 
-    let mut parties = Vec::with_capacity(3);
-    let mut parties_test = Vec::with_capacity(3);
+    let mut parties = Vec::with_capacity(2);
+    let mut parties_test = Vec::with_capacity(2);
 
-    println!("generating share 1 and serialize");
-    let sk_share_1 = SecretKey::random(&params, &mut OsRng);
-    let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
-    let test_1 = pk_share_1.to_bytes();
-    //print_type_of(&test_1); // &str
-    let test_1_des = PublicKeyShare::deserialize(&test_1, &params, crp.clone()).unwrap();
-    parties.push(Party { sk_share: sk_share_1.clone(), pk_share: pk_share_1 });
-    parties_test.push(Party { sk_share: sk_share_1, pk_share: test_1_des });
+    // println!("generating share 1 and serialize");
+    // let sk_share_1 = SecretKey::random(&params, &mut OsRng);
+    // let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
+    // let test_1 = pk_share_1.to_bytes();
+    // //print_type_of(&test_1); // &str
+    // let test_1_des = PublicKeyShare::deserialize(&test_1, &params, crp.clone()).unwrap();
+    // parties.push(Party { sk_share: sk_share_1.clone(), pk_share: pk_share_1 });
+    // parties_test.push(Party { sk_share: sk_share_1, pk_share: test_1_des });
     
-    println!("generating share 2 and serialize");
-    let sk_share_2 = SecretKey::random(&params, &mut OsRng);
-    let pk_share_2 = PublicKeyShare::new(&sk_share_2, crp.clone(), &mut thread_rng())?;
-    //print!("{:?}", pk_share_1.to_bytes());
-    let test_2 = pk_share_2.to_bytes();
-    let test_2_des = PublicKeyShare::deserialize(&test_2, &params, crp.clone()).unwrap();
-    parties.push(Party { sk_share: sk_share_2.clone(), pk_share: pk_share_2 });
-    parties_test.push(Party { sk_share: sk_share_2, pk_share: test_2_des });
+    // println!("generating share 2 and serialize");
+    // let sk_share_2 = SecretKey::random(&params, &mut OsRng);
+    // let pk_share_2 = PublicKeyShare::new(&sk_share_2, crp.clone(), &mut thread_rng())?;
+    // //print!("{:?}", pk_share_1.to_bytes());
+    // let test_2 = pk_share_2.to_bytes();
+    // let test_2_des = PublicKeyShare::deserialize(&test_2, &params, crp.clone()).unwrap();
+    // parties.push(Party { sk_share: sk_share_2.clone(), pk_share: pk_share_2 });
+    // parties_test.push(Party { sk_share: sk_share_2, pk_share: test_2_des });
 
-    println!("generating share 3 and serialize");
-    let sk_share_3 = SecretKey::random(&params, &mut OsRng);
-    let pk_share_3 = PublicKeyShare::new(&sk_share_3, crp.clone(), &mut thread_rng())?;
-    //print!("{:?}", pk_share_1.to_bytes());
-    let test_3 = pk_share_3.to_bytes();
-    let test_3_des = PublicKeyShare::deserialize(&test_3, &params, crp.clone()).unwrap();
-    parties.push(Party { sk_share: sk_share_3.clone(), pk_share: pk_share_3 });
-    parties_test.push(Party { sk_share: sk_share_3, pk_share: test_3_des });
+    // println!("generating share 3 and serialize");
+    // let sk_share_3 = SecretKey::random(&params, &mut OsRng);
+    // let pk_share_3 = PublicKeyShare::new(&sk_share_3, crp.clone(), &mut thread_rng())?;
+    // //print!("{:?}", pk_share_1.to_bytes());
+    // let test_3 = pk_share_3.to_bytes();
+    // let test_3_des = PublicKeyShare::deserialize(&test_3, &params, crp.clone()).unwrap();
+    // parties.push(Party { sk_share: sk_share_3.clone(), pk_share: pk_share_3 });
+    // parties_test.push(Party { sk_share: sk_share_3, pk_share: test_3_des });
 
-    // Aggregation: this could be one of the parties or a separate entity. Or the
-    // parties can aggregate cooperatively, in a tree-like fashion.
-    let pk = timeit!("Public key aggregation", {
-        let pk: PublicKey = parties.iter().map(|p| p.pk_share.clone()).aggregate()?;
-        pk
-    });
+    // // Aggregation: this could be one of the parties or a separate entity. Or the
+    // // parties can aggregate cooperatively, in a tree-like fashion.
+    // let pk = timeit!("Public key aggregation", {
+    //     let pk: PublicKey = parties.iter().map(|p| p.pk_share.clone()).aggregate()?;
+    //     pk
+    // });
 
-    let pk_test = timeit!("Public key aggregation after serialize", {
-        let pk_test: PublicKey = parties_test.iter().map(|p| p.pk_share.clone()).aggregate()?;
-        pk_test
-    });
+    // let pk_test = timeit!("Public key aggregation after serialize", {
+    //     let pk_test: PublicKey = parties_test.iter().map(|p| p.pk_share.clone()).aggregate()?;
+    //     pk_test
+    // });
 
     // println!("{:?}", pk);
     // println!("--------------------");
-    println!("{:?}", pk_test);
+    //println!("{:?}", pk_test);
 
 
     // Client Code
@@ -133,8 +136,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // println!("Response: {}", body);
 
-    // Parse our URL...
-    let url = "http://127.0.0.1/".parse::<hyper::Uri>()?;
+    // Parse our URL for registering keyshare...
+    let url = "http://127.0.0.1/register_keyshare".parse::<hyper::Uri>()?;
 
     // Get the host and the port
     let host = url.host().expect("uri has no host");
@@ -162,31 +165,78 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // The authority of our URL will be the hostname of the httpbin remote
     let authority = url.authority().unwrap().clone();
 
-    // Create an HTTP request with an empty body and a HOST header
-    // let req = Request::builder()
+    // let response = JsonRequest { response: "Test".to_string(), pk_share: test_1, id: 1, round_id: 0 };
+    // let out = json::encode(&response).unwrap();
+
+    // let req = Request::post("http://127.0.0.1/")
     //     .uri(url)
     //     .header(hyper::header::HOST, authority.as_str())
-    //     .body(Empty::<Bytes>::new())?;
+    //     .body(out)?;
 
-    let response = JsonRequest { response: "Test".to_string(), pk_share: test_1, id: 0 };
-    let out = json::encode(&response).unwrap();
 
-    let req = Request::post("http://127.0.0.1/")
-        .uri(url)
-        .header(hyper::header::HOST, authority.as_str())
-        .body(out)?;
-    // Await the response...
-    let mut res = sender.send_request(req).await?;
+    // testing
+    for i in 0..2 {
+        println!("{:?}", i);
+        println!("generating share 1 and serialize");
+        let sk_share_1 = SecretKey::random(&params, &mut OsRng);
+        let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
+        let test_1 = pk_share_1.to_bytes();
+        //print_type_of(&test_1); // &str
+        let test_1_des = PublicKeyShare::deserialize(&test_1, &params, crp.clone()).unwrap();
+        parties.push(Party { sk_share: sk_share_1.clone(), pk_share: pk_share_1 });
+        parties_test.push(Party { sk_share: sk_share_1, pk_share: test_1_des });
 
-    println!("Response status: {}", res.status());
+        let response = JsonRequest { response: "Test".to_string(), pk_share: test_1, id: i, round_id: 0 };
+        let out = json::encode(&response).unwrap();
+        let req = Request::post("http://127.0.0.1/")
+            .uri(url.clone())
+            .header(hyper::header::HOST, authority.as_str())
+            .body(out)?;
 
-    // Stream the body, writing each frame to stdout as it arrives
-    while let Some(next) = res.frame().await {
-        let frame = next?;
-        if let Some(chunk) = frame.data_ref() {
-            io::stdout().write_all(chunk).await?;
+        let mut res = sender.send_request(req).await?;
+
+        println!("Response status: {}", res.status());
+
+        // Stream the body, writing each frame to stdout as it arrives
+        while let Some(next) = res.frame().await {
+            let frame = next?;
+            if let Some(chunk) = frame.data_ref() {
+                io::stdout().write_all(chunk).await?;
+            }
         }
+        // Await the response...
+        let three_seconds = time::Duration::from_millis(3000);
+        thread::sleep(three_seconds);
     }
+
+    // Aggregation: this could be one of the parties or a separate entity. Or the
+    // parties can aggregate cooperatively, in a tree-like fashion.
+    let pk = timeit!("Public key aggregation", {
+        let pk: PublicKey = parties.iter().map(|p| p.pk_share.clone()).aggregate()?;
+        pk
+    });
+
+    let pk_test = timeit!("Public key aggregation after serialize", {
+        let pk_test: PublicKey = parties_test.iter().map(|p| p.pk_share.clone()).aggregate()?;
+        pk_test
+    });
+
+    println!("{:?}", pk);
+
+    // // Await the response...
+    // let three_seconds = time::Duration::from_millis(3000);
+    // thread::sleep(three_seconds);
+    // let mut res = sender.send_request(req).await?;
+
+    // println!("Response status: {}", res.status());
+
+    // // Stream the body, writing each frame to stdout as it arrives
+    // while let Some(next) = res.frame().await {
+    //     let frame = next?;
+    //     if let Some(chunk) = frame.data_ref() {
+    //         io::stdout().write_all(chunk).await?;
+    //     }
+    // }
     
     Ok(())
 }
