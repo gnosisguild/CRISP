@@ -31,6 +31,8 @@ use rustc_serialize::json;
 use router::Router;
 use std::io::Read;
 
+use walkdir::WalkDir;
+
 // pick a string at random
 fn pick_response() -> String {
     "Test".to_string()
@@ -41,6 +43,13 @@ struct JsonResponse {
     response: String
 }
 
+#[derive(RustcEncodable, RustcDecodable)]
+struct JsonRequest {
+    response: String,
+    pk_share: Vec<u8>,
+    id: u32,
+}
+
 fn handler(req: &mut Request) -> IronResult<Response> {
     let response = JsonResponse { response: pick_response() };
     let out = json::encode(&response).unwrap();
@@ -49,18 +58,39 @@ fn handler(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((content_type, status::Ok, out)))
 }
 
+// async fn gen_pk_shares() -> {
+
+// }
+
 fn post_handler(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
 
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     print!("weeee got the payload");
-    println!("{:?}", payload);
+    //println!("{:?}", payload);
 
-    // we're expecting the POST to match the format of our JsonResponse struct
-    // ie { "response": "Brian" }
-    let incoming: JsonResponse = json::decode(&payload).unwrap();
+    // we're expecting the POST to match the format of our JsonRequest struct
+    let incoming: JsonRequest = json::decode(&payload).unwrap();
     println!("{:?}", incoming.response);
+    println!("ID: {:?}", incoming.id);
+
+    let path = env::current_dir().unwrap();
+    let mut keypath = path.display().to_string();
+    keypath.push_str("/keyshares");
+    let mut pathst = path.display().to_string();
+    pathst.push_str("/keyshares/test-");
+    pathst.push_str(&incoming.id.to_string());
+    println!("The current directory is {}", pathst);
+    fs::write(pathst.clone(), incoming.pk_share).unwrap();
+
+    let share_count = WalkDir::new(keypath.clone()).into_iter().count();
+    println!("Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
+    if(share_count == 3) {
+        println!("All shares received");
+    }
+    //let data = fs::read(pathst).expect("Unable to read file");
+    //let test_1_des = PublicKeyShare::deserialize(&incoming.pk_share, &params, crp.clone()).unwrap();
 
     // create a response with our random string, and pass in the string from the POST body
     let response = JsonResponse { response: pick_response() };
@@ -95,7 +125,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     );
 
     let crp = CommonRandomPoly::new_deterministic(&params, seed)?;
-    println!("{:?}", crp);
 
     // Party setup: each party generates a secret key and shares of a collective
     // public key.
@@ -117,12 +146,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         pk
     });
     //println!("{:?}", pk);
-    //let test = pk_share.to_bytes();
-    //println!("{:?}", pk.c);
+
     let test = pk.to_bytes();
 
-    //let path: &Path = ...;
-    //fs::write(path, file_contents_base64).unwrap();
+    //let path = env::current_dir().unwrap();
+    //let mut pathst = path.display().to_string();
+    //pathst.push_str("/test");
+    //println!("The current directory is {}", pathst);
+    //let data = fs::read(pathst).expect("Unable to read file");
+    //let test_1_des = PublicKeyShare::deserialize(&data, &params, crp.clone()).unwrap();
+    //print!("{:?}", test_1_des);
 
     // Server Code
     let mut router = Router::new();

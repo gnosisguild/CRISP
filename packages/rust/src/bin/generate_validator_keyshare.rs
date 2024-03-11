@@ -26,9 +26,15 @@ use rustc_serialize::json;
 // use hyper::header::Basic;
 // use hyper::header::Headers;
 
+fn print_type_of<T>(_: &T) {
+    println!("{}", std::any::type_name::<T>())
+}
+
 #[derive(RustcEncodable, RustcDecodable)]
-struct JsonResponse {
-    response: String
+struct JsonRequest {
+    response: String,
+    pk_share: Vec<u8>,
+    id: u32,
 }
 
 #[tokio::main]
@@ -69,13 +75,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("generating share 1 and serialize");
     let sk_share_1 = SecretKey::random(&params, &mut OsRng);
     let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
-    //print!("{:?}", pk_share_1.to_bytes());
     let test_1 = pk_share_1.to_bytes();
+    //print_type_of(&test_1); // &str
     let test_1_des = PublicKeyShare::deserialize(&test_1, &params, crp.clone()).unwrap();
-    //print!("{:?}", test_1_des.to_bytes());
-    //let ctx = params.ctx_at_level(0).to_bytes();
-    //let test2 = 
-    //let pk_2 = PublicKeyShare { par: params, crp: crp, p0_share: pk_share.p0_share };
     parties.push(Party { sk_share: sk_share_1.clone(), pk_share: pk_share_1 });
     parties_test.push(Party { sk_share: sk_share_1, pk_share: test_1_des });
     
@@ -111,7 +113,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // println!("{:?}", pk);
     // println!("--------------------");
-    // println!("{:?}", pk_test);
+    println!("{:?}", pk_test);
 
 
     // Client Code
@@ -166,7 +168,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     //     .header(hyper::header::HOST, authority.as_str())
     //     .body(Empty::<Bytes>::new())?;
 
-    let response = JsonResponse { response: "Test".to_string() };
+    let response = JsonRequest { response: "Test".to_string(), pk_share: test_1, id: 0 };
     let out = json::encode(&response).unwrap();
 
     let req = Request::post("http://127.0.0.1/")
