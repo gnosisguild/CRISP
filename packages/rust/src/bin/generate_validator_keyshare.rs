@@ -19,6 +19,17 @@ use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
 use http_body_util::BodyExt;
 use tokio::io::{AsyncWriteExt as _, self};
+use rustc_serialize::json;
+
+// use hyper::Client;
+// use hyper::header::Connection;
+// use hyper::header::Basic;
+// use hyper::header::Headers;
+
+#[derive(RustcEncodable, RustcDecodable)]
+struct JsonResponse {
+    response: String
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -105,6 +116,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // Client Code
 
+    // let mut client = Client::new();
+    // let auth = Basic::from_str("admin:admin").unwrap();
+    // let mut res = client.post("https://admin:admin@bleaf1/command-api")
+    //     // set a header
+    //     .header(auth)
+    //     .body()
+    //             // let 'er go!
+    //     .send().unwrap();
+
+    // // Read the Response.
+    // let mut body = String::new();
+    // res.read_to_string(&mut body).unwrap();
+
+    // println!("Response: {}", body);
+
     // Parse our URL...
     let url = "http://127.0.0.1/".parse::<hyper::Uri>()?;
 
@@ -135,11 +161,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let authority = url.authority().unwrap().clone();
 
     // Create an HTTP request with an empty body and a HOST header
-    let req = Request::builder()
+    // let req = Request::builder()
+    //     .uri(url)
+    //     .header(hyper::header::HOST, authority.as_str())
+    //     .body(Empty::<Bytes>::new())?;
+
+    let response = JsonResponse { response: "Test".to_string() };
+    let out = json::encode(&response).unwrap();
+
+    let req = Request::post("http://127.0.0.1/")
         .uri(url)
         .header(hyper::header::HOST, authority.as_str())
-        .body(Empty::<Bytes>::new())?;
-
+        .body(out)?;
     // Await the response...
     let mut res = sender.send_request(req).await?;
 

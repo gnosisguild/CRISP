@@ -28,15 +28,46 @@ use iron::prelude::*;
 use iron::status;
 use iron::mime::Mime;
 use rustc_serialize::json;
+use router::Router;
+use std::io::Read;
 
 // pick a string at random
 fn pick_response() -> String {
     "Test".to_string()
 }
 
-#[derive(RustcEncodable)]
+#[derive(RustcEncodable, RustcDecodable)]
 struct JsonResponse {
     response: String
+}
+
+fn handler(req: &mut Request) -> IronResult<Response> {
+    let response = JsonResponse { response: pick_response() };
+    let out = json::encode(&response).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
+fn post_handler(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    print!("weeee got the payload");
+    println!("{:?}", payload);
+
+    // we're expecting the POST to match the format of our JsonResponse struct
+    // ie { "response": "Brian" }
+    let incoming: JsonResponse = json::decode(&payload).unwrap();
+    println!("{:?}", incoming.response);
+
+    // create a response with our random string, and pass in the string from the POST body
+    let response = JsonResponse { response: pick_response() };
+    let out = json::encode(&response).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
 }
 
 #[tokio::main]
@@ -94,17 +125,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     //fs::write(path, file_contents_base64).unwrap();
 
     // Server Code
-    Iron::new(|_: &mut Request| {
-        let content_type = "application/json".parse::<Mime>().unwrap();
+    let mut router = Router::new();
+    router.get("/", handler, "index");
+    router.post("/", post_handler, "post_name");
 
-        // create the response
-        let response = JsonResponse { response: pick_response() };
-
-        // convert the response struct to JSON
-        let out = json::encode(&response).unwrap();
-
-        Ok(Response::with((content_type, status::Ok, out)))
-    }).http("localhost:3000").unwrap();
+    Iron::new(router).http("localhost:3000").unwrap();
 
     Ok(())
 }

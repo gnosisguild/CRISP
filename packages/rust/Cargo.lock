@@ -2847,9 +2847,8 @@ dependencies = [
  "iron",
  "rand",
  "rand_chacha",
+ "router",
  "rustc-serialize",
- "serde",
- "serde_json",
  "tokio",
 ]
 
@@ -2911,6 +2910,23 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "route-recognizer"
+version = "0.1.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ea509065eb0b3c446acdd0102f0d46567dc30902dc0be91d6552035d92b0f4f8"
+
+[[package]]
+name = "router"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b94397bfa5b772b4375be4da12560a7c1c1e74b2e35c46ed312958aad56df726"
+dependencies = [
+ "iron",
+ "route-recognizer",
+ "url 1.7.2",
 ]
 
 [[package]]
