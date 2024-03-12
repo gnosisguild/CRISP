@@ -60,7 +60,7 @@ fn init_crisp_round() {
 async fn aggregate_pk_shares() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("aggregating validator keyshare");
 
-    let mut num_parties = 2;
+    let mut num_parties = 2; // todo set this from an init config 
 
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;
@@ -129,8 +129,6 @@ async fn post_handler(req: &mut Request) -> IronResult<Response> {
 
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    print!("weeee got the payload");
-    //println!("{:?}", payload);
 
     // we're expecting the POST to match the format of our JsonRequest struct
     let incoming: JsonRequest = json::decode(&payload).unwrap();
@@ -141,6 +139,8 @@ async fn post_handler(req: &mut Request) -> IronResult<Response> {
     let mut keypath = path.display().to_string();
     keypath.push_str("/keyshares");
     let mut pathst = path.display().to_string();
+    // try to create the keyshares/id/ dir
+    fs::create_dir_all(keypath.clone()).unwrap();
     pathst.push_str("/keyshares/test-");
     pathst.push_str(&incoming.id.to_string());
     println!("The current directory is {}", pathst);
@@ -148,7 +148,7 @@ async fn post_handler(req: &mut Request) -> IronResult<Response> {
 
     let share_count = WalkDir::new(keypath.clone()).into_iter().count();
     println!("Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
-    
+
     if(share_count == 3) {
         println!("All shares received");
         aggregate_pk_shares().await;
