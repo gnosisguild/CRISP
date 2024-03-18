@@ -13,25 +13,19 @@ use util::timeit::{timeit, timeit_n};
 //use serde::{Deserialize};
 //use serde_json::{Result, Value};
 
-// use std::convert::Infallible;
-// use std::net::SocketAddr;
-
-// use http_body_util::Full;
-// use hyper::body::Bytes;
-// use hyper::server::conn::http1;
-// use hyper::service::service_fn;
-// use hyper::{Request, Response};
-// use hyper_util::rt::TokioIo;
-// use tokio::net::TcpListener;
-
 use iron::prelude::*;
 use iron::status;
 use iron::mime::Mime;
 use rustc_serialize::json;
+use rustc_serialize::json::Json;
 use router::Router;
 use std::io::Read;
 
 use walkdir::WalkDir;
+
+use ethers::{
+    types::{Address, U256, Bytes},
+};
 
 // pick a string at random
 fn pick_response() -> String {
@@ -51,9 +45,51 @@ struct JsonRequest {
     round_id: u32,
 }
 
-fn init_crisp_round() {
+#[derive(RustcEncodable, RustcDecodable)]
+struct CrispConfig {
+    response: String,
+    round_id: u32,
+    chain_id: u32,
+    voting_address: String,
+    cyphernode_count: u32,
+}
+
+// fn get_new_crisp_id(req: &mut Request) -> IronResult<Response> {
+
+// }
+
+fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     // create a new dir for the round
     // use a round_id to lable dir
+    // try to create the keyshares/id/ dir
+    // store config file
+    let mut payload = String::new();
+
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+
+    // we're expecting the POST to match the format of our JsonRequest struct
+    let incoming: CrispConfig = json::decode(&payload).unwrap();
+    println!("{:?}", incoming.response);
+    println!("ID: {:?}", incoming.round_id);
+
+    let path = env::current_dir().unwrap();
+    let mut pathst = path.display().to_string();
+    pathst.push_str("/keyshares/");
+    pathst.push_str(&incoming.round_id.to_string());
+    println!("The current directory is {}", pathst);
+    fs::create_dir_all(pathst.clone()).unwrap();
+
+    pathst.push_str("/config.json");
+    let configfile = json::encode(&incoming).unwrap();
+    fs::write(pathst.clone(), configfile).unwrap();
+
+    // create a response with our random string, and pass in the string from the POST body
+    let response = JsonResponse { response: "CRISP Initiated".to_string() };
+    let out = json::encode(&response).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
 }
 
 
@@ -139,8 +175,6 @@ async fn post_handler(req: &mut Request) -> IronResult<Response> {
     let mut keypath = path.display().to_string();
     keypath.push_str("/keyshares");
     let mut pathst = path.display().to_string();
-    // try to create the keyshares/id/ dir
-    fs::create_dir_all(keypath.clone()).unwrap();
     pathst.push_str("/keyshares/test-");
     pathst.push_str(&incoming.id.to_string());
     println!("The current directory is {}", pathst);
