@@ -58,6 +58,11 @@ struct CrispConfig {
 
 // }
 
+// fn register_cyphernode(req: &mut Request) -> IronResult<Response> {
+    // register ip address or some way to contact nodes when a computation request comes in
+
+// }
+
 fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     // create a new dir for the round
     // use a round_id to lable dir

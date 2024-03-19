@@ -1,5 +1,16 @@
 use dialoguer::{theme::ColorfulTheme, Input, FuzzySelect};
-use std::{thread, time};
+use std::{thread, time, env};
+use serde::Deserialize;
+use std::fs::File;
+use std::io::Read;
+
+#[derive(Debug, Deserialize)]
+struct CrispConfig {
+    round_id: u32,
+    chain_id: u32,
+    voting_address: String,
+    cyphernode_count: u32,
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -34,15 +45,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 	    if(selection_2 == 0){
 	    	print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
 	    	println!("Starting new CRISP round!");
-		    let input_token: String = Input::with_theme(&ColorfulTheme::default())
-		        .with_prompt("Enter Proposal Registration Token")
-		        .interact_text()
-		        .unwrap();
+		    // let input_token: String = Input::with_theme(&ColorfulTheme::default())
+		    //     .with_prompt("Enter Proposal Registration Token")
+		    //     .interact_text()
+		    //     .unwrap();
 		    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-		    println!("Reading proposal details from config and calling contract...");
+		    println!("Reading proposal details from config.");
+            let path = env::current_dir().unwrap();
+            let mut pathst = path.display().to_string();
+            pathst.push_str("/example_config.json");
+            let mut file = File::open(pathst).unwrap();
+            let mut data = String::new();
+            file.read_to_string(&mut data).unwrap();
+            let config: CrispConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
+            println!("round id: {:?}", config.round_id);
+            println!("chain id: {:?}", config.chain_id);
+            println!("voting contract: {:?}", config.voting_address);
+            println!("cyphernode count: {:?}", config.cyphernode_count);
+
+            println!("Calling contract to initialize onchain proposal...");
 	        let three_seconds = time::Duration::from_millis(3000);
 	        thread::sleep(three_seconds);
-	        print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+
             println!("Initializing Keyshare nodes...");
             // call init on server
             // have nodes poll

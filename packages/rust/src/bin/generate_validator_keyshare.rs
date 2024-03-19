@@ -44,6 +44,9 @@ struct JsonRequest {
 struct CrispConfig {
     response: String,
     round_id: u32,
+    chain_id: u32,
+    voting_address: String,
+    cyphernode_count: u32,
 }
 
 #[tokio::main]
