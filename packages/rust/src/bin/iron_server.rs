@@ -47,7 +47,6 @@ struct JsonRequest {
 
 #[derive(RustcEncodable, RustcDecodable)]
 struct CrispConfig {
-    response: String,
     round_id: u32,
     chain_id: u32,
     voting_address: String,
@@ -63,11 +62,24 @@ struct CrispConfig {
 
 // }
 
+fn get_rounds(req: &mut Request) -> IronResult<Response> {
+    let path = env::current_dir().unwrap();
+    // read round count file in /keyshares
+
+    let response = JsonResponse { response: "weee".to_string() };
+    let out = json::encode(&response).unwrap();
+    println!("get rounds hit");
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
 fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     // create a new dir for the round
     // use a round_id to lable dir
     // try to create the keyshares/id/ dir
     // store config file
+    // update round count file in /keyshares
     let mut payload = String::new();
 
     // read the POST body
@@ -75,8 +87,8 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
 
     // we're expecting the POST to match the format of our JsonRequest struct
     let incoming: CrispConfig = json::decode(&payload).unwrap();
-    println!("{:?}", incoming.response);
     println!("ID: {:?}", incoming.round_id);
+    println!("Address: {:?}", incoming.voting_address);
 
     let path = env::current_dir().unwrap();
     let mut pathst = path.display().to_string();
@@ -206,7 +218,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Server Code
     let mut router = Router::new();
     router.get("/", handler, "index");
-    router.post("/register_keyshare", post_handler, "post_name");
+    router.get("/get_rounds", get_rounds, "get_rounds");
+    router.post("/register_keyshare", post_handler, "register_keyshare");
+    router.post("/init_crisp_round", init_crisp_round, "init_crisp_round");
 
     Iron::new(router).http("localhost:3000").unwrap();
 

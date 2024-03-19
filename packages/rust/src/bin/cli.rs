@@ -4,7 +4,24 @@ use serde::Deserialize;
 use std::fs::File;
 use std::io::Read;
 
-#[derive(Debug, Deserialize)]
+use http_body_util::Empty;
+use hyper::Request;
+use hyper::body::Bytes;
+use hyper_util::rt::TokioIo;
+use tokio::net::TcpStream;
+use http_body_util::BodyExt;
+use tokio::io::{AsyncWriteExt as _, self};
+use rustc_serialize::json;
+
+#[derive(RustcEncodable, RustcDecodable)]
+struct JsonRequest {
+    response: String,
+    pk_share: u32,
+    id: u32,
+    round_id: u32,
+}
+
+#[derive(Debug, Deserialize, RustcEncodable)]
 struct CrispConfig {
     round_id: u32,
     chain_id: u32,
@@ -14,6 +31,7 @@ struct CrispConfig {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+
 	print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     let selections = &[
         "CRISP: Voting Protocol (ETH)",
@@ -64,12 +82,56 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("cyphernode count: {:?}", config.cyphernode_count);
 
             println!("Calling contract to initialize onchain proposal...");
-	        let three_seconds = time::Duration::from_millis(3000);
+	        let three_seconds = time::Duration::from_millis(1000);
 	        thread::sleep(three_seconds);
 
             println!("Initializing Keyshare nodes...");
             // call init on server
             // have nodes poll
+
+            // Client Code
+            // Parse our URL for registering keyshare...
+            let url = "http://127.0.0.1/init_crisp_round".parse::<hyper::Uri>()?;
+            // Get the host and the port
+            let host = url.host().expect("uri has no host");
+            let port = url.port_u16().unwrap_or(3000);
+            let address = format!("{}:{}", host, port);
+            // Open a TCP connection to the remote host
+            let stream = TcpStream::connect(address).await?;
+            // Use an adapter to access something implementing `tokio::io` traits as if they implement
+            // `hyper::rt` IO traits.
+            let io = TokioIo::new(stream);
+            // Create the Hyper client
+            let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
+            // Spawn a task to poll the connection, driving the HTTP state
+            tokio::task::spawn(async move {
+                if let Err(err) = conn.await {
+                    println!("Connection failed: {:?}", err);
+                }
+            });
+            // The authority of our URL will be the hostname of the httpbin remote
+            let authority = url.authority().unwrap().clone();
+
+            let response = CrispConfig { round_id: 0, chain_id: 5, voting_address: "Test".to_string(), cyphernode_count: 3 };
+            //let response = JsonRequest { response: "Test".to_string(), pk_share: 0, id: 0, round_id: 0 };
+            let out = json::encode(&response).unwrap();
+            let req = Request::post("http://127.0.0.1/")
+                .uri(url.clone())
+                .header(hyper::header::HOST, authority.as_str())
+                .body(out)?;
+
+            let mut res = sender.send_request(req).await?;
+
+            println!("Response status: {}", res.status());
+
+            // Stream the body, writing each frame to stdout as it arrives
+            while let Some(next) = res.frame().await {
+                let frame = next?;
+                if let Some(chunk) = frame.data_ref() {
+                    io::stdout().write_all(chunk).await?;
+                }
+            }
+            println!("Round Initialized.");
 	    	println!("Gathering Keyshare nodes for execution environment...");
 	    }
 	    if(selection_2 == 1){
