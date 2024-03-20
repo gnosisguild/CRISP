@@ -50,6 +50,12 @@ struct RoundCount {
     round_count: u32,
 }
 
+#[derive(Debug, Deserialize, RustcEncodable)]
+struct PKShareCount {
+    round_id: u32,
+    share_id: u32,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("generating validator keyshare");
@@ -124,7 +130,49 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!("Internal Round Count: {:?}", internal_round_count.round_count);
 
         if(count.round_count > internal_round_count.round_count) {
-            println!("generating share and serializing");
+            println!("Getting latest PK share ID.");
+            // --------------------------------------
+
+            // Client Code
+            let url_get_shareid = "http://127.0.0.1/get_pk_share_count".parse::<hyper::Uri>()?;
+            // Get the host and the port
+            let host_get_shareid = url_get_shareid.host().expect("uri has no host");
+            let port_get_shareid = url_get_shareid.port_u16().unwrap_or(3000);
+            let address_get_shareid = format!("{}:{}", host_get_shareid, port_get_shareid);
+            // Open a TCP connection to the remote host
+            let stream_get_shareid = TcpStream::connect(address_get_shareid).await?;
+            // Use an adapter to access something implementing `tokio::io` traits as if they implement
+            // `hyper::rt` IO traits.
+            let io_get_shareid = TokioIo::new(stream_get_shareid);
+            // Create the Hyper client
+            let (mut sender_get_shareid, conn_get_shareid) = hyper::client::conn::http1::handshake(io_get_shareid).await?;
+            // Spawn a task to poll the connection, driving the HTTP state
+            tokio::task::spawn(async move {
+                if let Err(err) = conn_get_shareid.await {
+                    println!("Connection failed: {:?}", err);
+                }
+            });
+            // The authority of our URL will be the hostname of the httpbin remote
+            let authority_get_shareid = url_get_shareid.authority().unwrap().clone();
+
+            let response_get_shareid = PKShareCount { round_id: count.round_count, share_id: 0 };
+            let out_get_shareid = json::encode(&response_get_shareid).unwrap();
+            let req_get_shareid = Request::post("http://127.0.0.1/")
+                .uri(url_get_shareid.clone())
+                .header(hyper::header::HOST, authority_get_shareid.as_str())
+                .body(out_get_shareid)?;
+
+            let mut res_get_shareid = sender_get_shareid.send_request(req_get_shareid).await?;
+
+            println!("Response status: {}", res_get_shareid.status());
+
+            let body_bytes = res_get_shareid.collect().await?.to_bytes();
+            let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+            let share_count: PKShareCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+
+            // --------------------------------------
+            println!("Generating share and serializing.");
+
             let sk_share_1 = SecretKey::random(&params, &mut OsRng);
             let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
             let test_1 = pk_share_1.to_bytes();
@@ -153,7 +201,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let authority_key = url_register_keyshare.authority().unwrap().clone();
             // -------
             // todo: get id from the number of other shares already stored on iron server
-            let response_key = PKShareRequest { response: "Test".to_string(), pk_share: test_1, id: 0, round_id: count.round_count };
+            let response_key = PKShareRequest { response: "Test".to_string(), pk_share: test_1, id: share_count.share_id, round_id: count.round_count };
             let out_key = json::encode(&response_key).unwrap();
             let req_key = Request::post("http://127.0.0.1/")
                 .uri(url_register_keyshare.clone())
@@ -182,7 +230,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         //     }
         // }
         // Await the response...
-        let three_seconds = time::Duration::from_millis(5000);
+        let three_seconds = time::Duration::from_millis(6000);
         thread::sleep(three_seconds);
 
         // // Aggregation: this could be one of the parties or a separate entity. Or the

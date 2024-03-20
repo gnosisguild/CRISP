@@ -59,6 +59,12 @@ struct RoundCount {
     round_count: u32,
 }
 
+#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+struct PKShareCount {
+    round_id: u32,
+    share_id: u32,
+}
+
 // fn get_new_crisp_id(req: &mut Request) -> IronResult<Response> {
 
 // }
@@ -67,6 +73,28 @@ struct RoundCount {
     // register ip address or some way to contact nodes when a computation request comes in
 
 // }
+
+fn get_pk_share_count(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+
+    let mut incoming: PKShareCount = json::decode(&payload).unwrap();
+    let path = env::current_dir().unwrap();
+
+    let mut keypath = path.display().to_string();
+    keypath.push_str("/keyshares/");
+    keypath.push_str(&incoming.round_id.to_string());
+
+    let share_count = WalkDir::new(keypath.clone()).into_iter().count() - 2;
+    println!("Pk Share Count: {:?}", share_count);
+    //let response = JsonResponse { response: share_count.to_string() };
+    incoming.share_id = share_count as u32;
+    let out = json::encode(&incoming).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
 
 fn get_rounds(req: &mut Request) -> IronResult<Response> {
     // read round count file in /keyshares
@@ -134,7 +162,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
 }
 
 
-async fn aggregate_pk_shares() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("aggregating validator keyshare");
 
     let mut num_parties = 2; // todo set this from an init config 
@@ -171,7 +199,9 @@ async fn aggregate_pk_shares() -> Result<(), Box<dyn std::error::Error + Send + 
         let mut keypath = path.display().to_string();
         keypath.push_str("/keyshares");
         let mut pathst = path.display().to_string();
-        pathst.push_str("/keyshares/test-");
+        pathst.push_str("/keyshares/");
+        pathst.push_str(&round_id.to_string());
+        pathst.push_str("/test-");
         pathst.push_str(&i.to_string());
         println!("The current directory is {}", pathst);
         let data = fs::read(pathst).expect("Unable to read file");
@@ -187,7 +217,7 @@ async fn aggregate_pk_shares() -> Result<(), Box<dyn std::error::Error + Send + 
         pk
     });
     println!("{:?}", pk);
-    //let store_pk = pk.to_bytes();
+    let store_pk = pk.to_bytes();
     // store the public key
     Ok(())
 }
@@ -233,7 +263,7 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     // toso get share threshold from client config
     if(share_count == 4) {
         println!("All shares received");
-        aggregate_pk_shares().await;
+        aggregate_pk_shares(incoming.round_id).await;
     }
 
     // create a response with our random string, and pass in the string from the POST body
@@ -250,6 +280,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut router = Router::new();
     router.get("/", handler, "index");
     router.get("/get_rounds", get_rounds, "get_rounds");
+    router.post("/get_pk_share_count", get_pk_share_count, "get_pk_share_count");
     router.post("/register_keyshare", register_keyshare, "register_keyshare");
     router.post("/init_crisp_round", init_crisp_round, "init_crisp_round");
 

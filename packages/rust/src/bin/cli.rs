@@ -183,7 +183,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("Round Initialized.");
 	    	println!("Gathering Keyshare nodes for execution environment...");
             thread::sleep(three_seconds);
-            println!("You can now vote Encrypted with Round ID: {:?}", round_id);
+            println!("\nYou can now vote Encrypted with Round ID: {:?}", round_id);
 
 	    }
 	    if(selection_2 == 1){
