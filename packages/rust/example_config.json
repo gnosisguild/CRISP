@@ -1,6 +1,6 @@
 {
 	"round_id": 0,
-    "chain_id": 5,
-    "voting_address": "0xa5839eafdc528d977baed88172929e71a16c49ee",
+    "chain_id": 11155111,
+    "voting_address": "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B",
     "cyphernode_count": 3
 }

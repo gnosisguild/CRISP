@@ -10,7 +10,7 @@ use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use util::timeit::{timeit, timeit_n};
-//use serde::{Deserialize};
+use serde::{Deserialize};
 //use serde_json::{Result, Value};
 
 use iron::prelude::*;
@@ -20,6 +20,7 @@ use rustc_serialize::json;
 use rustc_serialize::json::Json;
 use router::Router;
 use std::io::Read;
+use std::fs::File;
 
 use walkdir::WalkDir;
 
@@ -53,6 +54,11 @@ struct CrispConfig {
     cyphernode_count: u32,
 }
 
+#[derive(Debug, Deserialize, RustcEncodable)]
+struct RoundCount {
+    round_count: u32,
+}
+
 // fn get_new_crisp_id(req: &mut Request) -> IronResult<Response> {
 
 // }
@@ -63,11 +69,18 @@ struct CrispConfig {
 // }
 
 fn get_rounds(req: &mut Request) -> IronResult<Response> {
-    let path = env::current_dir().unwrap();
     // read round count file in /keyshares
+    let path = env::current_dir().unwrap();
+    let mut pathst = path.display().to_string();
+    pathst.push_str("/keyshares/round_count.json");
+    let mut file = File::open(pathst).unwrap();
+    let mut data = String::new();
+    file.read_to_string(&mut data).unwrap();
+    let count: RoundCount = serde_json::from_str(&data).expect("JSON was not well-formatted");
+    println!("round_count: {:?}", count.round_count);
 
     let response = JsonResponse { response: "weee".to_string() };
-    let out = json::encode(&response).unwrap();
+    let out = json::encode(&count).unwrap();
     println!("get rounds hit");
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -87,7 +100,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
 
     // we're expecting the POST to match the format of our JsonRequest struct
     let incoming: CrispConfig = json::decode(&payload).unwrap();
-    println!("ID: {:?}", incoming.round_id);
+    println!("ID: {:?}", incoming.round_id); // TODO: check that client sent the expected next round_id
     println!("Address: {:?}", incoming.voting_address);
 
     let path = env::current_dir().unwrap();
@@ -100,6 +113,17 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     pathst.push_str("/config.json");
     let configfile = json::encode(&incoming).unwrap();
     fs::write(pathst.clone(), configfile).unwrap();
+
+    // write new round count to file
+    let mut round_pathst = path.display().to_string();
+    round_pathst.push_str("/keyshares/round_count.json");
+    let mut file = File::open(round_pathst.clone()).unwrap();
+    let mut data = String::new();
+    file.read_to_string(&mut data).unwrap();
+    let mut count: RoundCount = serde_json::from_str(&data).expect("JSON was not well-formatted");
+    count.round_count += 1;
+    let countfile = json::encode(&count).unwrap();
+    fs::write(round_pathst.clone(), countfile).unwrap();
 
     // create a response with our random string, and pass in the string from the POST body
     let response = JsonResponse { response: "CRISP Initiated".to_string() };
@@ -177,7 +201,7 @@ fn handler(req: &mut Request) -> IronResult<Response> {
 }
 
 #[tokio::main]
-async fn post_handler(req: &mut Request) -> IronResult<Response> {
+async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
 
     // read the POST body
@@ -187,20 +211,27 @@ async fn post_handler(req: &mut Request) -> IronResult<Response> {
     let incoming: JsonRequest = json::decode(&payload).unwrap();
     println!("{:?}", incoming.response);
     println!("ID: {:?}", incoming.id);
+    println!("Round ID: {:?}", incoming.round_id);
 
     let path = env::current_dir().unwrap();
+
     let mut keypath = path.display().to_string();
-    keypath.push_str("/keyshares");
+    keypath.push_str("/keyshares/");
+    keypath.push_str(&incoming.round_id.to_string());
+
     let mut pathst = path.display().to_string();
-    pathst.push_str("/keyshares/test-");
+    pathst.push_str("/keyshares/");
+    pathst.push_str(&incoming.round_id.to_string());
+    pathst.push_str("/test-");
     pathst.push_str(&incoming.id.to_string());
     println!("The current directory is {}", pathst);
     fs::write(pathst.clone(), incoming.pk_share).unwrap();
 
     let share_count = WalkDir::new(keypath.clone()).into_iter().count();
-    println!("Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
+    println!("Share Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
 
-    if(share_count == 3) {
+    // toso get share threshold from client config
+    if(share_count == 4) {
         println!("All shares received");
         aggregate_pk_shares().await;
     }
@@ -219,7 +250,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut router = Router::new();
     router.get("/", handler, "index");
     router.get("/get_rounds", get_rounds, "get_rounds");
-    router.post("/register_keyshare", post_handler, "register_keyshare");
+    router.post("/register_keyshare", register_keyshare, "register_keyshare");
     router.post("/init_crisp_round", init_crisp_round, "init_crisp_round");
 
     Iron::new(router).http("localhost:3000").unwrap();

@@ -14,6 +14,16 @@ use tokio::io::{AsyncWriteExt as _, self};
 use rustc_serialize::json;
 
 #[derive(RustcEncodable, RustcDecodable)]
+struct JsonRequestGetRounds {
+    response: String,
+}
+
+#[derive(Debug, Deserialize, RustcEncodable)]
+struct RoundCount {
+    round_count: u32,
+}
+
+#[derive(RustcEncodable, RustcDecodable)]
 struct JsonRequest {
     response: String,
     pk_share: u32,
@@ -76,7 +86,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let mut data = String::new();
             file.read_to_string(&mut data).unwrap();
             let config: CrispConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
-            println!("round id: {:?}", config.round_id);
+            println!("round id: {:?}", config.round_id); // get new round id from current id in server
             println!("chain id: {:?}", config.chain_id);
             println!("voting contract: {:?}", config.voting_address);
             println!("cyphernode count: {:?}", config.cyphernode_count);
@@ -89,7 +99,46 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             // call init on server
             // have nodes poll
 
+            // Todo: pull client code into function that takes endpoint url and body as input 
             // Client Code
+            // Parse our URL for registering keyshare...
+            let url_id = "http://127.0.0.1/get_rounds".parse::<hyper::Uri>()?;
+            // Get the host and the port
+            let host_id = url_id.host().expect("uri has no host");
+            let port_id = url_id.port_u16().unwrap_or(3000);
+            let address_id = format!("{}:{}", host_id, port_id);
+            // Open a TCP connection to the remote host
+            let stream_id = TcpStream::connect(address_id).await?;
+            // Use an adapter to access something implementing `tokio::io` traits as if they implement
+            // `hyper::rt` IO traits.
+            let io_id = TokioIo::new(stream_id);
+            // Create the Hyper client
+            let (mut sender_id, conn_id) = hyper::client::conn::http1::handshake(io_id).await?;
+            // Spawn a task to poll the connection, driving the HTTP state
+            tokio::task::spawn(async move {
+                if let Err(err) = conn_id.await {
+                    println!("Connection failed: {:?}", err);
+                }
+            });
+            // The authority of our URL will be the hostname of the httpbin remote
+            let authority_id = url_id.authority().unwrap().clone();
+            let response_id = JsonRequestGetRounds { response: "Test".to_string() };
+            let out_id = json::encode(&response_id).unwrap();
+            let req_id = Request::get("http://127.0.0.1/")
+                .uri(url_id.clone())
+                .header(hyper::header::HOST, authority_id.as_str())
+                .body(out_id)?;
+            let mut res_id = sender_id.send_request(req_id).await?;
+
+            println!("Response status: {}", res_id.status());
+
+            let body_bytes = res_id.collect().await?.to_bytes();
+            let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+            let count: RoundCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+            println!("Server Round Count: {:?}", count.round_count);
+
+
+            // Client Code --------------------------------
             // Parse our URL for registering keyshare...
             let url = "http://127.0.0.1/init_crisp_round".parse::<hyper::Uri>()?;
             // Get the host and the port
@@ -111,8 +160,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             });
             // The authority of our URL will be the hostname of the httpbin remote
             let authority = url.authority().unwrap().clone();
-
-            let response = CrispConfig { round_id: 0, chain_id: 5, voting_address: "Test".to_string(), cyphernode_count: 3 };
+            let round_id = count.round_count + 1;
+            let response = CrispConfig { round_id: round_id, chain_id: 5, voting_address: "Test".to_string(), cyphernode_count: 3 };
             //let response = JsonRequest { response: "Test".to_string(), pk_share: 0, id: 0, round_id: 0 };
             let out = json::encode(&response).unwrap();
             let req = Request::post("http://127.0.0.1/")
@@ -133,6 +182,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
             println!("Round Initialized.");
 	    	println!("Gathering Keyshare nodes for execution environment...");
+            thread::sleep(three_seconds);
+            println!("You can now vote Encrypted with Round ID: {:?}", round_id);
+
 	    }
 	    if(selection_2 == 1){
 	    	print!("{esc}[2J{esc}[1;1H", esc = 27 as char);

@@ -11,7 +11,7 @@ use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use util::timeit::{timeit, timeit_n};
-//use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use http_body_util::Empty;
 use hyper::Request;
 use hyper::body::Bytes;
@@ -29,7 +29,7 @@ struct JsonRequestGetRounds {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
-struct JsonRequest {
+struct PKShareRequest {
     response: String,
     pk_share: Vec<u8>,
     id: u32,
@@ -43,6 +43,11 @@ struct CrispConfig {
     chain_id: u32,
     voting_address: String,
     cyphernode_count: u32,
+}
+
+#[derive(Debug, Deserialize, RustcEncodable)]
+struct RoundCount {
+    round_count: u32,
 }
 
 #[tokio::main]
@@ -69,51 +74,37 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let crp = CommonRandomPoly::new_deterministic(&params, seed)?;
     let crp_bytes = crp.to_bytes();
 
-    let mut rounds: Vec<u32> = Vec::with_capacity(1);
+    //let mut rounds: Vec<u32> = Vec::with_capacity(1);
+    // set the expected CRISP rounds
+    let mut internal_round_count = RoundCount { round_count: 0 };
 
     loop {
-        println!("test");
-
-        // println!("generating share 1 and serialize");
-        // let sk_share_1 = SecretKey::random(&params, &mut OsRng);
-        // let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
-        // let test_1 = pk_share_1.to_bytes();
-        // //print_type_of(&test_1); // &str
-        // let test_1_des = PublicKeyShare::deserialize(&test_1, &params, crp.clone()).unwrap();
-        // parties.push(Party { sk_share: sk_share_1.clone(), pk_share: pk_share_1 });
-        // parties_test.push(Party { sk_share: sk_share_1, pk_share: test_1_des });
+        println!("Polling CRISP server...");
 
         // Client Code
-
         // Parse our URL for registering keyshare...
-        let url_register_keyshare = "http://127.0.0.1/register_keyshare".parse::<hyper::Uri>()?;
+        //let url_register_keyshare = "http://127.0.0.1/register_keyshare".parse::<hyper::Uri>()?;
         let url_get_rounds = "http://127.0.0.1/get_rounds".parse::<hyper::Uri>()?;
-
         // Get the host and the port
         let host = url_get_rounds.host().expect("uri has no host");
         let port = url_get_rounds.port_u16().unwrap_or(3000);
-
         let address = format!("{}:{}", host, port);
-
         // Open a TCP connection to the remote host
         let stream = TcpStream::connect(address).await?;
-
         // Use an adapter to access something implementing `tokio::io` traits as if they implement
         // `hyper::rt` IO traits.
         let io = TokioIo::new(stream);
-
         // Create the Hyper client
         let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
-
         // Spawn a task to poll the connection, driving the HTTP state
         tokio::task::spawn(async move {
             if let Err(err) = conn.await {
                 println!("Connection failed: {:?}", err);
             }
         });
-
         // The authority of our URL will be the hostname of the httpbin remote
         let authority = url_get_rounds.authority().unwrap().clone();
+        //let authority_key = url_register_keyshare.authority().unwrap().clone();
 
         let response = JsonRequestGetRounds { response: "Test".to_string() };
         let out = json::encode(&response).unwrap();
@@ -126,13 +117,70 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         println!("Response status: {}", res.status());
 
-        // Stream the body, writing each frame to stdout as it arrives
-        while let Some(next) = res.frame().await {
-            let frame = next?;
-            if let Some(chunk) = frame.data_ref() {
-                io::stdout().write_all(chunk).await?;
+        let body_bytes = res.collect().await?.to_bytes();
+        let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+        let count: RoundCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+        println!("Server Round Count: {:?}", count.round_count);
+        println!("Internal Round Count: {:?}", internal_round_count.round_count);
+
+        if(count.round_count > internal_round_count.round_count) {
+            println!("generating share and serializing");
+            let sk_share_1 = SecretKey::random(&params, &mut OsRng);
+            let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
+            let test_1 = pk_share_1.to_bytes();
+
+            // Client Code
+            // Parse our URL for registering keyshare...
+            let url_register_keyshare = "http://127.0.0.1/register_keyshare".parse::<hyper::Uri>()?;
+            // Get the host and the port
+            let host_key = url_register_keyshare.host().expect("uri has no host");
+            let port_key = url_register_keyshare.port_u16().unwrap_or(3000);
+            let address_key = format!("{}:{}", host_key, port_key);
+            // Open a TCP connection to the remote host
+            let stream_key = TcpStream::connect(address_key).await?;
+            // Use an adapter to access something implementing `tokio::io` traits as if they implement
+            // `hyper::rt` IO traits.
+            let io_key = TokioIo::new(stream_key);
+            // Create the Hyper client
+            let (mut sender_key, conn_key) = hyper::client::conn::http1::handshake(io_key).await?;
+            // Spawn a task to poll the connection, driving the HTTP state
+            tokio::task::spawn(async move {
+                if let Err(err) = conn_key.await {
+                    println!("Connection failed: {:?}", err);
+                }
+            });
+            // The authority of our URL will be the hostname of the httpbin remote
+            let authority_key = url_register_keyshare.authority().unwrap().clone();
+            // -------
+            // todo: get id from the number of other shares already stored on iron server
+            let response_key = PKShareRequest { response: "Test".to_string(), pk_share: test_1, id: 0, round_id: count.round_count };
+            let out_key = json::encode(&response_key).unwrap();
+            let req_key = Request::post("http://127.0.0.1/")
+                .uri(url_register_keyshare.clone())
+                .header(hyper::header::HOST, authority_key.as_str())
+                .body(out_key)?;
+
+            let mut res_key = sender_key.send_request(req_key).await?;
+
+            println!("Response status: {}", res_key.status());
+
+            // Stream the body, writing each frame to stdout as it arrives
+            while let Some(next) = res_key.frame().await {
+                let frame = next?;
+                if let Some(chunk) = frame.data_ref() {
+                    io::stdout().write_all(chunk).await?;
+                }
             }
+            internal_round_count.round_count += 1;
         }
+
+        // Stream the body, writing each frame to stdout as it arrives
+        // while let Some(next) = res.frame().await {
+        //     let frame = next?;
+        //     if let Some(chunk) = frame.data_ref() {
+        //         io::stdout().write_all(chunk).await?;
+        //     }
+        // }
         // Await the response...
         let three_seconds = time::Duration::from_millis(5000);
         thread::sleep(three_seconds);
