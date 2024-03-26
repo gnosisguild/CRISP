@@ -256,10 +256,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let three_seconds = time::Duration::from_millis(6000);
         thread::sleep(three_seconds);
 
-
+        println!("polling smart contract...");
         // chain state
         // todo, move into loop and boot up for different chains if needed.
-        const RPC_URL: &str = "https://goerli.infura.io/v3/8987bc25c1b34ad7b0a6d370fc287ef9";
+        const RPC_URL: &str = "https://sepolia.infura.io/v3/8987bc25c1b34ad7b0a6d370fc287ef9";
 
         let provider = Provider::<Http>::try_from(RPC_URL)?;
         // let block_number: U64 = provider.get_block_number().await?;
