@@ -79,7 +79,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
         pk
     });
 
-    const RPC_URL: &str = "https://goerli.infura.io/v3/8987bc25c1b34ad7b0a6d370fc287ef9";
+    const RPC_URL: &str = "";
 
     let provider = Provider::<Http>::try_from(RPC_URL)?;
     // let block_number: U64 = provider.get_block_number().await?;
@@ -111,7 +111,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     // let contract = Contract::from_json(provider,
     //     contract_address,
     //     include_bytes!("/home/ubuntu/guild/rfv/abi/rfv.json"))?;
-    let wallet: LocalWallet = "66c6c4603b762de30ec1eedaa7c865ba29308218648980efdcf0b35f887db644"
+    let wallet: LocalWallet = ""
         .parse::<LocalWallet>()?
         .with_chain_id(5 as u64);
     //let client = SignerMiddleware::new(provider.clone(), wallet.clone());
@@ -172,6 +172,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
             let mut _i = 0;
             timeit_n!("Decryption (per party)", num_parties as u32, {
                 let sh = DecryptionShare::new(&parties[_i].sk_share, &tally, &mut thread_rng())?;
+                //let tester = sh.to_bytes();
                 decryption_shares.push(sh);
                 _i += 1;
             });

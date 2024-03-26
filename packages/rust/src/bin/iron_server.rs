@@ -52,6 +52,7 @@ struct CrispConfig {
     chain_id: u32,
     voting_address: String,
     cyphernode_count: u32,
+    voter_count: u32,
 }
 
 #[derive(Debug, Deserialize, RustcEncodable)]
@@ -135,7 +136,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     let mut pathst = path.display().to_string();
     pathst.push_str("/keyshares/");
     pathst.push_str(&incoming.round_id.to_string());
-    println!("The current directory is {}", pathst);
+    println!("Initiate CRISP... directory is {}", pathst);
     fs::create_dir_all(pathst.clone()).unwrap();
 
     pathst.push_str("/config.json");
@@ -203,7 +204,7 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
         pathst.push_str(&round_id.to_string());
         pathst.push_str("/test-");
         pathst.push_str(&i.to_string());
-        println!("The current directory is {}", pathst);
+        println!("Aggregating PKShare... directory is {}", pathst);
         let data = fs::read(pathst).expect("Unable to read file");
         let data_des = PublicKeyShare::deserialize(&data, &params, crp.clone()).unwrap();
         // let pk_share = PublicKeyShare::new(&sk_share, crp.clone(), &mut thread_rng())?;
@@ -216,9 +217,17 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
         let pk: PublicKey = parties.iter().map(|p| p.pk_share.clone()).aggregate()?;
         pk
     });
-    println!("{:?}", pk);
+    //println!("{:?}", pk);
+    println!("Multiparty Public Key Generated");
     let store_pk = pk.to_bytes();
     // store the public key
+    let path = env::current_dir().unwrap();
+    let mut pathst = path.display().to_string();
+    pathst.push_str("/keyshares/");
+    pathst.push_str(&round_id.to_string());
+    pathst.push_str("/PublicKey");
+    println!("Saving Key... directory is {}", pathst);
+    fs::write(pathst.clone(), store_pk).unwrap();
     Ok(())
 }
 
@@ -254,7 +263,7 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     pathst.push_str(&incoming.round_id.to_string());
     pathst.push_str("/test-");
     pathst.push_str(&incoming.id.to_string());
-    println!("The current directory is {}", pathst);
+    println!("Registering PKShare... directory is {}", pathst);
     fs::write(pathst.clone(), incoming.pk_share).unwrap();
 
     let share_count = WalkDir::new(keypath.clone()).into_iter().count();
