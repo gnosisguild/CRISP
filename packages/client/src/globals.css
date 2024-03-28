@@ -68,7 +68,7 @@
   }
 
   .subtitle1 {
-    @apply font-space text-base font-light text-zinc-400;
+    @apply font-jakarta text-base font-light text-zinc-400;
   }
 
   .subtitle2 {
@@ -76,7 +76,7 @@
   }
 
   .subtext {
-    @apply font-space text-sm font-normal;
+    @apply font-jakarta text-sm font-normal;
   }
 
   /* Remove Input Arrows & Search X */
@@ -132,8 +132,9 @@
     @apply flex h-12 cursor-pointer items-center gap-2.5 rounded-full bg-zinc-700 bg-[url('/assets/icons/caret.svg')] bg-[right_16px_center] bg-no-repeat py-4 pl-4 pr-9 text-sm;
   }
 
+  /* opacity-5 transition-all duration-300 ease-in-out placeholder:text-twilight-blue-500 focus:border-twilight-blue-900 focus:bg-opacity-20 focus:outline-none */
   .input {
-    @apply font-space flex h-12 w-full items-center rounded-lg bg-zinc-700 px-4 py-3 placeholder:text-zinc-400;
+    @apply bg-twilight-blue-100  flex h-12 w-full items-center rounded-lg border-2 border-twilight-blue-200 px-4 py-2 font-jakarta text-twilight-blue-900;
   }
 
   .input-search {
@@ -152,6 +153,9 @@
   /* Icons */
   .external-icon {
     @apply icon h-[14px] w-[14px] bg-[url('./assets/icons/arrow.svg')];
+  }
+  .close-icon {
+    @apply icon h-[18px] w-[18px] bg-[url('./assets/icons/close.svg')];
   }
 
   /* Modals */
