@@ -9,22 +9,7 @@ const HistoricPoll: React.FC = () => {
       <h1 className='text-h1 font-bold text-twilight-blue-900'>Historic polls</h1>
       <div className='mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 overflow-y-auto p-4 md:grid-cols-3'>
         {PAST_POLLS.map(({ totalVotes, options, id, date }: PollResult) => (
-          <div className='flex items-center justify-center'>
-            <PollCard key={id} pollOptions={options} totalVotes={totalVotes} date={date} />
-          </div>
-        ))}
-        {PAST_POLLS.map(({ totalVotes, options, id, date }: PollResult) => (
-          <div className='flex items-center justify-center'>
-            <PollCard key={id} pollOptions={options} totalVotes={totalVotes} date={date} />
-          </div>
-        ))}
-        {PAST_POLLS.map(({ totalVotes, options, id, date }: PollResult) => (
-          <div className='flex items-center justify-center'>
-            <PollCard key={id} pollOptions={options} totalVotes={totalVotes} date={date} />
-          </div>
-        ))}
-        {PAST_POLLS.map(({ totalVotes, options, id, date }: PollResult) => (
-          <div className='flex items-center justify-center'>
+          <div className='flex items-center justify-center' key={id}>
             <PollCard key={id} pollOptions={options} totalVotes={totalVotes} date={date} />
           </div>
         ))}

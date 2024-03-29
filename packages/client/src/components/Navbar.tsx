@@ -40,6 +40,7 @@ const Navbar: React.FC = () => {
           <div className='hidden sm:flex sm:items-center sm:gap-8'>
             {PAGES.map(({ label, path }) => (
               <a
+                key={label}
                 onClick={() => handleNavigation(path)}
                 className='hover:text-twilight-blue-600 cursor-pointer font-bold text-twilight-blue-900'
               >

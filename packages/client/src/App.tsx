@@ -1,5 +1,5 @@
 import React, { Fragment, useEffect } from 'react'
-import init, { greet } from '../../rust/pkg/rfv'
+import init, { greet } from '../public/pkg/rfv'
 import Navbar from './components/Navbar'
 import { Routes, Route } from 'react-router-dom'
 import Footer from './components/Footer'
@@ -10,7 +10,7 @@ import HistoricPoll from './pages/HistoricPoll/HistoricPoll'
 const App: React.FC = () => {
   useEffect(() => {
     init().then(() => {
-      greet('World')
+      greet('World. Consuming web assembly')
     })
   }, [])
 
