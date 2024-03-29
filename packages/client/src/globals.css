@@ -134,7 +134,7 @@
 
   /* opacity-5 transition-all duration-300 ease-in-out placeholder:text-twilight-blue-500 focus:border-twilight-blue-900 focus:bg-opacity-20 focus:outline-none */
   .input {
-    @apply bg-twilight-blue-100  flex h-12 w-full items-center rounded-lg border-2 border-twilight-blue-200 px-4 py-2 font-jakarta text-twilight-blue-900;
+    @apply flex  h-12 w-full items-center rounded-lg border-2 border-twilight-blue-200 bg-twilight-blue-100 px-4 py-2 font-jakarta text-twilight-blue-900;
   }
 
   .input-search {
@@ -205,6 +205,22 @@
 
   .icon-placeholder {
     @apply bg-white/50 h-6 w-6 rounded-full;
+  }
+
+  .h-screen-minus-header {
+    height: calc(100vh - 16px);
+  }
+
+  .h-screen-minus-header-footer {
+    height: calc(100vh - 156px);
+  }
+
+  .footer-fixed {
+    @apply fixed inset-x-0 bottom-0;
+  }
+
+  .footer-dynamic {
+    @apply relative mt-auto;
   }
 
   .truncate-lines {

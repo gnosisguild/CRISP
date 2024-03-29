@@ -3,7 +3,11 @@ import Card from '../../../components/Card'
 import { DAILY_POLL } from '../../../mocks/polls'
 import { Poll } from '../../../model/poll.model'
 
-const DailyPollSection: React.FC = () => {
+type DailyPollSectionProps = {
+  isScreen?: boolean
+}
+
+const DailyPollSection: React.FC<DailyPollSectionProps> = ({ isScreen }) => {
   const [pollOptions, setPollOptions] = useState<Poll[]>(DAILY_POLL)
 
   const handleChecked = (selectedId: number) => {
@@ -16,7 +20,9 @@ const DailyPollSection: React.FC = () => {
   }
 
   return (
-    <div className='flex h-screen w-screen flex-col items-center justify-center space-y-12 border-y-2 border-twilight-blue-200'>
+    <div
+      className={`flex w-screen flex-col items-center justify-center space-y-12 ${!isScreen ? 'h-screen  border-y-2 border-twilight-blue-200' : 'h-screen-minus-header-footer'} `}
+    >
       <div className='space-y-2'>
         <p className='text-center text-sm font-extrabold uppercase text-zinc-900'>Daily Poll</p>
         <h1 className='text-h1 font-bold text-twilight-blue-900'>Choose your favorite</h1>
