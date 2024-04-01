@@ -91,7 +91,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     //println!("{:?}", votes_encrypted[0].to_bytes());
     //println!("{:?}", sol_vote);
 
-    const RPC_URL: &str = "https://goerli.infura.io/v3/8987bc25c1b34ad7b0a6d370fc287ef9";
+    const RPC_URL: &str = "https://goerli.infura.io/v3/";
 
     let provider = Provider::<Http>::try_from(RPC_URL)?;
     // let block_number: U64 = provider.get_block_number().await?;
@@ -118,7 +118,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
     const WETH_ADDRESS: &str = "0xa5839eaFDc528D977BaEd88172929E71A16c49Ee";
 
     let provider = Provider::<Http>::try_from(RPC_URL)?;
-    let wallet: LocalWallet = "66c6c4603b762de30ec1eedaa7c865ba29308218648980efdcf0b35f887db644"
+    let wallet: LocalWallet = ""
         .parse::<LocalWallet>()?
         .with_chain_id(5 as u64);
 

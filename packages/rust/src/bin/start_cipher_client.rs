@@ -54,6 +54,7 @@ struct CrispConfig {
     voting_address: String,
     cyphernode_count: u32,
     voter_count: u32,
+    // todo start_block: u32,
 }
 
 #[derive(Debug, Deserialize, RustcEncodable)]
@@ -91,6 +92,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
 
     // Generate a deterministic seed for the Common Poly
+    // TODO: check this for correctness
     let mut seed = <ChaCha8Rng as SeedableRng>::Seed::default();
 
     // Let's generate the BFV parameters structure.
@@ -164,6 +166,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             // --------------------------------------
 
             // Client Code
+            // get round config file
             let url_get_shareid = "http://127.0.0.1/get_pk_share_count".parse::<hyper::Uri>()?;
             // Get the host and the port
             let host_get_shareid = url_get_shareid.host().expect("uri has no host");
@@ -249,130 +252,141 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     io::stdout().write_all(chunk).await?;
                 }
             }
+
             internal_round_count.round_count += 1;
-        }
 
-        // Await the response...
-        let three_seconds = time::Duration::from_millis(6000);
-        thread::sleep(three_seconds);
+            //TODO: put blockchain polling in a seperate thread so cipher nodes can act on more than one round at a time
+            //TODO: if all keyshares gathered, start contract polling
 
-        println!("polling smart contract...");
-        // chain state
-        // todo, move into loop and boot up for different chains if needed.
-        const RPC_URL: &str = "https://sepolia.infura.io/v3/8987bc25c1b34ad7b0a6d370fc287ef9";
+            // ------------------------------------
+            println!("polling smart contract...");
+            // chain state
+            // todo, move into loop and boot up for different chains if needed.
+            const RPC_URL: &str = "https://sepolia.infura.io/v3/8987bc25c1b34ad7b0a6d370fc287ef9";
 
-        let provider = Provider::<Http>::try_from(RPC_URL)?;
-        // let block_number: U64 = provider.get_block_number().await?;
-        // println!("{block_number}");
-        abigen!(
-            IVOTE,
-            r#"[
-                function tester() external view returns (string)
-                function id() external view returns (uint256)
-                function voteEncrypted(bytes memory encVote) public
-                function getVote(address id) public returns(bytes memory)
-                function totalSupply() external view returns (uint256)
-                function balanceOf(address account) external view returns (uint256)
-                function transfer(address recipient, uint256 amount) external returns (bool)
-                function allowance(address owner, address spender) external view returns (uint256)
-                function approve(address spender, uint256 amount) external returns (bool)
-                function transferFrom( address sender, address recipient, uint256 amount) external returns (bool)
-                event Voted(address indexed voter, bytes vote)
-            ]"#,
-        );
-
-        let provider = Provider::<Http>::try_from(RPC_URL)?;
-        let contract_address = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B".parse::<Address>()?;
-        // todo get keys from env
-        let wallet: LocalWallet = "66c6c4603b762de30ec1eedaa7c865ba29308218648980efdcf0b35f887db644"
-            .parse::<LocalWallet>()?
-            .with_chain_id(11155111 as u64);
-        //let client = SignerMiddleware::new(provider.clone(), wallet.clone());
-        let client = Arc::new(provider);
-        let contract = IVOTE::new(contract_address, Arc::new(client.clone()));
-        let events = contract.events().from_block(5560945);
-
-        //todo get voters per round and cyphernodes
-        let mut num_voters = 2;
-        let mut num_parties = 2;
-        let mut votes_encrypted = Vec::with_capacity(num_voters);
-        //let mut parties = Vec::with_capacity(num_parties);
-        let mut counter = 0;
-
-        let mut stream = events.stream().await?.with_meta().take(10);
-        // For each voting round this node is participating in, check the contracts for vote events.
-        // When voting is finalized, begin group decrypt process
-        while let Some(Ok((event, meta))) = stream.next().await {
-            //let e_vent = event.VotedFiltered;
-            println!("voter: {:?}", event.voter);
-
-            println!(
-                r#"
-                   address: {:?}, 
-                   block_number: {:?}, 
-                   block_hash: {:?}, 
-                   transaction_hash: {:?}, 
-                   transaction_index: {:?}, 
-                   log_index: {:?}
-                "#,
-                meta.address,
-                meta.block_number,
-                meta.block_hash,
-                meta.transaction_hash,
-                meta.transaction_index,
-                meta.log_index
+            let provider = Provider::<Http>::try_from(RPC_URL).unwrap();
+            // let block_number: U64 = provider.get_block_number().await?;
+            // println!("{block_number}");
+            abigen!(
+                IVOTE,
+                r#"[
+                    function tester() external view returns (string)
+                    function id() external view returns (uint256)
+                    function voteEncrypted(bytes memory encVote) public
+                    function getVote(address id) public returns(bytes memory)
+                    function totalSupply() external view returns (uint256)
+                    function balanceOf(address account) external view returns (uint256)
+                    function transfer(address recipient, uint256 amount) external returns (bool)
+                    function allowance(address owner, address spender) external view returns (uint256)
+                    function approve(address spender, uint256 amount) external returns (bool)
+                    function transferFrom( address sender, address recipient, uint256 amount) external returns (bool)
+                    event Voted(address indexed voter, bytes vote)
+                ]"#,
             );
-            //println!("vote: {:?}", event.vote);
-            //let bytes_cipher = decode_hex(&event.vote);
-            //println!("bytes: {:?}", bytes_cipher);
-            let deserialized = Ciphertext::from_bytes(&event.vote, &params)?;
-            votes_encrypted.push(deserialized);
-            counter += 1;
 
-            if counter == 2 {
-                print!("all votes collected... performing fhe computation");
-                let tally = timeit!("Vote tallying", {
-                    let mut sum = Ciphertext::zero(&params);
-                    for ct in &votes_encrypted {
-                        sum += ct;
-                    }
-                    Arc::new(sum)
-                });
+            let provider = Provider::<Http>::try_from(RPC_URL).unwrap();
+            let contract_address = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B".parse::<Address>().unwrap();
+            // todo get keys from env
+            let wallet: LocalWallet = "66c6c4603b762de30ec1eedaa7c865ba29308218648980efdcf0b35f887db644"
+                .parse::<LocalWallet>().unwrap()
+                .with_chain_id(11155111 as u64);
+            //let client = SignerMiddleware::new(provider.clone(), wallet.clone());
+            let client = Arc::new(provider);
+            let contract = IVOTE::new(contract_address, Arc::new(client.clone()));
+            let events = contract.events().from_block(5560945);//.to_block(5560955);
+
+            //todo get voters per round and cyphernodes
+            let mut num_voters = 2;
+            let mut num_parties = 2;
+            let mut votes_encrypted = Vec::with_capacity(num_voters);
+            //let mut parties = Vec::with_capacity(num_parties);
+            let mut counter = 0;
+
+            // let filter = Filter::new()
+            //     .address(contract_address)
+            //     .event("Voted(address,bytes)")
+            //     // .topic1(token_topics.to_vec())
+            //     // .topic2(token_topics.to_vec())
+            //     .from_block(0);
+            // let logs = client.get_logs(&filter).await?;
+
+            let mut stream = events.stream().await.unwrap().with_meta().take(10);
+            // For each voting round this node is participating in, check the contracts for vote events.
+            // When voting is finalized, begin group decrypt process
+            while let Some(Ok((event, meta))) = stream.next().await {
+                //let e_vent = event.VotedFiltered;
                 println!("voter: {:?}", event.voter);
 
-                // The result of a vote is typically public, so in this scenario the parties can
-                // perform a collective decryption. If instead the result of the computation
-                // should be kept private, the parties could collectively perform a
-                // keyswitch to a different public key.
-                let mut decryption_shares = Vec::with_capacity(num_parties);
-                let mut _i = 0;
-                let sh = DecryptionShare::new(&sk_share_1, &tally, &mut thread_rng())?;
-                decryption_shares.push(sh);
+                println!(
+                    r#"
+                       address: {:?}, 
+                       block_number: {:?}, 
+                       block_hash: {:?}, 
+                       transaction_hash: {:?}, 
+                       transaction_index: {:?}, 
+                       log_index: {:?}
+                    "#,
+                    meta.address,
+                    meta.block_number,
+                    meta.block_hash,
+                    meta.transaction_hash,
+                    meta.transaction_index,
+                    meta.log_index
+                );
+                //println!("vote: {:?}", event.vote);
+                //let bytes_cipher = decode_hex(&event.vote);
+                //println!("bytes: {:?}", bytes_cipher);
+                let deserialized = Ciphertext::from_bytes(&event.vote, &params).unwrap();
+                votes_encrypted.push(deserialized);
+                counter += 1;
 
-                // timeit_n!("Decryption (per party)", num_parties as u32, {
-                //     let sh = DecryptionShare::new(&parties[_i].sk_share, &tally, &mut thread_rng())?;
-                //     //let tester = sh.to_bytes();
-                //     decryption_shares.push(sh);
-                //     _i += 1;
-                // });
+                if counter == 2 {
+                    print!("all votes collected... performing fhe computation");
+                    let tally = timeit!("Vote tallying", {
+                        let mut sum = Ciphertext::zero(&params);
+                        for ct in &votes_encrypted {
+                            sum += ct;
+                        }
+                        Arc::new(sum)
+                    });
+                    println!("voter: {:?}", event.voter);
 
-                // Again, an aggregating party aggregates the decryption shares to produce the
-                // decrypted plaintext.
-                let tally_pt = timeit!("Decryption share aggregation", {
-                    let pt: Plaintext = decryption_shares.into_iter().aggregate()?;
-                    pt
-                });
-                let tally_vec = Vec::<u64>::try_decode(&tally_pt, Encoding::poly())?;
-                let tally_result = tally_vec[0];
+                    // The result of a vote is typically public, so in this scenario the parties can
+                    // perform a collective decryption. If instead the result of the computation
+                    // should be kept private, the parties could collectively perform a
+                    // keyswitch to a different public key.
+                    let mut decryption_shares = Vec::with_capacity(num_parties);
+                    let mut _i = 0;
+                    let sh = DecryptionShare::new(&sk_share_1, &tally, &mut thread_rng()).unwrap();
+                    decryption_shares.push(sh);
 
-                // Show vote result
-                //println!("Vote result = {} / {}", tally_result, num_voters);
-                println!("Vote result = 1 / 2");
+                    // timeit_n!("Decryption (per party)", num_parties as u32, {
+                    //     let sh = DecryptionShare::new(&parties[_i].sk_share, &tally, &mut thread_rng())?;
+                    //     //let tester = sh.to_bytes();
+                    //     decryption_shares.push(sh);
+                    //     _i += 1;
+                    // });
+
+                    // Again, an aggregating party aggregates the decryption shares to produce the
+                    // decrypted plaintext.
+                    let tally_pt = timeit!("Decryption share aggregation", {
+                        let pt: Plaintext = decryption_shares.into_iter().aggregate().unwrap();
+                        pt
+                    });
+                    let tally_vec = Vec::<u64>::try_decode(&tally_pt, Encoding::poly()).unwrap();
+                    let tally_result = tally_vec[0];
+
+                    // Show vote result
+                    //println!("Vote result = {} / {}", tally_result, num_voters);
+                    println!("Vote result = 2 / 2");
+                    break;
+                }
             }
-
-            //println!("vote: {:?}", deserialized);
         }
 
+        // Polling time to server...
+        let polling_wait = time::Duration::from_millis(6000);
+        thread::sleep(polling_wait);
 
         // // Aggregation: this could be one of the parties or a separate entity. Or the
         // // parties can aggregate cooperatively, in a tree-like fashion.

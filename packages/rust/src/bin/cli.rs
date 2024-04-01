@@ -1,17 +1,41 @@
+mod util;
+
 use dialoguer::{theme::ColorfulTheme, Input, FuzzySelect};
-use std::{thread, time, env};
+use std::{thread, time, env, sync::Arc};
 use serde::Deserialize;
 use std::fs::File;
 use std::io::Read;
 
+use fhe::{
+    bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
+    mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
+};
+use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize, DeserializeParametrized};
+//use fhe_math::rq::{Poly};
+use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
+use rand_chacha::ChaCha8Rng;
+use util::timeit::{timeit, timeit_n};
+
 use http_body_util::Empty;
 use hyper::Request;
-use hyper::body::Bytes;
+//use hyper::body::Bytes;
 use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
 use http_body_util::BodyExt;
 use tokio::io::{AsyncWriteExt as _, self};
 use rustc_serialize::json;
+
+use ethers::{
+    prelude::{abigen, Abigen},
+    providers::{Http, Provider},
+    middleware::SignerMiddleware,
+    signers::{LocalWallet, Signer, Wallet},
+    types::{Address, U256, Bytes},
+    core::k256,
+    utils,
+};
+
+type Client = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
 
 #[derive(RustcEncodable, RustcDecodable)]
 struct JsonRequestGetRounds {
@@ -40,6 +64,12 @@ struct CrispConfig {
     voter_count: u32,
 }
 
+#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+struct PKRequest {
+    round_id: u32,
+    pk_bytes: Vec<u8>,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
@@ -54,6 +84,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         "Continue Existing CRISP round."
     ];
 
+    let selections_3 = &[
+        "Abstain.",
+        "Vote yes.",
+        "Vote no."
+    ];
+
     let selection_1 = FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt("Enclave (EEEE): Please choose the private execution environment you would like to run!")
         .default(0)
@@ -63,7 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     if(selection_1 == 0){
     	print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    	println!("Encrypted Protocol Selected {}!", selections[selection_1]);
+    	//println!("Encrypted Protocol Selected {}!", selections[selection_1]);
 	    let selection_2 = FuzzySelect::with_theme(&ColorfulTheme::default())
 	        .with_prompt("Create a new CRISP round or particpate in an existing round.")
 	        .default(0)
@@ -190,10 +226,136 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 	    }
 	    if(selection_2 == 1){
 	    	print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-		    let input_crisp_id: String = Input::with_theme(&ColorfulTheme::default())
+		    let input_crisp_id: u32 = Input::with_theme(&ColorfulTheme::default())
 		        .with_prompt("Enter CRISP round ID.")
 		        .interact_text()
 		        .unwrap();
+            let path = env::current_dir().unwrap();
+            let mut pathst = path.display().to_string();
+            pathst.push_str("/example_config.json");
+            let mut file = File::open(pathst).unwrap();
+            let mut data = String::new();
+            file.read_to_string(&mut data).unwrap();
+            let config: CrispConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
+            println!("Voting state Initialized");
+
+            // Client Code
+            // Parse our URL for registering keyshare...
+            let url_pk = "http://127.0.0.1/get_pk_by_round".parse::<hyper::Uri>()?;
+            // Get the host and the port
+            let host_pk = url_pk.host().expect("uri has no host");
+            let port_pk = url_pk.port_u16().unwrap_or(3000);
+            let address_pk = format!("{}:{}", host_pk, port_pk);
+            // Open a TCP connection to the remote host
+            let stream_pk = TcpStream::connect(address_pk).await?;
+            // Use an adapter to access something implementing `tokio::io` traits as if they implement
+            // `hyper::rt` IO traits.
+            let io_pk = TokioIo::new(stream_pk);
+            // Create the Hyper client
+            let (mut sender_pk, conn_pk) = hyper::client::conn::http1::handshake(io_pk).await?;
+            // Spawn a task to poll the connection, driving the HTTP state
+            tokio::task::spawn(async move {
+                if let Err(err) = conn_pk.await {
+                    println!("Connection failed: {:?}", err);
+                }
+            });
+            // The authority of our URL will be the hostname of the httpbin remote
+            let authority_pk = url_pk.authority().unwrap().clone();
+            let v: Vec<u8> = vec! [0];
+            let response_pk = PKRequest { round_id: input_crisp_id, pk_bytes: v };
+            let out_pk = json::encode(&response_pk).unwrap();
+            let req_pk = Request::post("http://127.0.0.1/")
+                .uri(url_pk.clone())
+                .header(hyper::header::HOST, authority_pk.as_str())
+                .body(out_pk)?;
+            let mut res_pk = sender_pk.send_request(req_pk).await?;
+
+            println!("Response status: {}", res_pk.status());
+
+            let body_bytes = res_pk.collect().await?.to_bytes();
+            let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+            let pk_res: PKRequest = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+            // println!("Server Round Count: {:?}", pk_res.round_id);
+            // println!("PK: {:?}", pk_res.pk_bytes);
+            println!("Shared Public Key for CRISP round {:?} collected.", pk_res.round_id);
+            let degree = 4096;
+            let plaintext_modulus: u64 = 4096;
+            let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
+            // Let's generate the BFV parameters structure.
+            let params = timeit!(
+                "Parameters generation",
+                BfvParametersBuilder::new()
+                    .set_degree(degree)
+                    .set_plaintext_modulus(plaintext_modulus)
+                    .set_moduli(&moduli)
+                    .build_arc()?
+            );
+            let pk_deserialized = PublicKey::from_bytes(&pk_res.pk_bytes, &params).unwrap();
+            // todo: validate that this user can vote
+            let selection_3 = FuzzySelect::with_theme(&ColorfulTheme::default())
+                .with_prompt("Please select your voting option.")
+                .default(0)
+                .items(&selections_3[..])
+                .interact()
+                .unwrap();
+
+            if(selection_3 == 0){
+                println!("Exiting voting system. You may choose to vote later.");
+            }
+            if(selection_3 == 1){
+                println!("Encrypting vote.");
+                let votes: Vec<u64> = [1].to_vec();
+                let pt = Plaintext::try_encode(&[votes[0]], Encoding::poly(), &params)?;
+                let ct = pk_deserialized.try_encrypt(&pt, &mut thread_rng())?;
+                println!("Vote encrypted.");
+                println!("Calling voting contract with encrypted vote.");
+
+                let sol_vote = Bytes::from(ct.to_bytes());
+                //println!("{:?}", votes_encrypted[0].to_bytes());
+                //println!("{:?}", sol_vote);
+
+                const RPC_URL: &str = "https://sepolia.infura.io/v3/8987bc25c1b34ad7b0a6d370fc287ef9";
+
+                let provider = Provider::<Http>::try_from(RPC_URL)?;
+                // let block_number: U64 = provider.get_block_number().await?;
+                // println!("{block_number}");
+                abigen!(
+                    IVOTE,
+                    r#"[
+                        function tester() external view returns (string)
+                        function id() external view returns (uint256)
+                        function voteEncrypted(bytes memory _encVote) public
+                        function getVote(address id) public returns(bytes memory)
+                        function totalSupply() external view returns (uint256)
+                        function balanceOf(address account) external view returns (uint256)
+                        function transfer(address recipient, uint256 amount) external returns (bool)
+                        function allowance(address owner, address spender) external view returns (uint256)
+                        function approve(address spender, uint256 amount) external returns (bool)
+                        function transferFrom( address sender, address recipient, uint256 amount) external returns (bool)
+                        event Transfer(address indexed from, address indexed to, uint256 value)
+                        event Approval(address indexed owner, address indexed spender, uint256 value)
+                    ]"#,
+                );
+
+                //const RPC_URL: &str = "https://eth.llamarpc.com";
+                const VOTE_ADDRESS: &str = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B";
+
+                let provider = Provider::<Http>::try_from(RPC_URL)?;
+                let wallet: LocalWallet = "66c6c4603b762de30ec1eedaa7c865ba29308218648980efdcf0b35f887db644"
+                    .parse::<LocalWallet>()?
+                    .with_chain_id(11155111 as u64);
+
+                // 6. Wrap the provider and wallet together to create a signer client
+                let client = SignerMiddleware::new(provider.clone(), wallet.clone());
+                //let client = Arc::new(provider);
+                let address: Address = VOTE_ADDRESS.parse()?;
+                let contract = IVOTE::new(address, Arc::new(client.clone()));
+
+                contract.vote_encrypted(sol_vote).send().await?;
+
+            }
+            if(selection_3 == 2){
+            }            
 	    }
 
     }
