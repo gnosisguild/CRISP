@@ -66,6 +66,11 @@ struct PKShareCount {
     share_id: u32,
 }
 
+#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+struct PKRequest {
+    round_id: u32,
+    pk_bytes: Vec<u8>,
+}
 // fn get_new_crisp_id(req: &mut Request) -> IronResult<Response> {
 
 // }
@@ -74,6 +79,26 @@ struct PKShareCount {
     // register ip address or some way to contact nodes when a computation request comes in
 
 // }
+
+fn get_pk_by_round(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: PKRequest = json::decode(&payload).unwrap();
+    let path = env::current_dir().unwrap();
+
+    let mut keypath = path.display().to_string();
+    keypath.push_str("/keyshares/");
+    keypath.push_str(&incoming.round_id.to_string());
+    keypath.push_str("/PublicKey");
+    let data = fs::read(keypath).expect("Unable to read file");
+    incoming.pk_bytes = data;
+    let out = json::encode(&incoming).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    println!("Request for round {:?} public key", incoming.round_id);
+    Ok(Response::with((content_type, status::Ok, out)))
+}
 
 fn get_pk_share_count(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
@@ -292,6 +317,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/get_pk_share_count", get_pk_share_count, "get_pk_share_count");
     router.post("/register_keyshare", register_keyshare, "register_keyshare");
     router.post("/init_crisp_round", init_crisp_round, "init_crisp_round");
+    router.post("/get_pk_by_round", get_pk_by_round, "get_pk_by_round");
 
     Iron::new(router).http("localhost:3000").unwrap();
 
