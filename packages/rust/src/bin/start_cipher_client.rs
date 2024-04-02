@@ -262,9 +262,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("polling smart contract...");
             // chain state
             // todo, move into loop and boot up for different chains if needed.
-            const RPC_URL: &str = "https://sepolia.infura.io/v3/8987bc25c1b34ad7b0a6d370fc287ef9";
+            let infura_key = "INFURAKEY";
+            let infura_val = env::var(infura_key).unwrap();
+            let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
+            RPC_URL.push_str(&infura_val);
 
-            let provider = Provider::<Http>::try_from(RPC_URL).unwrap();
+            let provider = Provider::<Http>::try_from(RPC_URL.clone())?;
             // let block_number: U64 = provider.get_block_number().await?;
             // println!("{block_number}");
             abigen!(
@@ -284,13 +287,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 ]"#,
             );
 
-            let provider = Provider::<Http>::try_from(RPC_URL).unwrap();
+            let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
             let contract_address = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B".parse::<Address>().unwrap();
-            // todo get keys from env
-            let wallet: LocalWallet = "66c6c4603b762de30ec1eedaa7c865ba29308218648980efdcf0b35f887db644"
+            let eth_key = "PRIVATEKEY";
+            let eth_val = env::var(eth_key).unwrap();
+            let wallet: LocalWallet = eth_val
                 .parse::<LocalWallet>().unwrap()
                 .with_chain_id(11155111 as u64);
-            //let client = SignerMiddleware::new(provider.clone(), wallet.clone());
+            //let client = SignerMiddleware::new(pro
             let client = Arc::new(provider);
             let contract = IVOTE::new(contract_address, Arc::new(client.clone()));
             let events = contract.events().from_block(5560945);//.to_block(5560955);

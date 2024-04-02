@@ -3,9 +3,6 @@ mod util;
 use dialoguer::{theme::ColorfulTheme, Input, FuzzySelect};
 use wasm_bindgen::prelude::*;
 
-
-fn main() {
-    pri
 use std::{thread, time, env, sync::Arc};
 use serde::Deserialize;
 use std::fs::File;
@@ -76,7 +73,7 @@ struct PKRequest {
 }
 
 #[tokio::main]
-#[wasm_bindgen]
+//#[wasm_bindgen]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;

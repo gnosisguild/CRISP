@@ -313,10 +313,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 let sol_vote = Bytes::from(ct.to_bytes());
                 //println!("{:?}", votes_encrypted[0].to_bytes());
                 //println!("{:?}", sol_vote);
+                let infura_key = "INFURAKEY";
+                let infura_val = env::var(infura_key).unwrap();
+                let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
+                RPC_URL.push_str(&infura_val);
 
-                const RPC_URL: &str = "https://sepolia.infura.io/v3/8987bc25c1b34ad7b0a6d370fc287ef9";
-
-                let provider = Provider::<Http>::try_from(RPC_URL)?;
+                let provider = Provider::<Http>::try_from(RPC_URL.clone())?;
                 // let block_number: U64 = provider.get_block_number().await?;
                 // println!("{block_number}");
                 abigen!(
@@ -340,9 +342,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 //const RPC_URL: &str = "https://eth.llamarpc.com";
                 const VOTE_ADDRESS: &str = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B";
 
-                let provider = Provider::<Http>::try_from(RPC_URL)?;
-                let wallet: LocalWallet = "66c6c4603b762de30ec1eedaa7c865ba29308218648980efdcf0b35f887db644"
-                    .parse::<LocalWallet>()?
+                let eth_key = "PRIVATEKEY";
+                let eth_val = env::var(eth_key).unwrap();
+                let wallet: LocalWallet = eth_val
+                    .parse::<LocalWallet>().unwrap()
                     .with_chain_id(11155111 as u64);
 
                 // 6. Wrap the provider and wallet together to create a signer client
