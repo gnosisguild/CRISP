@@ -1,0 +1,56 @@
+import React from 'react'
+import CountdownTimer from '../../../components/CountdownTime'
+import CardContent from '../../../components/CardContent'
+import CircleIcon from '../../../assets/icons/caretCircle.svg'
+
+type ConfirmVoteProps = {
+  endTime: Date
+}
+const ConfirmVote: React.FC<ConfirmVoteProps> = ({ endTime }) => {
+  return (
+    <div className='my-28 flex w-screen flex-col items-center justify-center space-y-12'>
+      <div className='space-y-2 text-center'>
+        <p className='text-sm font-extrabold uppercase'>daily poll</p>
+        <h1 className='text-h1 font-bold text-twilight-blue-900'>Thanks for voting!</h1>
+      </div>
+      <div className='flex flex-col justify-center space-y-6'>
+        <CountdownTimer endTime={endTime} />
+        <button className='button-outlined button-max w-[140]'>notify me</button>
+      </div>
+      <CardContent>
+        <div className='space-y-4'>
+          <p className='text-base font-extrabold uppercase text-twilight-blue-500'>WHAT JUST HAPPENED?</p>
+          <div className='space-y-2'>
+            <p className='text-xl leading-8 text-twilight-blue-900'>
+              After casting your vote, CRISP securely processed your selection using a blend of Fully Homomorphic Encryption (FHE),
+              threshold cryptography, and zero-knowledge proofs (ZKPs), without revealing your identity or choice. Your vote was encrypted
+              and anonymously aggregated with others, ensuring the integrity of the voting process while strictly maintaining
+              confidentiality. The protocol's advanced cryptographic techniques guarantee that your vote contributes to the final outcome
+              without any risk of privacy breaches or undue influence.
+            </p>
+            <div className='flex cursor-pointer items-center space-x-2'>
+              <p className='text-green-light underline'>See what&apos;s happening under the hood</p>
+              <img src={CircleIcon} className='h-[18] w-[18]' />
+            </div>
+          </div>
+        </div>
+        <div className='space-y-4'>
+          <p className='text-base font-extrabold uppercase text-twilight-blue-500'>WHAT DOES THIS MEAN?</p>
+          <p className='text-xl leading-8 text-twilight-blue-900'>
+            Your participation has directly contributed to a transparent and fair decision-making process, showcasing the power of
+            privacy-preserving technology in governance and beyond. The use of CRISP in this vote represents a significant step towards
+            secure, anonymous, and tamper-proof digital elections and polls. This innovation ensures that every vote counts equally while
+            safeguarding against the risks of fraud and collusion, enhancing the reliability and trustworthiness of digital decision-making
+            platforms.
+          </p>
+        </div>
+        <div className='flex items-center justify-between border-t-2 border-twilight-blue-200 pt-11'>
+          <p className='text-xl'>Learn more about CRISP</p>
+          <button className='button button-max'>learn more</button>
+        </div>
+      </CardContent>
+    </div>
+  )
+}
+
+export default ConfirmVote

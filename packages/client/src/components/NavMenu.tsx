@@ -32,7 +32,7 @@ const NAV_MENU_OPTIONS = [
 const NavMenu: React.FC<NavMenuProps> = () => {
   const navigate = useNavigate()
   const menuRef = useRef<HTMLDivElement>(null)
-  const [isOpen, setIsOpen] = useState<boolean>(true)
+  const [isOpen, setIsOpen] = useState<boolean>(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
   const handleClickOutside = (event: MouseEvent) => {

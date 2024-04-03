@@ -1,11 +1,12 @@
 import React from 'react'
 import CircleIcon from '../../assets/icons/caretCircle.svg'
+import CardContent from '../../components/CardContent'
 
 const About: React.FC = () => {
   return (
     <div className='my-28 flex w-screen flex-col items-center justify-center space-y-12'>
       <h1 className='text-h1 font-bold text-twilight-blue-900'>About CRISP</h1>
-      <div className='h-[716px] w-full max-w-[900px] space-y-10 rounded-[24px] border-2 border-twilight-blue-200 bg-white-900 p-12 shadow-modal'>
+      <CardContent>
         <div className='space-y-4'>
           <p className='text-base font-extrabold uppercase text-twilight-blue-500'>what is crisp?</p>
           <div className='space-y-2'>
@@ -32,7 +33,7 @@ const About: React.FC = () => {
             trust in digital systems.
           </p>
         </div>
-      </div>
+      </CardContent>
 
       <button className='button-outlined button-max'>view whitepaper</button>
     </div>

@@ -5,9 +5,10 @@ import { Poll } from '../../../model/poll.model'
 
 type DailyPollSectionProps = {
   isScreen?: boolean
+  onVoted?: () => void
 }
 
-const DailyPollSection: React.FC<DailyPollSectionProps> = ({ isScreen }) => {
+const DailyPollSection: React.FC<DailyPollSectionProps> = ({ isScreen, onVoted }) => {
   const [pollOptions, setPollOptions] = useState<Poll[]>(DAILY_POLL)
 
   const handleChecked = (selectedId: number) => {
@@ -34,7 +35,9 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ isScreen }) => {
           </Card>
         ))}
       </div>
-      <button className='button-outlined button-max'>cast vote</button>
+      <button className='button-outlined button-max' onClick={() => onVoted && onVoted()}>
+        cast vote
+      </button>
     </div>
   )
 }
