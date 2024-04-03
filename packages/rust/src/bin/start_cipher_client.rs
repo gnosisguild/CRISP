@@ -48,6 +48,14 @@ struct PKShareRequest {
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
+struct SKSShareRequest {
+    response: String,
+    sks_share: Vec<u8>,
+    id: u32,
+    round_id: u32,
+}
+
+#[derive(RustcEncodable, RustcDecodable)]
 struct CrispConfig {
     round_id: u32,
     chain_id: u32,
@@ -362,6 +370,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     let mut decryption_shares = Vec::with_capacity(num_parties);
                     let mut _i = 0;
                     let sh = DecryptionShare::new(&sk_share_1, &tally, &mut thread_rng()).unwrap();
+                    let sks_bytes = sh.to_bytes();
+
+                    // register sks share with chrys server
+                    // Client Code
+                    let url_register_sks = "http://127.0.0.1/register_sks_share".parse::<hyper::Uri>()?;
+                    let host_sks = url_register_sks.host().expect("uri has no host");
+                    let port_sks = url_register_sks.port_u16().unwrap_or(3000);
+                    let address_sks = format!("{}:{}", host_sks, port_sks);
+                    let stream_sks = TcpStream::connect(address_sks).await?;
+                    let io_sks = TokioIo::new(stream_sks);
+                    // Create the Hyper client
+                    let (mut sender_sks, conn_sks) = hyper::client::conn::http1::handshake(io_sks).await?;
+                    // Spawn a task to poll the connection, driving the HTTP state
+                    tokio::task::spawn(async move {
+                        if let Err(err) = conn_sks.await {
+                            println!("Connection failed: {:?}", err);
+                        }
+                    });
+                    // The authority of our URL will be the hostname of the httpbin remote
+                    let authority_sks = url_register_sks.authority().unwrap().clone();
+                    let response_sks = SKSShareRequest { response: "Test".to_string(), sks_share: sks_bytes, id: share_count.share_id, round_id: count.round_count };
+                    let out_sks = json::encode(&response_sks).unwrap();
+                    let req_sks = Request::post("http://127.0.0.1/")
+                        .uri(url_register_sks.clone())
+                        .header(hyper::header::HOST, authority_sks.as_str())
+                        .body(out_sks)?;
+
+                    let mut res_sks = sender_sks.send_request(req_sks).await?;
+
+                    println!("Response status: {}", res_sks.status());
+
+                    // Stream the body, writing each frame to stdout as it arrives
+                    while let Some(next) = res_key.frame().await {
+                        let frame = next?;
+                        if let Some(chunk) = frame.data_ref() {
+                            io::stdout().write_all(chunk).await?;
+                        }
+                    }
+
+                    // poll the chrys server to get all sks shares.
+
+
                     decryption_shares.push(sh);
 
                     // timeit_n!("Decryption (per party)", num_parties as u32, {

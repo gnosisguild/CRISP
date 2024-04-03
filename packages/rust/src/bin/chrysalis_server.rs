@@ -71,6 +71,14 @@ struct PKRequest {
     round_id: u32,
     pk_bytes: Vec<u8>,
 }
+
+#[derive(RustcEncodable, RustcDecodable)]
+struct SKSShareRequest {
+    response: String,
+    sks_share: Vec<u8>,
+    id: u32,
+    round_id: u32,
+}
 // fn get_new_crisp_id(req: &mut Request) -> IronResult<Response> {
 
 // }
@@ -264,6 +272,51 @@ fn handler(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((content_type, status::Ok, out)))
 }
 
+// polling endpoint for sks shares
+
+fn register_sks_share(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+
+    // we're expecting the POST to match the format of our JsonRequest struct
+    let incoming: SKSShareRequest = json::decode(&payload).unwrap();
+    println!("{:?}", incoming.response);
+    println!("ID: {:?}", incoming.id); // cipher node id (based on first upload of pk share)
+    println!("Round ID: {:?}", incoming.round_id);
+    let path = env::current_dir().unwrap();
+
+    let mut keypath = path.display().to_string();
+    keypath.push_str("/keyshares/");
+    keypath.push_str(&incoming.round_id.to_string());
+
+    let mut pathst = path.display().to_string();
+    pathst.push_str("/keyshares/");
+    pathst.push_str(&incoming.round_id.to_string());
+    pathst.push_str("/sks-share-");
+    pathst.push_str(&incoming.id.to_string());
+    println!("Registering SKS_Share... directory is {}", pathst);
+    fs::write(pathst.clone(), incoming.sks_share).unwrap();
+
+    let share_count = WalkDir::new(keypath.clone()).into_iter().count();
+    println!("Share Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
+
+    // toso get share threshold from client config
+    if(share_count == 7) {
+        println!("All sks shares received");
+        //aggregate_pk_shares(incoming.round_id).await;
+        // TODO: maybe notify cipher nodes
+    }
+
+    // create a response with our random string, and pass in the string from the POST body
+    let response = JsonResponse { response: pick_response() };
+    let out = json::encode(&response).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
 #[tokio::main]
 async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
@@ -318,6 +371,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/register_keyshare", register_keyshare, "register_keyshare");
     router.post("/init_crisp_round", init_crisp_round, "init_crisp_round");
     router.post("/get_pk_by_round", get_pk_by_round, "get_pk_by_round");
+    router.post("/register_sks_share", register_sks_share, "register_sks_share");
 
     Iron::new(router).http("localhost:3000").unwrap();
 
