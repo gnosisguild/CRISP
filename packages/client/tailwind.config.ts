@@ -34,6 +34,7 @@ const config: Config = {
         },
         white: {
           900: '#FFFFFF',
+          600: '#FFFFFF99',
           500: '#FFFFFF80',
         },
       },

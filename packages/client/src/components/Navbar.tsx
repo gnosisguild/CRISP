@@ -1,8 +1,7 @@
-import React, { useState } from 'react'
+import React from 'react'
 import Logo from '../assets/icons/logo.svg'
-import Modal from './Modal'
-import RegisterModal from '../pages/Register/Register'
 import { useNavigate } from 'react-router-dom'
+import NavMenu from './NavMenu'
 
 const PAGES = [
   {
@@ -14,17 +13,17 @@ const PAGES = [
     path: '/daily',
   },
   {
-    label: 'Historic Polls',
-    path: '/historic',
+    label: 'Docs',
+    path: '/docs',
   },
+  // {
+  //   label: 'Historic Polls',
+  //   path: '/historic',
+  // },
 ]
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate()
-  const [modalOpen, setModalOpen] = useState(false)
-
-  const openModal = () => setModalOpen(true)
-  const closeModal = () => setModalOpen(false)
 
   const handleNavigation = (path: string) => {
     navigate(path)
@@ -47,20 +46,8 @@ const Navbar: React.FC = () => {
                 {label}
               </a>
             ))}
+            <NavMenu />
           </div>
-
-          {/* Actions */}
-          <div className='flex items-center gap-4'>
-            <a href='#login' className='hover:text-twilight-blue-600 font-bold text-twilight-blue-900'>
-              Login
-            </a>
-            <button className='button' onClick={openModal}>
-              Register
-            </button>
-          </div>
-          <Modal show={modalOpen} onClose={closeModal}>
-            <RegisterModal onClose={closeModal} />
-          </Modal>
         </div>
       </div>
     </nav>
