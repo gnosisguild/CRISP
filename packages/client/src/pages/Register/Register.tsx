@@ -2,7 +2,15 @@ import React from 'react'
 interface RegisterProps {
   onClose: () => void
 }
+//
+
 const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
+  const handleSubmit = () => {
+    window.open(
+      'https://twitter.com/intent/tweet?text=I%20authenticate%20that%20this%20Twitter%20account%20is%20owned%20by%20me.%20%23crisp%20%23dailypoll_13',
+      '_blank',
+    )
+  }
   return (
     <div className='space-y-10'>
       <div className='space-y-2'>
@@ -29,7 +37,9 @@ const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
         <button className='button-outlined button-max' onClick={onClose}>
           cancel
         </button>
-        <button className='button button-max'>submit</button>
+        <button className='button button-max' onClick={handleSubmit}>
+          submit
+        </button>
       </div>
     </div>
   )
