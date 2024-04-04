@@ -16,10 +16,15 @@ jobs:
         with:
           node-version: 18
           cache: "yarn"
+          cache-dependency-path: "packages/client/yarn.lock"
       - name: Install dependencies
-        run: yarn install
+        run: |
+          cd packages/client
+          yarn install --frozen-lockfile
       - name: Build
-        run: cd packages/client && yarn run build
+        run: |
+          cd packages/client
+          yarn run build
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:
