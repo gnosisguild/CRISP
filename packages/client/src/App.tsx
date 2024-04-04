@@ -1,6 +1,6 @@
 import React, { Fragment } from 'react'
 // import init, { greet } from '../public/pkg/rfv'
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 //Pages
@@ -24,6 +24,7 @@ const App: React.FC = () => {
         <Route path='/about' element={<About />} />
         <Route path='/daily' element={<DailyPoll />} />
         <Route path='/historic' element={<HistoricPoll />} />
+        <Route path='*' element={<Navigate to='/' replace />} />
       </Routes>
       <Footer />
     </Fragment>
