@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect } from 'react'
+import React, { Fragment } from 'react'
 // import init, { greet } from '../public/pkg/rfv'
 import { Routes, Route } from 'react-router-dom'
 import Navbar from './components/Navbar'
