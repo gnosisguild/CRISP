@@ -1,12 +1,14 @@
-import React from 'react'
+import React, { useState } from 'react'
 import CountdownTimer from '../../../components/CountdownTime'
 import CardContent from '../../../components/CardContent'
 import CircleIcon from '../../../assets/icons/caretCircle.svg'
+import CodeTextDisplay from '../../../components/CodeTextDisplay'
 
 type ConfirmVoteProps = {
   endTime: Date
 }
 const ConfirmVote: React.FC<ConfirmVoteProps> = ({ endTime }) => {
+  const [showCode, setShowCode] = useState<boolean>(false)
   return (
     <div className='my-28 flex w-screen flex-col items-center justify-center space-y-12'>
       <div className='space-y-2 text-center'>
@@ -28,10 +30,11 @@ const ConfirmVote: React.FC<ConfirmVoteProps> = ({ endTime }) => {
               confidentiality. The protocol's advanced cryptographic techniques guarantee that your vote contributes to the final outcome
               without any risk of privacy breaches or undue influence.
             </p>
-            <div className='flex cursor-pointer items-center space-x-2'>
+            <div className='flex cursor-pointer items-center space-x-2' onClick={() => setShowCode(!showCode)}>
               <p className='text-green-light underline'>See what&apos;s happening under the hood</p>
               <img src={CircleIcon} className='h-[18] w-[18]' />
             </div>
+            {showCode && <CodeTextDisplay />}
           </div>
         </div>
         <div className='space-y-4'>

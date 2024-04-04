@@ -20,10 +20,13 @@ const config: Config = {
         mist: {
           900: '#E3E9F5',
         },
-        'twilight-blue': { 900: '#4B5665', 500: '#4B566580', 200: '#4B566533', 100: '#4B56651A' },
+        'twilight-blue': { 900: '#4B5665', 800: '#4B5665CC', 500: '#4B566580', 200: '#4B566533', 100: '#4B56651A' },
         green: {
           light: '#A6E05A',
           dark: { 900: '#5F9715', 800: '#5F9715CC' },
+        },
+        purple: {
+          900: '#858AFF',
         },
         zinc: {
           900: '#35393E',
@@ -34,6 +37,7 @@ const config: Config = {
         },
         white: {
           900: '#FFFFFF',
+          800: '#FFFFFFCC',
           600: '#FFFFFF99',
           500: '#FFFFFF80',
         },
