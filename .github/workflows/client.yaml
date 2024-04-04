@@ -26,12 +26,3 @@ jobs:
         with:
           branch: gh-pages
           folder: packages/client/dist
-          token: ${{ secrets.GITHUB_TOKEN }}
-      #   working-directory: ./client
-      # - run: yarn build
-      #   working-directory: ./client
-      # - name: Deploy to Github Pages
-      #   uses: JamesIves/github-pages-deploy-action@v4.3.3
-      #   with:
-      #     branch: gh-pages
-      #     folder: ./client/build
