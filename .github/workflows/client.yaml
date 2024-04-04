@@ -12,17 +12,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Set up Node.js
-      - uses: actions/setup-node@v3
+        uses: actions/setup-node@v3
         with:
           node-version: 18
           cache: "yarn"
           cache-dependency-path: "**/yarn.lock"
       - name: Install dependencies
-      - run: yarn install --frozen-lockfile
+        run: yarn install --frozen-lockfile
       - name: Build
-      - run: cd packages/client && yarn run build
-      - name: Deploy
+        run: cd packages/client && yarn run build
+      - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:
-          branch: gh-pages
-          folder: packages/client/dist
+          branch: gh-pages # The branch the action should deploy to.
+          folder: packages/client/dist # The folder the action should deploy.
