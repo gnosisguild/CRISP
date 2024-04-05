@@ -2,6 +2,6 @@
 	"round_id": 0,
     "chain_id": 11155111,
     "voting_address": "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B",
-    "cyphernode_count": 3,
+    "cyphernode_count": 2,
 	"voter_count": 0
 }

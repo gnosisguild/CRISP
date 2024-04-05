@@ -79,6 +79,7 @@ struct SKSShareRequest {
     id: u32,
     round_id: u32,
 }
+
 // fn get_new_crisp_id(req: &mut Request) -> IronResult<Response> {
 
 // }
@@ -317,6 +318,74 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((content_type, status::Ok, out)))
 }
 
+fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    #[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+    struct SKSSharePoll {
+        response: String,
+        round_id: u32,
+        cyphernode_count: u32,
+    }
+    // we're expecting the POST to match the format of our JsonRequest struct
+    let incoming: SKSSharePoll = json::decode(&payload).unwrap();
+    //const length: usize = incoming.cyphernode_count;
+
+    #[derive(RustcEncodable, RustcDecodable)]
+    struct SKSShareResponse {
+        response: String,
+        round_id: u32,
+        sks_shares: Vec<Vec<u8>>,
+    }
+
+    let path = env::current_dir().unwrap();
+
+    let mut keypath = path.display().to_string();
+    keypath.push_str("/keyshares/");
+    keypath.push_str(&incoming.round_id.to_string());
+
+    let mut pathst = path.display().to_string();
+    pathst.push_str("/keyshares/");
+    pathst.push_str(&incoming.round_id.to_string());
+    pathst.push_str("/sks-share-");
+
+    let share_count = WalkDir::new(keypath.clone()).into_iter().count();
+    //let shares = Vec<Vec<u8>>;
+    let mut shares = Vec::with_capacity(incoming.cyphernode_count as usize);
+    // toso get share threshold from client config
+    if(share_count == 7) {
+        println!("All sks shares received");
+        for i in 0..incoming.cyphernode_count {
+            let mut share_path = pathst.clone();
+            share_path.push_str(&i.to_string());
+            println!("reading share {:?} from {:?}", i, share_path);
+            let data = fs::read(share_path).expect("Unable to read file");
+            shares.push(data);
+        }
+        let response = SKSShareResponse { 
+            response: "final".to_string(),
+            round_id: incoming.round_id,
+            sks_shares: shares,
+        };
+        let out = json::encode(&response).unwrap();
+        println!("get rounds hit");
+
+        let content_type = "application/json".parse::<Mime>().unwrap();
+        Ok(Response::with((content_type, status::Ok, out)))
+    } else {
+        let response = JsonResponse { 
+            response: "waiting".to_string(),
+        };
+        let out = json::encode(&response).unwrap();
+        println!("get rounds hit");
+
+        let content_type = "application/json".parse::<Mime>().unwrap();
+        Ok(Response::with((content_type, status::Ok, out)))
+    }
+}
+
 #[tokio::main]
 async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
@@ -372,6 +441,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/init_crisp_round", init_crisp_round, "init_crisp_round");
     router.post("/get_pk_by_round", get_pk_by_round, "get_pk_by_round");
     router.post("/register_sks_share", register_sks_share, "register_sks_share");
+    router.post("/get_sks_shares", get_sks_shares, "get_sks_shares");
 
     Iron::new(router).http("localhost:3000").unwrap();
 

@@ -4,7 +4,7 @@ use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path};
 use console::style;
 use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
-    mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
+    mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare, SecretKeySwitchShare},
 };
 use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize, DeserializeParametrized};
 //use fhe_math::rq::{Poly};
@@ -410,29 +410,87 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     }
 
                     // poll the chrys server to get all sks shares.
+                    loop {
+                        #[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+                        struct SKSShareResponse {
+                            response: String,
+                            round_id: u32,
+                            sks_shares: Vec<Vec<u8>>,
+                        }
+                        #[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+                        struct SKSSharePoll {
+                            response: String,
+                            round_id: u32,
+                            cyphernode_count: u32
+                        }
 
+                        let url_register_get_sks = "http://127.0.0.1/get_sks_shares".parse::<hyper::Uri>()?;
+                        let host_get_sks = url_register_get_sks.host().expect("uri has no host");
+                        let port_get_sks = url_register_get_sks.port_u16().unwrap_or(3000);
+                        let address_get_sks = format!("{}:{}", host_get_sks, port_get_sks);
+                        let stream_get_sks = TcpStream::connect(address_get_sks).await?;
+                        let io_get_sks = TokioIo::new(stream_get_sks);
+                        // Create the Hyper client
+                        let (mut sender_get_sks, conn_get_sks) = hyper::client::conn::http1::handshake(io_get_sks).await?;
+                        // Spawn a task to poll the connection, driving the HTTP state
+                        tokio::task::spawn(async move {
+                            if let Err(err) = conn_get_sks.await {
+                                println!("Connection failed: {:?}", err);
+                            }
+                        });
+                        // The authority of our URL will be the hostname of the httpbin remote
+                        let authority_get_sks = url_register_get_sks.authority().unwrap().clone();
+                        // todo: use crisp config to know ciphernode count
+                        let response_get_sks = SKSSharePoll { response: "Test".to_string(), round_id: count.round_count, cyphernode_count: 2};
+                        let out_get_sks = json::encode(&response_get_sks).unwrap();
+                        let req_get_sks = Request::post("http://127.0.0.1/")
+                            .uri(url_register_get_sks.clone())
+                            .header(hyper::header::HOST, authority_get_sks.as_str())
+                            .body(out_get_sks)?;
 
-                    decryption_shares.push(sh);
+                        let mut res_get_sks = sender_get_sks.send_request(req_get_sks).await?;
+                        println!("Response status: {}", res_get_sks.status());
 
-                    // timeit_n!("Decryption (per party)", num_parties as u32, {
-                    //     let sh = DecryptionShare::new(&parties[_i].sk_share, &tally, &mut thread_rng())?;
-                    //     //let tester = sh.to_bytes();
-                    //     decryption_shares.push(sh);
-                    //     _i += 1;
-                    // });
+                        let body_bytes = res_get_sks.collect().await?.to_bytes();
+                        let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+                        // find way to expect two different json responses
+                        let shares: SKSShareResponse = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
 
-                    // Again, an aggregating party aggregates the decryption shares to produce the
-                    // decrypted plaintext.
-                    let tally_pt = timeit!("Decryption share aggregation", {
-                        let pt: Plaintext = decryption_shares.into_iter().aggregate().unwrap();
-                        pt
-                    });
-                    let tally_vec = Vec::<u64>::try_decode(&tally_pt, Encoding::poly()).unwrap();
-                    let tally_result = tally_vec[0];
+                        if(shares.response == "final") {
+                            // do decrypt
+                            println!("collected all of the decrypt shares!");
 
-                    // Show vote result
-                    //println!("Vote result = {} / {}", tally_result, num_voters);
-                    println!("Vote result = 2 / 2");
+                            //let mut sks_server_shares = Vec::with_capacity(num_parties);
+                            for i in 0..num_parties {
+                                decryption_shares.push(DecryptionShare::deserialize(&shares.sks_shares[i], &params, Arc::new(votes_encrypted[i].clone())));
+                            }
+                            //decryption_shares.push(sh);
+
+                            // timeit_n!("Decryption (per party)", num_parties as u32, {
+                            //     let sh = DecryptionShare::new(&parties[_i].sk_share, &tally, &mut thread_rng())?;
+                            //     //let tester = sh.to_bytes();
+                            //     decryption_shares.push(sh);
+                            //     _i += 1;
+                            // });
+
+                            // Again, an aggregating party aggregates the decryption shares to produce the
+                            // decrypted plaintext.
+                            let tally_pt = timeit!("Decryption share aggregation", {
+                                let pt: Plaintext = decryption_shares.into_iter().aggregate().unwrap();
+                                pt
+                            });
+                            let tally_vec = Vec::<u64>::try_decode(&tally_pt, Encoding::poly()).unwrap();
+                            let tally_result = tally_vec[0];
+
+                            // Show vote result
+                            println!("Vote result = {} / {}", tally_result, num_voters);
+                            //println!("Vote result = 2 / 2");
+                            break;
+                        }
+
+                        let polling_sks = time::Duration::from_millis(3000);
+                        thread::sleep(polling_sks);
+                    }
                     break;
                 }
             }
