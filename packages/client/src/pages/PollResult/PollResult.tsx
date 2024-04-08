@@ -1,24 +1,42 @@
 import React, { useState } from 'react'
-import CountdownTimer from '../../../components/CountdownTime'
-import CardContent from '../../../components/Cards/CardContent'
-import CircleIcon from '../../../assets/icons/caretCircle.svg'
-import CodeTextDisplay from '../../../components/CodeTextDisplay'
+import CardContent from '../../components/Cards/CardContent'
+import CircleIcon from '../../assets/icons/caretCircle.svg'
+import CodeTextDisplay from '../../components/CodeTextDisplay'
+import VotesBadge from '../../components/VotesBadge'
+import PollCardResult from '../../components/Cards/PollCardResult'
+import { markWinner } from '../../utils/methods'
+import PastPollSection from '../Landing/components/PastPoll'
 
-type ConfirmVoteProps = {
-  endTime: Date
+const POLL = {
+  id: 1,
+  totalVotes: 451,
+  date: 'March 25, 2024',
+  options: [
+    { id: 1, votes: 230, label: '🌮' },
+    { id: 2, votes: 221, label: '🍕' },
+  ],
 }
-const ConfirmVote: React.FC<ConfirmVoteProps> = ({ endTime }) => {
+const PollResult: React.FC = () => {
+  const { totalVotes, date, options } = POLL
   const [showCode, setShowCode] = useState<boolean>(false)
+
   return (
-    <div className='my-28 flex w-screen flex-col items-center justify-center space-y-12'>
-      <div className='space-y-2 text-center'>
-        <p className='text-sm font-extrabold uppercase'>daily poll</p>
-        <h1 className='text-h1 font-bold text-twilight-blue-900'>Thanks for voting!</h1>
+    <div className='mb-28 flex w-screen flex-col items-center justify-center space-y-28'>
+      <div className='my-28 flex w-screen flex-col items-center justify-center space-y-12'>
+        <div className='flex flex-col items-center justify-center space-y-6'>
+          <div className='space-y-2 text-center'>
+            <p className='text-sm font-extrabold uppercase'>daily poll</p>
+            <h1 className='text-h1 font-bold text-twilight-blue-900'>Results for most recent poll</h1>
+            <p className=' text-2xl font-bold'>{date}</p>
+          </div>
+
+          <VotesBadge totalVotes={totalVotes} />
+        </div>
+        <div className='flex justify-center space-x-12'>
+          <PollCardResult results={markWinner(options)} totalVotes={totalVotes} isResult width={288} height={288} />
+        </div>
       </div>
-      <div className='flex flex-col justify-center space-y-6'>
-        <CountdownTimer endTime={endTime} />
-        <button className='button-outlined button-max w-[140]'>notify me</button>
-      </div>
+
       <CardContent>
         <div className='space-y-4'>
           <p className='text-base font-extrabold uppercase text-twilight-blue-500'>WHAT JUST HAPPENED?</p>
@@ -47,13 +65,10 @@ const ConfirmVote: React.FC<ConfirmVoteProps> = ({ endTime }) => {
             platforms.
           </p>
         </div>
-        <div className='flex items-center justify-between border-t-2 border-twilight-blue-200 pt-11'>
-          <p className='text-xl'>Learn more about CRISP</p>
-          <button className='button button-max'>learn more</button>
-        </div>
       </CardContent>
+      <PastPollSection customClass='' customLabel='Historic polls' />
     </div>
   )
 }
 
-export default ConfirmVote
+export default PollResult

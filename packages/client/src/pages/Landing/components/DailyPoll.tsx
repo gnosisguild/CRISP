@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import Card from '../../../components/Card'
+import Card from '../../../components/Cards/Card'
 import { DAILY_POLL } from '../../../mocks/polls'
 import { Poll } from '../../../model/poll.model'
 

@@ -8,25 +8,30 @@ import Landing from './pages/Landing/Landing'
 import DailyPoll from './pages/DailyPoll/DailyPoll'
 import HistoricPoll from './pages/HistoricPoll/HistoricPoll'
 import About from './pages/About/About'
+import PollResult from './pages/PollResult/PollResult'
+import useScrollToTop from './hooks/useScrollToTop'
 
 const App: React.FC = () => {
+  useScrollToTop()
   // useEffect(() => {
   //   init().then(() => {
   //     greet('World. Consuming web assembly')
   //   })
   // }, [])
-
   return (
     <Fragment>
-      <Navbar />
-      <Routes>
-        <Route path='/' element={<Landing />} />
-        <Route path='/about' element={<About />} />
-        <Route path='/daily' element={<DailyPoll />} />
-        <Route path='/historic' element={<HistoricPoll />} />
-        <Route path='*' element={<Navigate to='/' replace />} />
-      </Routes>
-      <Footer />
+      <div className='scroll-container'>
+        <Navbar />
+        <Routes>
+          <Route path='/' element={<Landing />} />
+          <Route path='/about' element={<About />} />
+          <Route path='/daily' element={<DailyPoll />} />
+          <Route path='/historic' element={<HistoricPoll />} />
+          <Route path='/result' element={<PollResult />} />
+          <Route path='*' element={<Navigate to='/' replace />} />
+        </Routes>
+        <Footer />
+      </div>
     </Fragment>
   )
 }

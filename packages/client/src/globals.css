@@ -105,6 +105,11 @@
   }
 }
 
+.scroll-container {
+  height: 100vh;
+  overflow-y: scroll;
+}
+
 @layer components {
   /* Buttons */
   .button {

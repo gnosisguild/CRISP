@@ -3,8 +3,10 @@ import react from '@vitejs/plugin-react'
 import viteTsconfigPaths from 'vite-tsconfig-paths'
 import svgr from '@svgr/rollup'
 
+const development: boolean = !process.env.NODE_ENV || process.env.NODE_ENV === 'development'
+
 export default defineConfig({
-  base: '/CRISP',
+  base: development ? '' : '/CRISP',
   define: {
     // here is the main update
     global: 'globalThis',

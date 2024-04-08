@@ -23,6 +23,7 @@ const Card: React.FC<CardProps> = ({ children, isDetails, checked, onChecked }) 
   return (
     <div
       className={`
+        h-full
         cursor-pointer
         ${isDetails ? ' p-4' : 'h-auto min-h-[288px] p-20 sm:w-full md:w-[434px]'}
         bg-white rounded-[24px] text-black
