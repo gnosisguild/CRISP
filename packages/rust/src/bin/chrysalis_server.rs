@@ -375,8 +375,10 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
         let content_type = "application/json".parse::<Mime>().unwrap();
         Ok(Response::with((content_type, status::Ok, out)))
     } else {
-        let response = JsonResponse { 
+        let response = SKSShareResponse { 
             response: "waiting".to_string(),
+            round_id: incoming.round_id,
+            sks_shares: shares,
         };
         let out = json::encode(&response).unwrap();
         println!("get rounds hit");
