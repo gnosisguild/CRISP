@@ -72,6 +72,12 @@ struct PKRequest {
     pk_bytes: Vec<u8>,
 }
 
+#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+struct CRPRequest {
+    round_id: u32,
+    crp_bytes: Vec<u8>,
+}
+
 #[derive(RustcEncodable, RustcDecodable)]
 struct SKSShareRequest {
     response: String,
@@ -88,6 +94,26 @@ struct SKSShareRequest {
     // register ip address or some way to contact nodes when a computation request comes in
 
 // }
+
+fn get_crp_by_round(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: CRPRequest = json::decode(&payload).unwrap();
+    let path = env::current_dir().unwrap();
+
+    let mut keypath = path.display().to_string();
+    keypath.push_str("/keyshares/");
+    keypath.push_str(&incoming.round_id.to_string());
+    keypath.push_str("/CRP");
+    let data = fs::read(keypath).expect("Unable to read file");
+    incoming.crp_bytes = data;
+    let out = json::encode(&incoming).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    println!("Request for round {:?} public key", incoming.round_id);
+    Ok(Response::with((content_type, status::Ok, out)))
+}
 
 fn get_pk_by_round(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
@@ -151,6 +177,25 @@ fn get_rounds(req: &mut Request) -> IronResult<Response> {
 }
 
 fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
+    println!("generating round crp");
+
+    let degree = 4096;
+    let plaintext_modulus: u64 = 4096;
+    let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
+
+    // Let's generate the BFV parameters structure.
+    let params = timeit!(
+        "Parameters generation",
+        BfvParametersBuilder::new()
+            .set_degree(degree)
+            .set_plaintext_modulus(plaintext_modulus)
+            .set_moduli(&moduli)
+            .build_arc().unwrap()
+    );
+
+    let crp = CommonRandomPoly::new(&params, &mut thread_rng()).unwrap();
+    let crp_bytes = crp.to_bytes();
+
     // create a new dir for the round
     // use a round_id to lable dir
     // try to create the keyshares/id/ dir
@@ -188,6 +233,14 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     let countfile = json::encode(&count).unwrap();
     fs::write(round_pathst.clone(), countfile).unwrap();
 
+    // write crp bytes
+    let crp_path = env::current_dir().unwrap();
+    let mut crp_pathst = crp_path.display().to_string();
+    crp_pathst.push_str("/keyshares/");
+    crp_pathst.push_str(&incoming.round_id.to_string());
+    crp_pathst.push_str("/CRP");
+    fs::write(crp_pathst.clone(), crp_bytes).unwrap();
+
     // create a response with our random string, and pass in the string from the POST body
     let response = JsonResponse { response: "CRISP Initiated".to_string() };
     let out = json::encode(&response).unwrap();
@@ -207,7 +260,7 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
     let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
 
     // Generate a deterministic seed for the Common Poly
-    let mut seed = <ChaCha8Rng as SeedableRng>::Seed::default();
+    //let mut seed = <ChaCha8Rng as SeedableRng>::Seed::default();
 
     // Let's generate the BFV parameters structure.
     let params = timeit!(
@@ -218,8 +271,15 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
             .set_moduli(&moduli)
             .build_arc()?
     );
+    let path = env::current_dir().unwrap();
 
-    let crp = CommonRandomPoly::new_deterministic(&params, seed)?;
+    let mut keypath = path.display().to_string();
+    keypath.push_str("/keyshares/");
+    keypath.push_str(&round_id.to_string());
+    keypath.push_str("/CRP");
+    let data = fs::read(keypath).expect("Unable to read file");
+    //let crp = CommonRandomPoly::new_deterministic(&params, seed)?;
+    let crp = CommonRandomPoly::deserialize(&data, &params)?;
 
     // Party setup: each party generates a secret key and shares of a collective
     // public key.
@@ -355,7 +415,7 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
     //let shares = Vec<Vec<u8>>;
     let mut shares = Vec::with_capacity(incoming.cyphernode_count as usize);
     // toso get share threshold from client config
-    if(share_count == 5) {
+    if(share_count == 6) {
         println!("All sks shares received");
         for i in 0..incoming.cyphernode_count {
             let mut share_path = pathst.clone();
@@ -419,7 +479,7 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     println!("Share Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
 
     // toso get share threshold from client config
-    if(share_count == 3) {
+    if(share_count == 4) {
         println!("All shares received");
         aggregate_pk_shares(incoming.round_id).await;
     }
@@ -444,6 +504,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/get_pk_by_round", get_pk_by_round, "get_pk_by_round");
     router.post("/register_sks_share", register_sks_share, "register_sks_share");
     router.post("/get_sks_shares", get_sks_shares, "get_sks_shares");
+    router.post("/get_crp_by_round", get_crp_by_round, "get_crp_by_round");
 
     Iron::new(router).http("localhost:3000").unwrap();
 

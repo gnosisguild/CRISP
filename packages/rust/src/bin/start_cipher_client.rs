@@ -76,6 +76,12 @@ struct PKShareCount {
     share_id: u32,
 }
 
+#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+struct CRPRequest {
+    round_id: u32,
+    crp_bytes: Vec<u8>,
+}
+
 // Party setup: each party generates a secret key and shares of a collective
 // public key.
 struct Party {
@@ -124,7 +130,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     // Generate a deterministic seed for the Common Poly
     // TODO: check this for correctness
-    let mut seed = <ChaCha8Rng as SeedableRng>::Seed::default();
+    //let mut seed = <ChaCha8Rng as SeedableRng>::Seed::default();
 
     // Let's generate the BFV parameters structure.
     let params = timeit!(
@@ -135,11 +141,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .set_moduli(&moduli)
             .build_arc()?
     );
-
-    let crp = CommonRandomPoly::new_deterministic(&params, seed)?;
-    let crp_bytes = crp.to_bytes();
-    let sk_share_1 = SecretKey::random(&params, &mut OsRng); // TODO Store secret key
-    let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
 
     //let mut rounds: Vec<u32> = Vec::with_capacity(1);
     // set the expected CRISP rounds
@@ -237,10 +238,59 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             // --------------------------------------
             println!("Generating share and serializing.");
 
+            //let crp = CommonRandomPoly::new_deterministic(&params, seed)?;
+            // get crp from server.
+            // --------------------------------------
+            println!("Getting CRP from server.");
+            // Client Code
+            // get round config file
+            let url_get_crp = "http://127.0.0.1/get_crp_by_round".parse::<hyper::Uri>()?;
+            // Get the host and the port
+            let host_get_crp = url_get_crp.host().expect("uri has no host");
+            let port_get_crp = url_get_crp.port_u16().unwrap_or(3000);
+            let address_get_crp = format!("{}:{}", host_get_crp, port_get_crp);
+            // Open a TCP connection to the remote host
+            let stream_get_crp = TcpStream::connect(address_get_crp).await?;
+            // Use an adapter to access something implementing `tokio::io` traits as if they implement
+            // `hyper::rt` IO traits.
+            let io_get_crp = TokioIo::new(stream_get_crp);
+            // Create the Hyper client
+            let (mut sender_get_crp, conn_get_crp) = hyper::client::conn::http1::handshake(io_get_crp).await?;
+            // Spawn a task to poll the connection, driving the HTTP state
+            tokio::task::spawn(async move {
+                if let Err(err) = conn_get_crp.await {
+                    println!("Connection failed: {:?}", err);
+                }
+            });
+            // The authority of our URL will be the hostname of the httpbin remote
+            let authority_get_crp = url_get_crp.authority().unwrap().clone();
+
+            let response_get_crp = CRPRequest { round_id: count.round_count, crp_bytes: vec![0] };
+            let out_get_crp = json::encode(&response_get_crp).unwrap();
+            let req_get_crp = Request::post("http://127.0.0.1/")
+                .uri(url_get_crp.clone())
+                .header(hyper::header::HOST, authority_get_crp.as_str())
+                .body(out_get_crp)?;
+
+            let mut res_get_crp = sender_get_crp.send_request(req_get_crp).await?;
+
+            println!("Response status: {}", res_get_crp.status());
+
+            let body_bytes_crp = res_get_crp.collect().await?.to_bytes();
+            let body_str_crp = String::from_utf8(body_bytes_crp.to_vec()).unwrap();
+            let server_crp: CRPRequest = serde_json::from_str(&body_str_crp).expect("JSON was not well-formatted");
+
+            //let crp_bytes = crp.to_bytes();
+            // deserialize crp_bytes
+            let crp = CommonRandomPoly::deserialize(&server_crp.crp_bytes, &params).unwrap();
+            let sk_share_1 = SecretKey::random(&params, &mut OsRng); // TODO Store secret key
+            let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
             // let sk_share_1 = SecretKey::random(&params, &mut OsRng); // TODO Store secret key
             // let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
             let test_1 = pk_share_1.to_bytes();
 
+
+            // --------------------------------------
             // Client Code
             // Parse our URL for registering keyshare...
             let url_register_keyshare = "http://127.0.0.1/register_keyshare".parse::<hyper::Uri>()?;
@@ -265,7 +315,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let authority_key = url_register_keyshare.authority().unwrap().clone();
             // -------
             // todo: get id from the number of other shares already stored on iron server
-            let response_key = PKShareRequest { response: "Test".to_string(), pk_share: test_1, id: share_count.share_id, round_id: count.round_count };
+            let response_key = PKShareRequest { response: "Test".to_string(), pk_share: test_1, id: share_count.share_id-1, round_id: count.round_count };
             let out_key = json::encode(&response_key).unwrap();
             let req_key = Request::post("http://127.0.0.1/")
                 .uri(url_register_keyshare.clone())
@@ -413,7 +463,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     });
                     // The authority of our URL will be the hostname of the httpbin remote
                     let authority_sks = url_register_sks.authority().unwrap().clone();
-                    let response_sks = SKSShareRequest { response: "Test".to_string(), sks_share: sks_bytes, id: share_count.share_id, round_id: count.round_count };
+                    let response_sks = SKSShareRequest { response: "Test".to_string(), sks_share: sks_bytes, id: share_count.share_id-1, round_id: count.round_count };
                     let out_sks = json::encode(&response_sks).unwrap();
                     let req_sks = Request::post("http://127.0.0.1/")
                         .uri(url_register_sks.clone())
