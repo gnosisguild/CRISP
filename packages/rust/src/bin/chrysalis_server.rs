@@ -200,7 +200,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
 async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("aggregating validator keyshare");
 
-    let mut num_parties = 2; // todo set this from an init config 
+    let mut num_parties = 1; // todo set this from an init config 
 
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;
@@ -304,7 +304,7 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
     println!("Share Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
 
     // toso get share threshold from client config
-    if(share_count == 7) {
+    if(share_count == 5) {
         println!("All sks shares received");
         //aggregate_pk_shares(incoming.round_id).await;
         // TODO: maybe notify cipher nodes
@@ -355,7 +355,7 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
     //let shares = Vec<Vec<u8>>;
     let mut shares = Vec::with_capacity(incoming.cyphernode_count as usize);
     // toso get share threshold from client config
-    if(share_count == 7) {
+    if(share_count == 5) {
         println!("All sks shares received");
         for i in 0..incoming.cyphernode_count {
             let mut share_path = pathst.clone();
@@ -419,7 +419,7 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     println!("Share Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
 
     // toso get share threshold from client config
-    if(share_count == 4) {
+    if(share_count == 3) {
         println!("All shares received");
         aggregate_pk_shares(incoming.round_id).await;
     }

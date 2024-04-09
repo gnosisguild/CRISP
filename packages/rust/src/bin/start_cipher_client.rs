@@ -91,6 +91,29 @@ pub struct Voted {
     pub vote: Bytes,
 }
 
+// fn call_server(url: &str) {
+//     let _url = url.parse::<hyper::Uri>()?;
+//     // Get the host and the port
+//     let host = url_get_rounds.host().expect("uri has no host");
+//     let port = url_get_rounds.port_u16().unwrap_or(3000);
+//     let address = format!("{}:{}", host, port);
+//     // Open a TCP connection to the remote host
+//     let stream = TcpStream::connect(address).await?;
+//     // Use an adapter to access something implementing `tokio::io` traits as if they implement
+//     // `hyper::rt` IO traits.
+//     let io = TokioIo::new(stream);
+//     // Create the Hyper client
+//     let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
+//     // Spawn a task to poll the connection, driving the HTTP state
+//     tokio::task::spawn(async move {
+//         if let Err(err) = conn.await {
+//             println!("Connection failed: {:?}", err);
+//         }
+//     });
+//     // The authority of our URL will be the hostname of the httpbin remote
+//     let authority = url_get_rounds.authority().unwrap().clone();
+// }
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("generating validator keyshare");
@@ -309,7 +332,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
             //todo get voters per round and cyphernodes
             let mut num_voters = 2;
-            let mut num_parties = 2;
+            let mut num_parties = 1;
             let mut votes_encrypted = Vec::with_capacity(num_voters);
             //let mut parties = Vec::with_capacity(num_parties);
             let mut counter = 0;
@@ -441,7 +464,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         // The authority of our URL will be the hostname of the httpbin remote
                         let authority_get_sks = url_register_get_sks.authority().unwrap().clone();
                         // todo: use crisp config to know ciphernode count
-                        let response_get_sks = SKSSharePoll { response: "Test".to_string(), round_id: count.round_count, cyphernode_count: 2};
+                        let response_get_sks = SKSSharePoll { response: "Test".to_string(), round_id: count.round_count, cyphernode_count: 1};
                         let out_get_sks = json::encode(&response_get_sks).unwrap();
                         let req_get_sks = Request::post("http://127.0.0.1/")
                             .uri(url_register_get_sks.clone())
