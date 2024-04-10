@@ -23,23 +23,26 @@ const PollCardResult: React.FC<PollCardResultProps> = ({
   }
 
   return (
-    <div className={`flex ${spaceCards}`}>
+    <div className='grid w-full grid-cols-2 gap-4 md:gap-8'>
       {results.map((poll) => (
-        <div className={`flex flex-col items-center justify-center ${isResult ? 'space-y-6' : 'space-y-4'}`} key={poll.id}>
-          <div className={`h-[${height ?? '80'}] w-[${width ?? '80'}]`} style={{ width, height }}>
+        <div className='col-span-1 w-full'>
+          <div
+            className={`flex w-full flex-col items-center justify-center ${isResult ? 'aspect-square space-y-6' : 'space-y-4'}`}
+            key={poll.id}
+          >
             <Card isDetails checked={poll.checked}>
               <p className={isResult ? 'text-8xl' : 'text-5xl'}>{poll.label}</p>
             </Card>
-          </div>
-          <div className={isResult ? 'space-y-2' : ''}>
-            <h3
-              className={`text-center ${isResult ? 'text-h1' : 'text-h3'}  font-bold ${poll.checked ? 'text-green-light' : 'text-twilight-blue-500'}`}
-            >
-              {calculatePercentage(poll.votes)}%
-            </h3>
-            <p className={`text-center ${isResult ? 'text-2xl font-semibold' : 'text-xs font-bold'}  text-twilight-blue-500`}>
-              {poll.votes} votes
-            </p>
+            <div className={isResult ? 'space-y-2' : ''}>
+              <h3
+                className={`text-center ${isResult ? 'text-h1' : 'text-h3'}  font-bold ${poll.checked ? 'text-green-light' : 'text-twilight-blue-500'}`}
+              >
+                {calculatePercentage(poll.votes)}%
+              </h3>
+              <p className={`text-center ${isResult ? 'text-2xl font-semibold' : 'text-xs font-bold'}  text-twilight-blue-500`}>
+                {poll.votes} votes
+              </p>
+            </div>
           </div>
         </div>
       ))}
