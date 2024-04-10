@@ -9,9 +9,19 @@ use fhe::{
     bfv::{self, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
 };
-use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter};
+use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize, DeserializeParametrized};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng};
 use util::timeit::{timeit, timeit_n};
+
+use ethers::{
+    prelude::{abigen, Abigen},
+    providers::{Http, Provider},
+    middleware::SignerMiddleware,
+    signers::{LocalWallet, Signer, Wallet},
+    types::{Address, U256, Bytes},
+    core::k256,
+    utils,
+};
 
 fn print_notice_and_exit(error: Option<String>) {
     println!(
@@ -48,7 +58,7 @@ fn main() -> Result<(), Box<dyn Error>> {
         print_notice_and_exit(None)
     }
 
-    let mut num_voters = 2;
+    let mut num_voters = 5;
     let mut num_parties = 10;
 
     // Update the number of voters and/or number of parties depending on the
@@ -92,7 +102,9 @@ fn main() -> Result<(), Box<dyn Error>> {
             .set_moduli(&moduli)
             .build_arc()?
     );
-    let crp = CommonRandomPoly::new(&params, &mut thread_rng())?;
+    let crp_init = CommonRandomPoly::new(&params, &mut thread_rng())?;
+    let crp_bytes = crp_init.to_bytes();
+    let crp = CommonRandomPoly::deserialize(&crp_bytes, &params).unwrap();
 
     // Party setup: each party generates a secret key and shares of a collective
     // public key.
@@ -103,7 +115,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut parties = Vec::with_capacity(num_parties);
     timeit_n!("Party setup (per party)", num_parties as u32, {
         let sk_share = SecretKey::random(&params, &mut OsRng);
-        let pk_share = PublicKeyShare::new(&sk_share, crp.clone(), &mut thread_rng())?;
+        let pk_share_init = PublicKeyShare::new(&sk_share, crp.clone(), &mut thread_rng())?;
+        let pk_share_bytes = pk_share_init.to_bytes();
+        let pk_share = PublicKeyShare::deserialize(&pk_share_bytes, &params, crp.clone()).unwrap();
         parties.push(Party { sk_share, pk_share });
     });
 
@@ -126,7 +140,9 @@ fn main() -> Result<(), Box<dyn Error>> {
         #[allow(unused_assignments)]
         let pt = Plaintext::try_encode(&[votes[_i]], Encoding::poly(), &params)?;
         let ct = pk.try_encrypt(&pt, &mut thread_rng())?;
-        votes_encrypted.push(ct);
+        let sol_vote = Bytes::from(ct.to_bytes());
+        let deserialized = Ciphertext::from_bytes(&sol_vote, &params).unwrap();
+        votes_encrypted.push(deserialized);
         _i += 1;
     });
 
@@ -147,7 +163,9 @@ fn main() -> Result<(), Box<dyn Error>> {
     let mut decryption_shares = Vec::with_capacity(num_parties);
     let mut _i = 0;
     timeit_n!("Decryption (per party)", num_parties as u32, {
-        let sh = DecryptionShare::new(&parties[_i].sk_share, &tally, &mut thread_rng())?;
+        let sh_init = DecryptionShare::new(&parties[_i].sk_share, &tally, &mut thread_rng())?;
+        let sh_bytes = sh_init.to_bytes();
+        let sh = DecryptionShare::deserialize(&sh_bytes, &params, tally.clone());
         decryption_shares.push(sh);
         _i += 1;
     });
@@ -164,7 +182,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Show vote result
     println!("Vote result = {} / {}", tally_result, num_voters);
 
-    let expected_tally = votes.iter().sum();
+    let expected_tally: u64 = votes.iter().sum();
     assert_eq!(tally_result, expected_tally);
 
     Ok(())

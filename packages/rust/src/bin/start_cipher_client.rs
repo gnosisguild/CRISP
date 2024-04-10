@@ -535,7 +535,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                             //let mut sks_server_shares = Vec::with_capacity(num_parties);
                             for i in 0..num_parties {
-                                decryption_shares.push(DecryptionShare::deserialize(&shares.sks_shares[i], &params, Arc::new(votes_encrypted[i].clone())));
+                                //decryption_shares.push(DecryptionShare::deserialize(&shares.sks_shares[i], &params, Arc::new(votes_encrypted[i].clone())));
+                                decryption_shares.push(DecryptionShare::deserialize(&shares.sks_shares[i], &params, tally.clone()));
                             }
                             //decryption_shares.push(sh);
 
