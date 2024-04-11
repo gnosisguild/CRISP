@@ -32,7 +32,12 @@ const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
         </p>
       </div>
 
-      <input className='input' type='text' disabled value='I authenticate that this twitter account is owned by me. #crisp #dailypoll_13' />
+      <textarea
+        rows={2}
+        className='input h-auto'
+        disabled
+        value='I authenticate that this twitter account is owned by me. #crisp #dailypoll_13'
+      />
       <div className='flex items-center justify-between'>
         <button className='button-outlined button-max' onClick={onClose}>
           cancel

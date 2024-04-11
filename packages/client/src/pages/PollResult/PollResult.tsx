@@ -21,8 +21,8 @@ const PollResult: React.FC = () => {
   const [showCode, setShowCode] = useState<boolean>(false)
 
   return (
-    <div className='mb-28 flex w-screen flex-col items-center justify-center space-y-28'>
-      <div className='my-28 flex w-screen flex-col items-center justify-center space-y-12'>
+    <div className='mb-28 flex w-screen flex-col items-center justify-center space-y-28 px-6'>
+      <div className='my-28 flex w-full flex-col items-center justify-center space-y-12'>
         <div className='flex flex-col items-center justify-center space-y-6'>
           <div className='space-y-2 text-center'>
             <p className='text-sm font-extrabold uppercase'>daily poll</p>
@@ -32,9 +32,7 @@ const PollResult: React.FC = () => {
 
           <VotesBadge totalVotes={totalVotes} />
         </div>
-        <div className='flex justify-center space-x-12'>
-          <PollCardResult results={markWinner(options)} totalVotes={totalVotes} isResult width={288} height={288} />
-        </div>
+        <PollCardResult results={markWinner(options)} totalVotes={totalVotes} isResult />
       </div>
 
       <CardContent>

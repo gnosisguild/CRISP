@@ -8,14 +8,6 @@ const config: Config = {
       fontFamily: {
         jakarta: ['Plus Jakarta Sans', 'sans-serif'],
       },
-      fontSize: {
-        h1: '40px',
-        h2: '32px',
-        h3: '24px',
-        // 'h4': '24px',
-        // 'h5': '20px',
-        // 'h6': '16px',
-      },
       colors: {
         mist: {
           900: '#E3E9F5',
