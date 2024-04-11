@@ -30,8 +30,8 @@ const Navbar: React.FC = () => {
   }
 
   return (
-    <nav className='border-b-2 border-twilight-blue-200 bg-white-900 shadow-md '>
-      <div className='mx-auto max-w-7xl px-4 sm:px-2 lg:px-9'>
+    <nav className='fixed z-10 w-screen px-4 sm:px-2 lg:px-9'>
+      <div className='mx-auto max-w-screen-xl'>
         <div className='flex h-20 items-center justify-between'>
           {/* Logo */}
           <img src={Logo} alt='CRISP Logo' className='h-8 cursor-pointer' onClick={() => navigate('/')} />
