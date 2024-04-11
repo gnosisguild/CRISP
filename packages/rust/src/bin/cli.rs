@@ -60,7 +60,7 @@ struct CrispConfig {
     round_id: u32,
     chain_id: u32,
     voting_address: String,
-    cyphernode_count: u32,
+    ciphernode_count: u32,
     voter_count: u32,
 }
 
@@ -126,7 +126,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("round id: {:?}", config.round_id); // get new round id from current id in server
             println!("chain id: {:?}", config.chain_id);
             println!("voting contract: {:?}", config.voting_address);
-            println!("cyphernode count: {:?}", config.cyphernode_count);
+            println!("ciphernode count: {:?}", config.ciphernode_count);
             println!("voter count: {:?}", config.voter_count);
 
             println!("Calling contract to initialize onchain proposal...");
@@ -199,7 +199,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             // The authority of our URL will be the hostname of the httpbin remote
             let authority = url.authority().unwrap().clone();
             let round_id = count.round_count + 1;
-            let response = CrispConfig { round_id: round_id, chain_id: 5, voting_address: "Test".to_string(), cyphernode_count: 3, voter_count: config.voter_count };
+            let response = CrispConfig { round_id: round_id, chain_id: 5, voting_address: "Test".to_string(), ciphernode_count: 3, voter_count: config.voter_count };
             //let response = JsonRequest { response: "Test".to_string(), pk_share: 0, id: 0, round_id: 0 };
             let out = json::encode(&response).unwrap();
             let req = Request::post("http://127.0.0.1/")
