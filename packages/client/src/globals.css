@@ -10,7 +10,7 @@
   }
 
   body {
-    @apply transition-element m-0 min-w-[500px] overflow-x-hidden bg-mist-900 p-0  font-jakarta text-twilight-blue-900;
+    @apply transition-element m-0 min-w-[500px] overflow-x-hidden bg-slate-200 p-0  font-jakarta text-slate-600;
   }
 
   html,
@@ -112,12 +112,12 @@
 
 @layer components {
   /* Buttons */
-  .button {
-    @apply button-styles flex h-[32px] w-[121px] items-center justify-center rounded-full border-2 border-green-dark-800 bg-green-light px-5 py-1 text-base font-extrabold uppercase leading-custom tracking-custom  text-white-900 shadow-custom-1 shadow-custom-2 hover:bg-green-dark-800;
+  .button-primary {
+    @apply button-styles text-white enabled:shadow-button active:text-white/70 border-lime-600/80 bg-lime-400 active:translate-y-1 active:bg-lime-600 active:shadow-none enabled:hover:bg-lime-500;
   }
 
   .button-outlined {
-    @apply button-styles flex h-[32px] w-[121px] items-center justify-center rounded-full border-2 border-green-light  bg-white-900 px-5 py-1 text-base  font-extrabold uppercase leading-custom tracking-custom text-green-light shadow-custom-1 hover:bg-green-light hover:text-white-900;
+    @apply button-styles bg-white enabled:shadow-button-outlined border-lime-400 text-lime-400 active:translate-y-1 active:bg-lime-200 active:text-lime-400/70 active:shadow-none enabled:hover:bg-lime-100;
   }
 
   .button-connect {
@@ -133,7 +133,7 @@
   }
 
   .button-disabled {
-    @apply cursor-default opacity-50 shadow-none hover:bg-white-900 hover:text-green-light;
+    @apply opacity-50;
   }
 
   /* Inputs & Selects */
@@ -141,9 +141,9 @@
     @apply flex h-12 cursor-pointer items-center gap-2.5 rounded-full bg-zinc-700 bg-[url('/assets/icons/caret.svg')] bg-[right_16px_center] bg-no-repeat py-4 pl-4 pr-9 text-sm;
   }
 
-  /* opacity-5 transition-all duration-300 ease-in-out placeholder:text-twilight-blue-500 focus:border-twilight-blue-900 focus:bg-opacity-20 focus:outline-none */
+  /* opacity-5 transition-all duration-300 ease-in-out placeholder:text-slate-600/50 focus:border-slate-600 focus:bg-opacity-20 focus:outline-none */
   .input {
-    @apply flex  h-12 w-full items-center rounded-lg border-2 border-twilight-blue-200 bg-twilight-blue-100 px-4 py-2 font-jakarta text-twilight-blue-900;
+    @apply flex  h-12 w-full items-center rounded-lg border-2 border-slate-600/20 bg-slate-600/10 px-4 py-2 font-jakarta text-slate-600;
   }
 
   .input-search {
@@ -193,7 +193,7 @@
 
 @layer utilities {
   .button-styles {
-    @apply flex h-10 cursor-pointer items-center justify-center rounded-full px-4 py-2.5 font-jakarta transition-all duration-300 ease-in-out;
+    @apply flex h-12 items-center justify-center rounded-2xl border-2 px-4 py-1 font-jakarta text-base font-extrabold uppercase leading-none tracking-custom transition-all duration-300 ease-in-out enabled:cursor-pointer;
   }
 
   .icon {
@@ -209,7 +209,7 @@
   }
 
   .line {
-    @apply h-px w-full bg-mist-900;
+    @apply h-px w-full bg-slate-200;
   }
 
   .icon-placeholder {

@@ -38,10 +38,10 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ endTime }) => {
 
   return (
     <div className='flex flex-col items-center justify-center space-y-2'>
-      <p className='text-base font-bold uppercase text-twilight-blue-500'>Poll ends in:</p>
+      <p className='text-base font-bold uppercase text-slate-600/50'>Poll ends in:</p>
       {loading && (
         <svg
-          className='animate-spin text-twilight-blue-500'
+          className='animate-spin text-slate-600/50'
           viewBox='0 0 64 64'
           fill='none'
           xmlns='http://www.w3.org/2000/svg'
@@ -61,27 +61,27 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ endTime }) => {
             strokeWidth='5'
             strokeLinecap='round'
             strokeLinejoin='round'
-            className='text-twilight-blue-500'
+            className='text-slate-600/50'
           ></path>
         </svg>
       )}
       {!loading && remainingTime && (
         <div className='flex space-x-6'>
-          <p className='text-2xl font-bold text-twilight-blue-900'>
+          <p className='text-2xl font-bold text-slate-600'>
             {remainingTime.days}
-            <span className=' text-twilight-blue-500'>d</span>
+            <span className=' text-slate-600/50'>d</span>
           </p>
-          <p className='text-2xl font-bold text-twilight-blue-900'>
+          <p className='text-2xl font-bold text-slate-600'>
             {remainingTime.hours}
-            <span className=' text-twilight-blue-500'>h</span>
+            <span className=' text-slate-600/50'>h</span>
           </p>
-          <p className='text-2xl font-bold text-twilight-blue-900'>
+          <p className='text-2xl font-bold text-slate-600'>
             {remainingTime.minutes}
-            <span className=' text-twilight-blue-500'>m</span>
+            <span className=' text-slate-600/50'>m</span>
           </p>
-          <p className='text-2xl font-bold text-twilight-blue-900'>
+          <p className='text-2xl font-bold text-slate-600'>
             {remainingTime.seconds}
-            <span className=' text-twilight-blue-500'>s</span>
+            <span className=' text-slate-600/50'>s</span>
           </p>
         </div>
       )}

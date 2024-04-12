@@ -76,7 +76,7 @@ const NavMenu: React.FC<NavMenuProps> = () => {
       <button
         ref={buttonRef}
         onClick={toggleMenu}
-        className='flex items-center justify-between space-x-1 rounded-lg border-2 bg-white-600 px-2 py-1 duration-300 ease-in-out hover:bg-white-900'
+        className='hover:bg-white bg-white/60 flex items-center justify-between space-x-1 rounded-lg border-2 px-2 py-1 duration-300 ease-in-out'
       >
         <img src={Avatar} />
         <p className='text-xs font-bold'>@juliopavila</p>
@@ -85,7 +85,7 @@ const NavMenu: React.FC<NavMenuProps> = () => {
 
       <div
         ref={menuRef}
-        className={`absolute right-0 mt-4 w-40 transform rounded-lg border-2 border-twilight-blue-100 bg-white-900 p-4  shadow-custom-1 ${
+        className={`bg-white absolute right-0 mt-4 w-40 transform rounded-lg border-2 border-slate-600/10 p-4  shadow-md ${
           isOpen ? 'scale-100' : 'scale-0'
         }`}
       >

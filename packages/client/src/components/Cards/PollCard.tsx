@@ -26,11 +26,11 @@ const PollCard: React.FC<PollCardProps> = ({ pollOptions, totalVotes, date }) =>
 
   return (
     <div
-      className='relative flex w-full cursor-pointer flex-col items-center justify-center space-y-4 rounded-3xl border-2 border-twilight-blue-200 bg-white-500 p-8 pt-2 shadow-lg md:max-w-[274px]'
+      className='bg-white/50 relative flex w-full cursor-pointer flex-col items-center justify-center space-y-4 rounded-3xl border-2 border-slate-600/20 p-8 pt-2 shadow-lg md:max-w-[274px]'
       onClick={handleNavigation}
     >
       <div className='external-icon absolute right-4 top-4' />
-      <div className='text-xs font-bold text-twilight-blue-900'>{date}</div>
+      <div className='text-xs font-bold text-slate-600'>{date}</div>
       <div className='flex space-x-8 '>
         <PollCardResult results={results} totalVotes={totalVotes} />
       </div>

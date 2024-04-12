@@ -6,7 +6,7 @@ type VotesBadgeProps = {
 
 const VotesBadge: React.FC<VotesBadgeProps> = ({ totalVotes }) => {
   return (
-    <div className=' w-fit rounded-lg border-2 border-twilight-blue-200 bg-white-900 p-2 py-1 text-center font-bold uppercase text-zinc-500 shadow-md'>
+    <div className=' bg-white w-fit rounded-lg border-2 border-slate-600/20 p-2 py-1 text-center font-bold uppercase text-slate-800/50 shadow-md'>
       {totalVotes} votes
     </div>
   )

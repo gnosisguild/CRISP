@@ -10,7 +10,7 @@ type DailyPollSectionProps = {
   onVoted?: () => void
 }
 
-const DailyPollSection: React.FC<DailyPollSectionProps> = ({ isScreen, onVoted }) => {
+const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
   const [pollOptions, setPollOptions] = useState<Poll[]>(DAILY_POLL)
   const [noPollSelected, setPollSelected] = useState<boolean>(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -29,20 +29,18 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ isScreen, onVoted }
   }
   return (
     <>
-      <div
-        className={`flex w-screen flex-col items-center justify-center px-6 ${!isScreen ? 'h-screen' : 'h-screen-minus-header-footer'} `}
-      >
+      <div className='flex h-screen w-screen flex-col items-center justify-center px-6'>
         <div className='mx-auto flex w-full max-w-screen-md flex-col items-center justify-center space-y-12'>
           <div className='space-y-2'>
-            <p className='text-center text-sm font-extrabold uppercase text-zinc-900'>Daily Poll</p>
-            <h3 className='font-bold leading-none text-twilight-blue-900'>Choose your favorite</h3>
+            <p className='text-center text-sm font-extrabold uppercase text-slate-800'>Daily Poll</p>
+            <h3 className='font-bold leading-none text-slate-600'>Choose your favorite</h3>
           </div>
           <div className='flex items-center justify-center space-x-2'>
-            <div className='flex items-center space-x-2 rounded-lg border-2 border-green-dark-800 bg-green-light px-2 py-1 text-center font-bold uppercase leading-none text-white-900'>
-              <div className='h-1.5 w-1.5 animate-pulse rounded-full bg-white-900'></div>
+            <div className='text-white flex items-center space-x-2 rounded-lg border-2 border-lime-600/80 bg-lime-400 px-2 py-1 text-center font-bold uppercase leading-none'>
+              <div className='bg-white h-1.5 w-1.5 animate-pulse rounded-full'></div>
               <div>Live</div>
             </div>
-            <div className='rounded-lg border-2 border-twilight-blue-200 bg-white-900 px-2 py-1.5 text-center font-bold uppercase leading-none text-zinc-500'>
+            <div className='bg-white rounded-lg border-2 border-slate-600/20 px-2 py-1.5 text-center font-bold uppercase leading-none text-slate-800/50'>
               23 votes
             </div>
           </div>
@@ -55,13 +53,16 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ isScreen, onVoted }
               </div>
             ))}
           </div>
-          <button
-            className={`button-outlined button-max ${noPollSelected ? 'button-disabled' : ''}`}
-            disabled={noPollSelected}
-            onClick={openModal}
-          >
-            cast vote
-          </button>
+          <div className='space-y-4'>
+            {noPollSelected && <div className='text-center text-sm leading-none text-slate-500'>Select your favorite</div>}
+            <button
+              className={`button-outlined button-max ${noPollSelected ? 'button-disabled' : ''}`}
+              disabled={noPollSelected}
+              onClick={openModal}
+            >
+              cast vote
+            </button>
+          </div>
         </div>
       </div>
       <Modal show={modalOpen} onClose={closeModal}>

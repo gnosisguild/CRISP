@@ -35,11 +35,11 @@ const PollCardResult: React.FC<PollCardResultProps> = ({
             </Card>
             <div className={isResult ? 'space-y-2' : ''}>
               <h3
-                className={`text-center ${isResult ? 'text-h1' : 'text-h3'}  font-bold ${poll.checked ? 'text-green-light' : 'text-twilight-blue-500'}`}
+                className={`text-center ${isResult ? 'text-h1' : 'text-h3'}  font-bold ${poll.checked ? 'text-lime-400' : 'text-slate-600/50'}`}
               >
                 {calculatePercentage(poll.votes)}%
               </h3>
-              <p className={`text-center ${isResult ? 'text-2xl font-semibold' : 'text-xs font-bold'}  text-twilight-blue-500`}>
+              <p className={`text-center ${isResult ? 'text-2xl font-semibold' : 'text-xs font-bold'}  text-slate-600/50`}>
                 {poll.votes} votes
               </p>
             </div>

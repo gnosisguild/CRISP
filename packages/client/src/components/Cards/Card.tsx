@@ -27,13 +27,13 @@ const Card: React.FC<CardProps> = ({ children, isDetails, checked, onChecked }) 
         cursor-pointer
         ${isDetails ? ' p-4' : 'h-auto min-h-[288px] p-20'}
         bg-white rounded-[24px] text-black
-        ${!isDetails && 'shadow-custom-1'}
+        ${!isDetails && 'shadow-md'}
         transform 
         border-2 transition-all duration-300 ease-in-out 
-        ${isClicked ? 'scale-105 border-green-light' : ''}
-        ${isClicked ? 'border-green-light' : 'border-twilight-blue-200'}
-        ${isClicked ? 'bg-white-900' : 'bg-white-500'}
-        ${!isDetails && 'hover:bg-white-900 hover:shadow-lg'}
+        ${isClicked ? 'scale-105 border-lime-400' : ''}
+        ${isClicked ? 'border-lime-400' : 'border-slate-600/20'}
+        ${isClicked ? 'bg-white' : 'bg-white/50'}
+        ${!isDetails && 'hover:bg-white hover:shadow-lg'}
         flex w-full items-center justify-center
       `}
       onClick={handleClick}
