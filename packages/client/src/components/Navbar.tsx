@@ -33,7 +33,12 @@ const Navbar: React.FC = () => {
     <nav className='fixed z-10 w-screen px-4 sm:px-2 lg:px-9'>
       <div className='mx-auto max-w-screen-xl'>
         <div className='flex h-20 items-center justify-between'>
-          <img src={Logo} alt='CRISP Logo' className='h-8 cursor-pointer' onClick={() => navigate('/')} />
+          <img
+            src={Logo}
+            alt='CRISP Logo'
+            className='h-8 cursor-pointer duration-300 ease-in-out hover:opacity-70'
+            onClick={() => navigate('/')}
+          />
           <div className='hidden sm:flex sm:items-center sm:gap-8'>
             {PAGES.map(({ label, path }) => (
               <a
