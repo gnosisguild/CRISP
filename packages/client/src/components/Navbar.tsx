@@ -39,7 +39,7 @@ const Navbar: React.FC = () => {
               <a
                 key={label}
                 onClick={() => handleNavigation(path)}
-                className='hover:text-twilight-blue-600 cursor-pointer font-bold text-twilight-blue-900'
+                className='hover:text-twilight-blue-600 cursor-pointer font-bold text-twilight-blue-900 duration-300 ease-in-out hover:opacity-70'
               >
                 {label}
               </a>

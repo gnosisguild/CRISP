@@ -1,11 +1,14 @@
+import { memo } from 'react'
+
 const CircularTiles = ({ count = 1, className }: { count?: number; className?: string }) => {
   return (
     <>
-      {[...Array(count)].map((i) => {
+      {[...Array(count)].map((i, index) => {
         const rand_index = Math.floor(Math.random() * 4)
         const rotation = [0, 90, 180, 270][rand_index]
         return (
           <svg
+            key={index}
             className={className}
             style={{ transform: `rotate(${rotation}deg)` }}
             viewBox='0 0 256 256'
@@ -25,4 +28,4 @@ const CircularTiles = ({ count = 1, className }: { count?: number; className?: s
   )
 }
 
-export default CircularTiles
+export default memo(CircularTiles)

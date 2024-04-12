@@ -76,11 +76,11 @@ const NavMenu: React.FC<NavMenuProps> = () => {
       <button
         ref={buttonRef}
         onClick={toggleMenu}
-        className='bg-white-600 flex items-center justify-between space-x-1 rounded-lg border-2 px-2 py-1'
+        className='flex items-center justify-between space-x-1 rounded-lg border-2 bg-white-600 px-2 py-1 duration-300 ease-in-out hover:bg-white-900'
       >
         <img src={Avatar} />
         <p className='text-xs font-bold'>@juliopavila</p>
-        <img src={ArrowRight} />
+        <img src={ArrowRight} className={isOpen ? '-rotate-90' : ''} />
       </button>
 
       <div
