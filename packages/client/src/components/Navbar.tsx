@@ -30,7 +30,7 @@ const Navbar: React.FC = () => {
   }
 
   return (
-    <nav className='fixed z-10 w-screen px-4 sm:px-2 lg:px-9'>
+    <nav className='absolute left-0 top-0 z-10 w-screen px-4 sm:px-2 lg:px-9'>
       <div className='mx-auto max-w-screen-xl'>
         <div className='flex h-20 items-center justify-between'>
           <img

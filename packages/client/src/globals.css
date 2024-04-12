@@ -5,18 +5,11 @@
 
 @layer base {
   /* Global Styles */
-  html {
-    @apply overflow-x-hidden scroll-smooth;
-  }
 
   body {
-    @apply transition-element m-0 min-w-[500px] overflow-x-hidden bg-slate-200 p-0  font-jakarta text-slate-600;
+    @apply transition-element overflow-x-hidden bg-slate-200 p-0 font-jakarta text-slate-600;
   }
 
-  html,
-  body {
-    height: 100%;
-  }
   img {
     @apply max-w-full select-none;
     -webkit-user-drag: none;

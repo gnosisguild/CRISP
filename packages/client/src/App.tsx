@@ -20,18 +20,16 @@ const App: React.FC = () => {
   // }, [])
   return (
     <Fragment>
-      <div className='scroll-container'>
-        <Navbar />
-        <Routes>
-          <Route path='/' element={<Landing />} />
-          <Route path='/about' element={<About />} />
-          <Route path='/daily' element={<DailyPoll />} />
-          <Route path='/historic' element={<HistoricPoll />} />
-          <Route path='/result' element={<PollResult />} />
-          <Route path='*' element={<Navigate to='/' replace />} />
-        </Routes>
-        <Footer />
-      </div>
+      <Navbar />
+      <Routes>
+        <Route path='/' element={<Landing />} />
+        <Route path='/about' element={<About />} />
+        <Route path='/daily' element={<DailyPoll />} />
+        <Route path='/historic' element={<HistoricPoll />} />
+        <Route path='/result' element={<PollResult />} />
+        <Route path='*' element={<Navigate to='/' replace />} />
+      </Routes>
+      <Footer />
     </Fragment>
   )
 }
