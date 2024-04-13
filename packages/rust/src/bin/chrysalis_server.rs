@@ -51,7 +51,7 @@ struct CrispConfig {
     round_id: u32,
     chain_id: u32,
     voting_address: String,
-    cyphernode_count: u32,
+    ciphernode_count: u32,
     voter_count: u32,
 }
 
@@ -253,7 +253,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
 async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("aggregating validator keyshare");
 
-    let mut num_parties = 1; // todo set this from an init config 
+    let mut num_parties = 2; // todo set this from an init config 
 
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;
@@ -364,7 +364,7 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
     println!("Share Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
 
     // toso get share threshold from client config
-    if(share_count == 5) {
+    if(share_count == 8) {
         println!("All sks shares received");
         //aggregate_pk_shares(incoming.round_id).await;
         // TODO: maybe notify cipher nodes
@@ -387,7 +387,7 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
     struct SKSSharePoll {
         response: String,
         round_id: u32,
-        cyphernode_count: u32,
+        ciphernode_count: u32,
     }
     // we're expecting the POST to match the format of our JsonRequest struct
     let incoming: SKSSharePoll = json::decode(&payload).unwrap();
@@ -413,11 +413,11 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
 
     let share_count = WalkDir::new(keypath.clone()).into_iter().count();
     //let shares = Vec<Vec<u8>>;
-    let mut shares = Vec::with_capacity(incoming.cyphernode_count as usize);
+    let mut shares = Vec::with_capacity(incoming.ciphernode_count as usize);
     // toso get share threshold from client config
-    if(share_count == 6) {
+    if(share_count == 8) {
         println!("All sks shares received");
-        for i in 0..incoming.cyphernode_count {
+        for i in 0..incoming.ciphernode_count {
             let mut share_path = pathst.clone();
             share_path.push_str(&i.to_string());
             println!("reading share {:?} from {:?}", i, share_path);
@@ -479,7 +479,7 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     println!("Share Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
 
     // toso get share threshold from client config
-    if(share_count == 4) {
+    if(share_count == 5) {
         println!("All shares received");
         aggregate_pk_shares(incoming.round_id).await;
     }

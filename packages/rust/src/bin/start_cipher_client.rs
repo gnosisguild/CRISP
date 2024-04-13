@@ -25,17 +25,17 @@ use std::{thread, time};
 
 use ethers::{
     prelude::{Abigen, Contract, EthEvent},
-    providers::{Http, Provider, StreamExt},
+    providers::{Http, Provider, StreamExt, Middleware},
     middleware::SignerMiddleware,
     signers::{LocalWallet, Signer, Wallet},
-    types::{Address, U256, Bytes},
+    types::{Address, U256, Bytes, U64},
     core::k256,
     utils,
     contract::abigen,
 };
 
 #[derive(RustcEncodable, RustcDecodable)]
-struct JsonRequestGetRounds {
+struct JsonRequest {
     response: String,
 }
 
@@ -60,7 +60,7 @@ struct CrispConfig {
     round_id: u32,
     chain_id: u32,
     voting_address: String,
-    cyphernode_count: u32,
+    ciphernode_count: u32,
     voter_count: u32,
     // todo start_block: u32,
 }
@@ -97,11 +97,13 @@ pub struct Voted {
     pub vote: Bytes,
 }
 
-// fn call_server(url: &str) {
-//     let _url = url.parse::<hyper::Uri>()?;
+
+
+// async fn get_server_conn(url: &str) -> Result<()> {
+//     let _url = url.parse::<hyper::Uri>();
 //     // Get the host and the port
-//     let host = url_get_rounds.host().expect("uri has no host");
-//     let port = url_get_rounds.port_u16().unwrap_or(3000);
+//     let host = _url.host().expect("uri has no host");
+//     let port = _url.port_u16().unwrap_or(3000);
 //     let address = format!("{}:{}", host, port);
 //     // Open a TCP connection to the remote host
 //     let stream = TcpStream::connect(address).await?;
@@ -129,10 +131,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
 
     // Generate a deterministic seed for the Common Poly
-    // TODO: check this for correctness
     //let mut seed = <ChaCha8Rng as SeedableRng>::Seed::default();
 
-    // Let's generate the BFV parameters structure.
+    // Generate the BFV parameters structure.
     let params = timeit!(
         "Parameters generation",
         BfvParametersBuilder::new()
@@ -142,41 +143,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .build_arc()?
     );
 
-    //let mut rounds: Vec<u32> = Vec::with_capacity(1);
     // set the expected CRISP rounds
     let mut internal_round_count = RoundCount { round_count: 0 };
-
-
 
     loop {
         println!("Polling CRISP server...");
 
-        // Client Code
-        // Parse our URL for registering keyshare...
-        //let url_register_keyshare = "http://127.0.0.1/register_keyshare".parse::<hyper::Uri>()?;
+        // Client Code Get Rounds
         let url_get_rounds = "http://127.0.0.1/get_rounds".parse::<hyper::Uri>()?;
-        // Get the host and the port
         let host = url_get_rounds.host().expect("uri has no host");
         let port = url_get_rounds.port_u16().unwrap_or(3000);
         let address = format!("{}:{}", host, port);
-        // Open a TCP connection to the remote host
         let stream = TcpStream::connect(address).await?;
-        // Use an adapter to access something implementing `tokio::io` traits as if they implement
-        // `hyper::rt` IO traits.
         let io = TokioIo::new(stream);
-        // Create the Hyper client
         let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
-        // Spawn a task to poll the connection, driving the HTTP state
         tokio::task::spawn(async move {
             if let Err(err) = conn.await {
                 println!("Connection failed: {:?}", err);
             }
         });
-        // The authority of our URL will be the hostname of the httpbin remote
         let authority = url_get_rounds.authority().unwrap().clone();
-        //let authority_key = url_register_keyshare.authority().unwrap().clone();
 
-        let response = JsonRequestGetRounds { response: "Test".to_string() };
+        let response = JsonRequest { response: "get_rounds".to_string() };
         let out = json::encode(&response).unwrap();
         let req = Request::get("http://127.0.0.1/")
             .uri(url_get_rounds.clone())
@@ -184,7 +172,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .body(out)?;
 
         let mut res = sender.send_request(req).await?;
-
         println!("Response status: {}", res.status());
 
         let body_bytes = res.collect().await?.to_bytes();
@@ -193,31 +180,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!("Server Round Count: {:?}", count.round_count);
         println!("Internal Round Count: {:?}", internal_round_count.round_count);
 
+        // Check to see if the server reported a new round
         if(count.round_count > internal_round_count.round_count) {
             println!("Getting latest PK share ID.");
-            // --------------------------------------
-
-            // Client Code
-            // get round config file
+            // Client Code get the number of pk_shares on the server.
+            // Currently the number of shares becomes the cipher client ID for the round.
             let url_get_shareid = "http://127.0.0.1/get_pk_share_count".parse::<hyper::Uri>()?;
-            // Get the host and the port
             let host_get_shareid = url_get_shareid.host().expect("uri has no host");
             let port_get_shareid = url_get_shareid.port_u16().unwrap_or(3000);
             let address_get_shareid = format!("{}:{}", host_get_shareid, port_get_shareid);
-            // Open a TCP connection to the remote host
             let stream_get_shareid = TcpStream::connect(address_get_shareid).await?;
-            // Use an adapter to access something implementing `tokio::io` traits as if they implement
-            // `hyper::rt` IO traits.
             let io_get_shareid = TokioIo::new(stream_get_shareid);
-            // Create the Hyper client
             let (mut sender_get_shareid, conn_get_shareid) = hyper::client::conn::http1::handshake(io_get_shareid).await?;
-            // Spawn a task to poll the connection, driving the HTTP state
             tokio::task::spawn(async move {
                 if let Err(err) = conn_get_shareid.await {
                     println!("Connection failed: {:?}", err);
                 }
             });
-            // The authority of our URL will be the hostname of the httpbin remote
             let authority_get_shareid = url_get_shareid.authority().unwrap().clone();
 
             let response_get_shareid = PKShareCount { round_id: count.round_count, share_id: 0 };
@@ -237,32 +216,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
             // --------------------------------------
             println!("Generating share and serializing.");
-
-            //let crp = CommonRandomPoly::new_deterministic(&params, seed)?;
-            // get crp from server.
-            // --------------------------------------
             println!("Getting CRP from server.");
-            // Client Code
-            // get round config file
+            // Client Code Get Server Round CRP
             let url_get_crp = "http://127.0.0.1/get_crp_by_round".parse::<hyper::Uri>()?;
-            // Get the host and the port
             let host_get_crp = url_get_crp.host().expect("uri has no host");
             let port_get_crp = url_get_crp.port_u16().unwrap_or(3000);
             let address_get_crp = format!("{}:{}", host_get_crp, port_get_crp);
-            // Open a TCP connection to the remote host
             let stream_get_crp = TcpStream::connect(address_get_crp).await?;
-            // Use an adapter to access something implementing `tokio::io` traits as if they implement
-            // `hyper::rt` IO traits.
             let io_get_crp = TokioIo::new(stream_get_crp);
-            // Create the Hyper client
             let (mut sender_get_crp, conn_get_crp) = hyper::client::conn::http1::handshake(io_get_crp).await?;
-            // Spawn a task to poll the connection, driving the HTTP state
             tokio::task::spawn(async move {
                 if let Err(err) = conn_get_crp.await {
                     println!("Connection failed: {:?}", err);
                 }
             });
-            // The authority of our URL will be the hostname of the httpbin remote
             let authority_get_crp = url_get_crp.authority().unwrap().clone();
 
             let response_get_crp = CRPRequest { round_id: count.round_count, crp_bytes: vec![0] };
@@ -273,49 +240,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .body(out_get_crp)?;
 
             let mut res_get_crp = sender_get_crp.send_request(req_get_crp).await?;
-
             println!("Response status: {}", res_get_crp.status());
 
             let body_bytes_crp = res_get_crp.collect().await?.to_bytes();
             let body_str_crp = String::from_utf8(body_bytes_crp.to_vec()).unwrap();
             let server_crp: CRPRequest = serde_json::from_str(&body_str_crp).expect("JSON was not well-formatted");
 
-            //let crp_bytes = crp.to_bytes();
             // deserialize crp_bytes
             let crp = CommonRandomPoly::deserialize(&server_crp.crp_bytes, &params).unwrap();
             let sk_share_1 = SecretKey::random(&params, &mut OsRng); // TODO Store secret key
             let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
-            // let sk_share_1 = SecretKey::random(&params, &mut OsRng); // TODO Store secret key
-            // let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
-            let test_1 = pk_share_1.to_bytes();
-
+            // serialize pk_share
+            let pk_share_bytes = pk_share_1.to_bytes();
 
             // --------------------------------------
-            // Client Code
-            // Parse our URL for registering keyshare...
+            // Client Code Register PK Share on Enclave server
             let url_register_keyshare = "http://127.0.0.1/register_keyshare".parse::<hyper::Uri>()?;
-            // Get the host and the port
             let host_key = url_register_keyshare.host().expect("uri has no host");
             let port_key = url_register_keyshare.port_u16().unwrap_or(3000);
             let address_key = format!("{}:{}", host_key, port_key);
-            // Open a TCP connection to the remote host
             let stream_key = TcpStream::connect(address_key).await?;
-            // Use an adapter to access something implementing `tokio::io` traits as if they implement
-            // `hyper::rt` IO traits.
             let io_key = TokioIo::new(stream_key);
-            // Create the Hyper client
             let (mut sender_key, conn_key) = hyper::client::conn::http1::handshake(io_key).await?;
-            // Spawn a task to poll the connection, driving the HTTP state
             tokio::task::spawn(async move {
                 if let Err(err) = conn_key.await {
                     println!("Connection failed: {:?}", err);
                 }
             });
-            // The authority of our URL will be the hostname of the httpbin remote
             let authority_key = url_register_keyshare.authority().unwrap().clone();
-            // -------
-            // todo: get id from the number of other shares already stored on iron server
-            let response_key = PKShareRequest { response: "Test".to_string(), pk_share: test_1, id: share_count.share_id-1, round_id: count.round_count };
+
+            let response_key = PKShareRequest { response: "Test".to_string(), pk_share: pk_share_bytes, id: share_count.share_id-1, round_id: count.round_count };
             let out_key = json::encode(&response_key).unwrap();
             let req_key = Request::post("http://127.0.0.1/")
                 .uri(url_register_keyshare.clone())
@@ -323,9 +277,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .body(out_key)?;
 
             let mut res_key = sender_key.send_request(req_key).await?;
-
             println!("Response status: {}", res_key.status());
-
             // Stream the body, writing each frame to stdout as it arrives
             while let Some(next) = res_key.frame().await {
                 let frame = next?;
@@ -337,8 +289,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             internal_round_count.round_count += 1;
 
             //TODO: put blockchain polling in a seperate thread so cipher nodes can act on more than one round at a time
-            //TODO: if all keyshares gathered, start contract polling
-
             // ------------------------------------
             println!("polling smart contract...");
             // chain state
@@ -347,10 +297,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let infura_val = env::var(infura_key).unwrap();
             let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
             RPC_URL.push_str(&infura_val);
-
             let provider = Provider::<Http>::try_from(RPC_URL.clone())?;
-            // let block_number: U64 = provider.get_block_number().await?;
-            // println!("{block_number}");
+            let block_number: U64 = provider.get_block_number().await?;
+            println!("Current block height is {:?}", block_number);
             abigen!(
                 IVOTE,
                 r#"[
@@ -367,7 +316,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     event Voted(address indexed voter, bytes vote)
                 ]"#,
             );
-
             let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
             let contract_address = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B".parse::<Address>().unwrap();
             let eth_key = "PRIVATEKEY";
@@ -375,33 +323,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let wallet: LocalWallet = eth_val
                 .parse::<LocalWallet>().unwrap()
                 .with_chain_id(11155111 as u64);
-            //let client = SignerMiddleware::new(pro
             let client = Arc::new(provider);
             let contract = IVOTE::new(contract_address, Arc::new(client.clone()));
             let events = contract.events().from_block(5560945);//.to_block(5560955);
 
             //todo get voters per round and cyphernodes
             let mut num_voters = 2;
-            let mut num_parties = 1;
+            let mut num_parties = 2;
             let mut votes_encrypted = Vec::with_capacity(num_voters);
-            //let mut parties = Vec::with_capacity(num_parties);
             let mut counter = 0;
-
-            // let filter = Filter::new()
-            //     .address(contract_address)
-            //     .event("Voted(address,bytes)")
-            //     // .topic1(token_topics.to_vec())
-            //     // .topic2(token_topics.to_vec())
-            //     .from_block(0);
-            // let logs = client.get_logs(&filter).await?;
 
             let mut stream = events.stream().await.unwrap().with_meta().take(10);
             // For each voting round this node is participating in, check the contracts for vote events.
             // When voting is finalized, begin group decrypt process
             while let Some(Ok((event, meta))) = stream.next().await {
-                //let e_vent = event.VotedFiltered;
+                println!("New vote event received");
                 println!("voter: {:?}", event.voter);
-
                 println!(
                     r#"
                        address: {:?}, 
@@ -418,11 +355,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     meta.transaction_index,
                     meta.log_index
                 );
-                //println!("vote: {:?}", event.vote);
-                //let bytes_cipher = decode_hex(&event.vote);
-                //println!("bytes: {:?}", bytes_cipher);
-                let deserialized = Ciphertext::from_bytes(&event.vote, &params).unwrap();
-                votes_encrypted.push(deserialized);
+
+                let deserialized_vote = Ciphertext::from_bytes(&event.vote, &params).unwrap();
+                votes_encrypted.push(deserialized_vote);
                 counter += 1;
 
                 if counter == 2 {
@@ -445,25 +380,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     let sh = DecryptionShare::new(&sk_share_1, &tally, &mut thread_rng()).unwrap();
                     let sks_bytes = sh.to_bytes();
 
-                    // register sks share with chrys server
-                    // Client Code
+                    // ------------------------------------
+                    // Client Code register sks share with chrys server
                     let url_register_sks = "http://127.0.0.1/register_sks_share".parse::<hyper::Uri>()?;
                     let host_sks = url_register_sks.host().expect("uri has no host");
                     let port_sks = url_register_sks.port_u16().unwrap_or(3000);
                     let address_sks = format!("{}:{}", host_sks, port_sks);
                     let stream_sks = TcpStream::connect(address_sks).await?;
                     let io_sks = TokioIo::new(stream_sks);
-                    // Create the Hyper client
                     let (mut sender_sks, conn_sks) = hyper::client::conn::http1::handshake(io_sks).await?;
-                    // Spawn a task to poll the connection, driving the HTTP state
                     tokio::task::spawn(async move {
                         if let Err(err) = conn_sks.await {
                             println!("Connection failed: {:?}", err);
                         }
                     });
-                    // The authority of our URL will be the hostname of the httpbin remote
                     let authority_sks = url_register_sks.authority().unwrap().clone();
-                    let response_sks = SKSShareRequest { response: "Test".to_string(), sks_share: sks_bytes, id: share_count.share_id-1, round_id: count.round_count };
+                    let response_sks = SKSShareRequest { response: "Register_SKS_Share".to_string(), sks_share: sks_bytes, id: share_count.share_id-1, round_id: count.round_count };
                     let out_sks = json::encode(&response_sks).unwrap();
                     let req_sks = Request::post("http://127.0.0.1/")
                         .uri(url_register_sks.clone())
@@ -471,7 +403,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         .body(out_sks)?;
 
                     let mut res_sks = sender_sks.send_request(req_sks).await?;
-
                     println!("Response status: {}", res_sks.status());
 
                     // Stream the body, writing each frame to stdout as it arrives
@@ -494,27 +425,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         struct SKSSharePoll {
                             response: String,
                             round_id: u32,
-                            cyphernode_count: u32
+                            ciphernode_count: u32
                         }
 
+                        // Client Code Get all sks shares
                         let url_register_get_sks = "http://127.0.0.1/get_sks_shares".parse::<hyper::Uri>()?;
                         let host_get_sks = url_register_get_sks.host().expect("uri has no host");
                         let port_get_sks = url_register_get_sks.port_u16().unwrap_or(3000);
                         let address_get_sks = format!("{}:{}", host_get_sks, port_get_sks);
                         let stream_get_sks = TcpStream::connect(address_get_sks).await?;
                         let io_get_sks = TokioIo::new(stream_get_sks);
-                        // Create the Hyper client
                         let (mut sender_get_sks, conn_get_sks) = hyper::client::conn::http1::handshake(io_get_sks).await?;
-                        // Spawn a task to poll the connection, driving the HTTP state
                         tokio::task::spawn(async move {
                             if let Err(err) = conn_get_sks.await {
                                 println!("Connection failed: {:?}", err);
                             }
                         });
-                        // The authority of our URL will be the hostname of the httpbin remote
                         let authority_get_sks = url_register_get_sks.authority().unwrap().clone();
-                        // todo: use crisp config to know ciphernode count
-                        let response_get_sks = SKSSharePoll { response: "Test".to_string(), round_id: count.round_count, cyphernode_count: 1};
+                        let response_get_sks = SKSSharePoll { response: "Get_All_SKS_Shares".to_string(), round_id: count.round_count, ciphernode_count: num_parties as u32};
                         let out_get_sks = json::encode(&response_get_sks).unwrap();
                         let req_get_sks = Request::post("http://127.0.0.1/")
                             .uri(url_register_get_sks.clone())
@@ -526,26 +454,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                         let body_bytes = res_get_sks.collect().await?.to_bytes();
                         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-                        // find way to expect two different json responses
                         let shares: SKSShareResponse = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
 
                         if(shares.response == "final") {
                             // do decrypt
                             println!("collected all of the decrypt shares!");
-
-                            //let mut sks_server_shares = Vec::with_capacity(num_parties);
                             for i in 0..num_parties {
-                                //decryption_shares.push(DecryptionShare::deserialize(&shares.sks_shares[i], &params, Arc::new(votes_encrypted[i].clone())));
                                 decryption_shares.push(DecryptionShare::deserialize(&shares.sks_shares[i], &params, tally.clone()));
                             }
-                            //decryption_shares.push(sh);
-
-                            // timeit_n!("Decryption (per party)", num_parties as u32, {
-                            //     let sh = DecryptionShare::new(&parties[_i].sk_share, &tally, &mut thread_rng())?;
-                            //     //let tester = sh.to_bytes();
-                            //     decryption_shares.push(sh);
-                            //     _i += 1;
-                            // });
 
                             // Again, an aggregating party aggregates the decryption shares to produce the
                             // decrypted plaintext.
@@ -558,7 +474,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                             // Show vote result
                             println!("Vote result = {} / {}", tally_result, num_voters);
-                            //println!("Vote result = 2 / 2");
                             break;
                         }
 
@@ -573,21 +488,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Polling time to server...
         let polling_wait = time::Duration::from_millis(6000);
         thread::sleep(polling_wait);
-
-        // // Aggregation: this could be one of the parties or a separate entity. Or the
-        // // parties can aggregate cooperatively, in a tree-like fashion.
-        // let pk = timeit!("Public key aggregation", {
-        //     let pk: PublicKey = parties.iter().map(|p| p.pk_share.clone()).aggregate()?;
-        //     pk
-        // });
-
-        // let pk_test = timeit!("Public key aggregation after serialize", {
-        //     let pk_test: PublicKey = parties_test.iter().map(|p| p.pk_share.clone()).aggregate()?;
-        //     pk_test
-        // });
-
-        // println!("{:?}", pk);
     }
-    
     Ok(())
 }
