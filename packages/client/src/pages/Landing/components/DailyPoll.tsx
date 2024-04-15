@@ -35,7 +35,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
       <div className='flex h-screen w-screen flex-col items-center justify-center px-6'>
         <div className='mx-auto flex w-full max-w-screen-md flex-col items-center justify-center space-y-12'>
           <div className='space-y-2'>
-            <p className='text-center text-sm font-extrabold uppercase text-slate-800'>Daily Poll</p>
+            <p className='text-center text-sm font-extrabold uppercase text-slate-400'>Daily Poll</p>
             <h3 className='font-bold leading-none text-slate-600'>Choose your favorite</h3>
           </div>
           <div className='flex items-center justify-center space-x-2'>
