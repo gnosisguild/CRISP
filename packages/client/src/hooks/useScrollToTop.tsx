@@ -5,7 +5,7 @@ import { useLocation } from 'react-router-dom'
 const useScrollToTop = () => {
   const location = useLocation()
   useEffect(() => {
-    const scrollContainer = document.querySelector('.scroll-container')
+    const scrollContainer = document.body
     if (scrollContainer) {
       scrollContainer.scrollTo(0, 0)
     }

@@ -6,7 +6,7 @@ interface CardContentProps {
 
 const CardContent: React.FC<CardContentProps> = ({ children }) => {
   return (
-    <div className='min-h-[716px] w-full max-w-[900px] space-y-10 rounded-[24px] border-2 border-twilight-blue-200 bg-white-900 p-12 shadow-modal'>
+    <div className='bg-white min-h-[716px] w-full max-w-[900px] space-y-10 rounded-[24px] border-2 border-slate-600/20 p-12 shadow-2xl'>
       {children}
     </div>
   )

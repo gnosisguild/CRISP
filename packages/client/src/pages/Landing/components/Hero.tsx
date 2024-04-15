@@ -1,40 +1,56 @@
 import React, { useState } from 'react'
-import Hero from '../../../assets/images/hero.svg'
 import Logo from '../../../assets/icons/logo.svg'
-import Modal from '../../../components/Modal'
-import RegisterModal from '../../Register/Register'
+import CircularTiles from '../../../components/CircularTiles'
+import { ArrowSquareOut, Keyhole, ListMagnifyingGlass, ShieldCheck } from '@phosphor-icons/react'
 
 const HeroSection: React.FC = () => {
-  const [modalOpen, setModalOpen] = useState(false)
-
-  const openModal = () => setModalOpen(true)
-  const closeModal = () => setModalOpen(false)
-
   return (
-    <div
-      className='flex min-h-screen w-screen items-center justify-center px-6'
-      style={{
-        backgroundImage: `url(${Hero})`,
-        backgroundSize: 'cover',
-        backgroundPosition: `center`,
-      }}
-    >
-      <div className='mx-auto w-full max-w-screen-md space-y-12'>
-        <div className='flex w-full flex-col items-center justify-center space-y-5'>
-          <h3 className='text-center text-zinc-900'>Introducing</h3>
+    <div className='relative flex min-h-screen w-screen items-center justify-center px-6'>
+      <div className='absolute bottom-1 right-0 w-[40vh] space-y-2'>
+        <CircularTiles count={2} />
+      </div>
+      <div className='relative mx-auto w-full max-w-screen-md space-y-12'>
+        <div className='space-y-4'>
+          <h3 className='text-3xl font-normal leading-none text-zinc-400'>Introducing</h3>
           <img src={Logo} alt='CRISP Logo' className='h-20' />
-          <h4 className='w-full text-center text-gray-900'>Collusion-Resistant Impartial Selection Protocol</h4>
+          <h4 className='w-full text-base leading-none text-slate-800/50'>Collusion-Resistant Impartial Selection Protocol</h4>
         </div>
-        <div className='flex w-full items-center justify-center space-x-6'>
-          <button className='button button-max' onClick={openModal}>
-            Register
-          </button>
-          <button className='button-outlined button-max'>Learn More</button>
+        <ul className='space-y-3'>
+          <li className='flex items-center space-x-2'>
+            <Keyhole className='text-lime-600/80' size={32} />
+            <div className='text-lg text-zinc-400'>
+              <span className='mr-1 font-bold text-lime-600/80'>Private.</span>
+              Voter privacy through advaned encryption.
+            </div>
+          </li>
+          <li className='flex items-center space-x-2'>
+            <ListMagnifyingGlass className='text-lime-600/80' size={32} />
+            <div className='text-lg text-zinc-400'>
+              <span className='mr-1 font-bold text-lime-600/80'>Reliable.</span>
+              Verifiable results while preserving confidentiality.
+            </div>
+          </li>
+          <li className='flex items-center space-x-2'>
+            <ShieldCheck className='text-lime-600/80' size={32} />
+            <div className='text-lg text-zinc-400'>
+              <span className='mr-1 font-bold text-lime-600/80'>Equitable.</span>
+              Robust safeguards against collusion and tampering.
+            </div>
+          </li>
+        </ul>
+        <div className='space-y-3'>
+          <a href='/daily'>
+            <button className='button-primary'>Try Demo</button>
+          </a>
+          <a
+            href='/about'
+            className='inline-flex cursor-pointer items-center space-x-2 text-lime-600 duration-300 ease-in-out hover:opacity-70'
+          >
+            <ArrowSquareOut size={20} weight='bold' />
+            <div>Learn more.</div>
+          </a>
         </div>
       </div>
-      <Modal show={modalOpen} onClose={closeModal}>
-        <RegisterModal onClose={closeModal} />
-      </Modal>
     </div>
   )
 }
