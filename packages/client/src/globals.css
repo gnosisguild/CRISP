@@ -101,11 +101,11 @@
 @layer components {
   /* Buttons */
   .button-primary {
-    @apply button-styles border-lime-600/80 bg-lime-400 text-white active:translate-y-1 active:bg-lime-600 active:text-white/70 active:shadow-none enabled:shadow-button enabled:hover:bg-lime-500;
+    @apply button-styles border-lime-600/80 bg-lime-400 text-white active:translate-y-1 active:bg-lime-600 active:text-white/70 active:shadow-none enabled:shadow-button enabled:hover:bg-lime-500 disabled:cursor-not-allowed disabled:border-gray-500 disabled:bg-slate-200 disabled:text-gray-500 disabled:shadow-none;
   }
 
   .button-outlined {
-    @apply button-styles border-lime-400 bg-white text-lime-400 active:translate-y-1 active:bg-lime-200 active:text-lime-400/70 active:shadow-none enabled:shadow-button-outlined enabled:hover:bg-lime-100;
+    @apply button-styles border-lime-400 bg-white text-lime-400 active:translate-y-1 active:bg-lime-200 active:text-lime-400/70 active:shadow-none enabled:shadow-button-outlined enabled:hover:bg-lime-100 disabled:border-gray-500 disabled:bg-slate-200 disabled:text-gray-500 disabled:shadow-none;
   }
 
   .button-connect {
