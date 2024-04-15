@@ -25,7 +25,7 @@ const Card: React.FC<CardProps> = ({ children, isDetails, checked, onChecked }) 
       className={`
         h-full
         cursor-pointer
-        ${isDetails ? ' p-4' : 'h-auto min-h-[288px] p-20 sm:w-full md:w-[434px]'}
+        ${isDetails ? ' p-4' : 'h-auto min-h-[288px] p-20'}
         bg-white rounded-[24px] text-black
         ${!isDetails && 'shadow-custom-1'}
         transform 
@@ -33,8 +33,8 @@ const Card: React.FC<CardProps> = ({ children, isDetails, checked, onChecked }) 
         ${isClicked ? 'scale-105 border-green-light' : ''}
         ${isClicked ? 'border-green-light' : 'border-twilight-blue-200'}
         ${isClicked ? 'bg-white-900' : 'bg-white-500'}
-        ${!isDetails && 'hover:shadow-lg'}
-        flex items-center justify-center
+        ${!isDetails && 'hover:bg-white-900 hover:shadow-lg'}
+        flex w-full items-center justify-center
       `}
       onClick={handleClick}
     >

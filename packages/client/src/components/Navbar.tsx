@@ -8,10 +8,10 @@ const PAGES = [
     label: 'About',
     path: '/about',
   },
-  {
-    label: 'Daily Polls',
-    path: '/daily',
-  },
+  // {
+  //   label: 'Daily Polls',
+  //   path: '/daily',
+  // },
   {
     label: 'Docs',
     path: '/docs',
@@ -33,9 +33,7 @@ const Navbar: React.FC = () => {
     <nav className='border-b-2 border-twilight-blue-200 bg-white-900 shadow-md '>
       <div className='mx-auto max-w-7xl px-4 sm:px-2 lg:px-9'>
         <div className='flex h-20 items-center justify-between'>
-          {/* Logo */}
           <img src={Logo} alt='CRISP Logo' className='h-8 cursor-pointer' onClick={() => navigate('/')} />
-
           <div className='hidden sm:flex sm:items-center sm:gap-8'>
             {PAGES.map(({ label, path }) => (
               <a

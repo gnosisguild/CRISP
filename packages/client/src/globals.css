@@ -40,27 +40,27 @@
 
   /* Headings & Subtitles */
   h1 {
-    @apply text-6xl font-bold;
+    @apply text-4xl font-bold md:text-6xl;
   }
 
   h2 {
-    @apply text-5xl font-bold;
+    @apply text-3xl font-bold md:text-5xl;
   }
 
   h3 {
-    @apply text-4xl font-bold;
+    @apply text-2xl font-bold md:text-4xl;
   }
 
   h4 {
-    @apply text-[32px] font-semibold leading-[34px];
+    @apply text-lg font-semibold leading-tight md:text-xl;
   }
 
   h5 {
-    @apply text-2xl font-semibold;
+    @apply text-[20px] text-lg font-semibold;
   }
 
   h6 {
-    @apply text-xl font-medium;
+    @apply text-[20px] text-lg font-medium;
   }
 
   p {
@@ -113,11 +113,11 @@
 @layer components {
   /* Buttons */
   .button {
-    @apply button-styles flex h-[32px] w-[121px] items-center justify-center rounded-full border-2 border-green-dark-800  bg-green-light px-5 py-1 text-base font-extrabold uppercase leading-custom tracking-custom  text-white-900 shadow-custom-1 shadow-custom-2;
+    @apply button-styles flex h-[32px] w-[121px] items-center justify-center rounded-full border-2 border-green-dark-800 bg-green-light px-5 py-1 text-base font-extrabold uppercase leading-custom tracking-custom  text-white-900 shadow-custom-1 shadow-custom-2 hover:bg-green-dark-800;
   }
 
   .button-outlined {
-    @apply button-styles flex h-[32px] w-[121px] items-center justify-center rounded-full border-2 border-green-light  bg-white-900 px-5 py-1 text-base  font-extrabold uppercase leading-custom tracking-custom text-green-light shadow-custom-1;
+    @apply button-styles flex h-[32px] w-[121px] items-center justify-center rounded-full border-2 border-green-light  bg-white-900 px-5 py-1 text-base  font-extrabold uppercase leading-custom tracking-custom text-green-light shadow-custom-1 hover:bg-green-light hover:text-white-900;
   }
 
   .button-connect {
@@ -130,6 +130,10 @@
 
   .button-cancel {
     @apply button-styles border-red h-9 border-2 px-3.5 py-2 text-[15px] font-medium;
+  }
+
+  .button-disabled {
+    @apply cursor-default opacity-50 shadow-none hover:bg-white-900 hover:text-green-light;
   }
 
   /* Inputs & Selects */
@@ -189,7 +193,7 @@
 
 @layer utilities {
   .button-styles {
-    @apply flex h-10 cursor-pointer items-center justify-center rounded-full px-4 py-2.5 font-jakarta;
+    @apply flex h-10 cursor-pointer items-center justify-center rounded-full px-4 py-2.5 font-jakarta transition-all duration-300 ease-in-out;
   }
 
   .icon {
