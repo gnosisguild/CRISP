@@ -16,7 +16,10 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
   const [modalOpen, setModalOpen] = useState(false)
 
   const openModal = () => setModalOpen(true)
-  const closeModal = () => setModalOpen(false)
+  const closeModal = () => {
+    onVoted && onVoted()
+    setModalOpen(false)
+  }
 
   const handleChecked = (selectedId: number) => {
     const updatedOptions = pollOptions.map((option) => ({
@@ -36,11 +39,11 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
             <h3 className='font-bold leading-none text-slate-600'>Choose your favorite</h3>
           </div>
           <div className='flex items-center justify-center space-x-2'>
-            <div className='text-white flex items-center space-x-2 rounded-lg border-2 border-lime-600/80 bg-lime-400 px-2 py-1 text-center font-bold uppercase leading-none'>
-              <div className='bg-white h-1.5 w-1.5 animate-pulse rounded-full'></div>
+            <div className='flex items-center space-x-2 rounded-lg border-2 border-lime-600/80 bg-lime-400 px-2 py-1 text-center font-bold uppercase leading-none text-white'>
+              <div className='h-1.5 w-1.5 animate-pulse rounded-full bg-white'></div>
               <div>Live</div>
             </div>
-            <div className='bg-white rounded-lg border-2 border-slate-600/20 px-2 py-1.5 text-center font-bold uppercase leading-none text-slate-800/50'>
+            <div className='rounded-lg border-2 border-slate-600/20 bg-white px-2 py-1.5 text-center font-bold uppercase leading-none text-slate-800/50'>
               23 votes
             </div>
           </div>

@@ -1,6 +1,7 @@
-import React, { useState } from 'react'
+import React from 'react'
 import Logo from '../../../assets/icons/logo.svg'
 import CircularTiles from '../../../components/CircularTiles'
+import { Link } from 'react-router-dom'
 import { ArrowSquareOut, Keyhole, ListMagnifyingGlass, ShieldCheck } from '@phosphor-icons/react'
 
 const HeroSection: React.FC = () => {
@@ -20,7 +21,7 @@ const HeroSection: React.FC = () => {
             <Keyhole className='text-lime-600/80' size={32} />
             <div className='text-lg text-zinc-400'>
               <span className='mr-1 font-bold text-lime-600/80'>Private.</span>
-              Voter privacy through advaned encryption.
+              Voter privacy through advanced encryption.
             </div>
           </li>
           <li className='flex items-center space-x-2'>
@@ -39,16 +40,16 @@ const HeroSection: React.FC = () => {
           </li>
         </ul>
         <div className='space-y-3'>
-          <a href='/daily'>
+          <Link to='/daily'>
             <button className='button-primary'>Try Demo</button>
-          </a>
-          <a
-            href='/about'
+          </Link>
+          <Link
+            to='/about'
             className='inline-flex cursor-pointer items-center space-x-2 text-lime-600 duration-300 ease-in-out hover:opacity-70'
           >
             <ArrowSquareOut size={20} weight='bold' />
             <div>Learn more.</div>
-          </a>
+          </Link>
         </div>
       </div>
     </div>

@@ -12,6 +12,7 @@
   "dependencies": {
     "@emotion/babel-plugin": "^11.11.0",
     "@emotion/react": "^11.11.4",
+    "@phosphor-icons/react": "^2.1.4",
     "@svgr/rollup": "^8.1.0",
     "axios": "^1.6.8",
     "react": "^18.2.0",

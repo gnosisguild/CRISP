@@ -4,10 +4,9 @@ import { PAST_POLLS } from '../../../mocks/polls'
 import { PollResult } from '../../../model/poll.model'
 
 type PastPollSectionProps = {
-  customClass?: string
   customLabel?: string
 }
-const PastPollSection: React.FC<PastPollSectionProps> = ({ customClass = 'h-screen-minus-header', customLabel = 'Past polls' }) => {
+const PastPollSection: React.FC<PastPollSectionProps> = ({ customLabel = 'Past polls' }) => {
   return (
     <div className={`flex min-h-screen w-screen flex-col items-center justify-center space-y-12 px-6 py-32`}>
       <h1 className='text-h1 font-bold text-slate-600'>{customLabel}</h1>

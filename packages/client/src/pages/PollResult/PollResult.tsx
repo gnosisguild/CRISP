@@ -64,7 +64,7 @@ const PollResult: React.FC = () => {
           </p>
         </div>
       </CardContent>
-      <PastPollSection customClass='' customLabel='Historic polls' />
+      <PastPollSection customLabel='Historic polls' />
     </div>
   )
 }

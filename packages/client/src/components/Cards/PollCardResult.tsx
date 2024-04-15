@@ -5,19 +5,9 @@ import Card from './Card'
 type PollCardResultProps = {
   results: PollOption[]
   totalVotes: number
-  spaceCards?: string
-  height?: number
-  width?: number
   isResult?: boolean
 }
-const PollCardResult: React.FC<PollCardResultProps> = ({
-  isResult,
-  results,
-  totalVotes,
-  spaceCards = 'space-x-8',
-  height = 80,
-  width = 80,
-}) => {
+const PollCardResult: React.FC<PollCardResultProps> = ({ isResult, results, totalVotes }) => {
   const calculatePercentage = (votes: number) => {
     return ((votes / totalVotes) * 100).toFixed(0)
   }
