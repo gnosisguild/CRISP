@@ -39,12 +39,16 @@ use ethers::{
 
 #[wasm_bindgen]
 pub struct Encrypt {
-    width: u32,
-    height: u32,
+    encrypted_vote: Vec<u8>,
 }
 
+#[wasm_bindgen]
 impl Encrypt {
-    fn encrypt_vote(vote: u64, public_key: Vec<u8>) -> Bytes {
+    pub fn new(&mut self) {
+        self.encrypted_vote = Vec::new();
+    }
+
+    pub fn encrypt_vote(&mut self, vote: u64, public_key: Vec<u8>) -> Vec<u8> {
         let degree = 4096;
         let plaintext_modulus: u64 = 4096;
         let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
@@ -61,10 +65,12 @@ impl Encrypt {
         let votes: Vec<u64> = [vote].to_vec();
         let pt = Plaintext::try_encode(&[votes[0]], Encoding::poly(), &params).unwrap();
         let ct = pk_deserialized.try_encrypt(&pt, &mut thread_rng()).unwrap();
-        Bytes::from(ct.to_bytes())
+        //let sol_vote = Bytes::from(ct.to_bytes());
+        self.encrypted_vote = ct.to_bytes();
+        self.encrypted_vote.clone()
     }
 
-    fn test() {
+    pub fn test() {
         println!("Test Function Working");
     }
 }
