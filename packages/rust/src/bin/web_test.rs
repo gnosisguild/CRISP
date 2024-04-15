@@ -37,56 +37,39 @@ use ethers::{
     utils,
 };
 
-type Client = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
-
-#[derive(RustcEncodable, RustcDecodable)]
-struct JsonRequestGetRounds {
-    response: String,
+#[wasm_bindgen]
+pub struct Encrypt {
+    width: u32,
+    height: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable)]
-struct RoundCount {
-    round_count: u32,
-}
+impl Encrypt {
+    fn encrypt_vote(vote: u64, public_key: Vec<u8>) -> Bytes {
+        let degree = 4096;
+        let plaintext_modulus: u64 = 4096;
+        let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
+        // Let's generate the BFV parameters structure.
+        let params = timeit!(
+            "Parameters generation",
+            BfvParametersBuilder::new()
+                .set_degree(degree)
+                .set_plaintext_modulus(plaintext_modulus)
+                .set_moduli(&moduli)
+                .build_arc().unwrap()
+        );
+        let pk_deserialized = PublicKey::from_bytes(&public_key, &params).unwrap();
+        let votes: Vec<u64> = [vote].to_vec();
+        let pt = Plaintext::try_encode(&[votes[0]], Encoding::poly(), &params).unwrap();
+        let ct = pk_deserialized.try_encrypt(&pt, &mut thread_rng()).unwrap();
+        Bytes::from(ct.to_bytes())
+    }
 
-#[derive(RustcEncodable, RustcDecodable)]
-struct JsonRequest {
-    response: String,
-    pk_share: u32,
-    id: u32,
-    round_id: u32,
-}
-
-#[derive(Debug, Deserialize, RustcEncodable)]
-struct CrispConfig {
-    round_id: u32,
-    chain_id: u32,
-    voting_address: String,
-    cyphernode_count: u32,
-    voter_count: u32,
-}
-
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
-struct PKRequest {
-    round_id: u32,
-    pk_bytes: Vec<u8>,
+    fn test() {
+        println!("Test Function Working");
+    }
 }
 
 #[tokio::main]
-//#[wasm_bindgen]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let degree = 4096;
-    let plaintext_modulus: u64 = 4096;
-    let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
-    // Let's generate the BFV parameters structure.
-    let params = timeit!(
-        "Parameters generation",
-        BfvParametersBuilder::new()
-            .set_degree(degree)
-            .set_plaintext_modulus(plaintext_modulus)
-            .set_moduli(&moduli)
-            .build_arc()?
-    );
-    println!("let's bring fhe to the web! gg");
     Ok(())
 }
