@@ -14,10 +14,10 @@ const Footer: React.FC = () => {
 
           <Link to='https://www.gnosisguild.org/' target='_blank'>
             <div className='flex cursor-pointer items-center space-x-2'>
-              <p className='flex items-center space-x-2 text-sm'>built with</p>
+              <p className='flex items-center space-x-2 text-sm'>Secured with </p>
               <img src={EnclaveLogo} className='h-[24] w-[24]' />
               <p className='text-sm'>
-                by <span className='font-bold'> Gnosis Guild</span>
+                built by <span className='font-bold'> Gnosis Guild</span>
               </p>
               <img src={GnosisGuildLogo} className='h-[24] w-[24]' />
             </div>
