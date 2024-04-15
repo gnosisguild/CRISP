@@ -5,6 +5,9 @@ import Card from './Card'
 type PollCardResultProps = {
   results: PollOption[]
   totalVotes: number
+  spaceCards?: string
+  height?: number
+  width?: number
   isResult?: boolean
 }
 const PollCardResult: React.FC<PollCardResultProps> = ({ isResult, results, totalVotes }) => {
@@ -13,7 +16,7 @@ const PollCardResult: React.FC<PollCardResultProps> = ({ isResult, results, tota
   }
 
   return (
-    <div className='grid w-full grid-cols-2 gap-4 md:gap-8'>
+    <div className={`grid ${isResult ? 'sm:w-full md:w-1/3' : 'w-full'} grid-cols-2 gap-4 md:gap-8`}>
       {results.map((poll) => (
         <div className='col-span-1 w-full'>
           <div
