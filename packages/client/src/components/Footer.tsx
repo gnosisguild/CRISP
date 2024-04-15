@@ -1,10 +1,8 @@
 import React from 'react'
-import { useLocation } from 'react-router-dom'
 import GnosisGuildLogo from '../assets/icons/gg.svg'
+import EnclaveLogo from '../assets/icons/enclaveLogo.svg'
 
 const Footer: React.FC = () => {
-  const location = useLocation()
-  const path = location.pathname
 
   const goToGnosisGuild = () => window.open('https://www.gnosisguild.org/', '_blank')
 
@@ -14,10 +12,12 @@ const Footer: React.FC = () => {
         <div className='flex items-center justify-between gap-2'>
           <p className='text-sm font-bold'>CRISP Whitepaper</p>
           <div className='flex cursor-pointer items-center space-x-2' onClick={goToGnosisGuild}>
-            <p className='text-sm'>
-              Built by <span className='font-bold'> Gnosis Guild</span>
-            </p>
-            <img src={GnosisGuildLogo} className='h-[24] w-[24]' />
+          <p className='flex items-center space-x-2 text-sm'>built with</p>
+          <img src={EnclaveLogo} className='h-[24] w-[24]' />
+          <p className='text-sm'>
+            by <span className='font-bold'> Gnosis Guild</span>
+          </p>
+          <img src={GnosisGuildLogo} className='h-[24] w-[24]' />
           </div>
         </div>
       </div>

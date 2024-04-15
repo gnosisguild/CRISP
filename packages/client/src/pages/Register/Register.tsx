@@ -7,7 +7,7 @@ interface RegisterProps {
 const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
   const handleSubmit = () => {
     window.open(
-      'https://twitter.com/intent/tweet?text=I%20authenticate%20that%20this%20Twitter%20account%20is%20owned%20by%20me.%20%23crisp%20%23dailypoll_13',
+      'https://warpcast.com/~/compose?text=I%20authenticate%20that%20this%20Farcaster%20account%20is%20owned%20by%20me.%20#crisp%20#dailypoll_13',
       '_blank',
     )
   }
@@ -21,7 +21,7 @@ const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
         <p className='text-base font-extrabold uppercase text-slate-500'>why am i doing this</p>
         <p className=' text-xl  text-slate-600'>
           Since this is a simple single-use web app, we&apos;re creating an easy-to-use authentication system that only requires you to
-          validate ownership of your Twitter account via a single post.
+          validate ownership of your Farcaster account via a single post.
         </p>
       </div>
       <div className='space-y-2'>

@@ -3,6 +3,15 @@ import type { Config } from 'tailwindcss'
 const config: Config = {
   content: ['./src/**/*.{js,jsx,ts,tsx,mdx}'],
   // safelist: ["show-scrollbar", "hide-scrollbar"],
+  variant: {
+    extend: {
+      borderColor: ['disabled'],
+      backgroundColor: ['disabled'],
+      textColor: ['disabled'],
+      boxShadow: ['disabled'],
+      cursor: ['disabled'],
+    },
+  },
   theme: {
     extend: {
       fontFamily: {

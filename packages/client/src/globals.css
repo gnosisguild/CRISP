@@ -99,11 +99,12 @@
 }
 
 @layer components {
+  
   /* Buttons */
   .button-primary {
-    @apply button-styles text-white enabled:shadow-button active:text-white/70 border-lime-600/80 bg-lime-400 active:translate-y-1 active:bg-lime-600 active:shadow-none enabled:hover:bg-lime-500;
+    @apply button-styles text-white enabled:shadow-button active:text-white/70 border-lime-600/80 bg-lime-400 active:translate-y-1 active:bg-lime-600 active:shadow-none enabled:hover:bg-lime-500 disabled:cursor-not-allowed disabled:border-gray-500 disabled:bg-twilight-blue-200 disabled:text-gray-500 disabled:shadow-none;;
   }
-
+  /* disabled:cursor-not-allowed disabled:border-gray-500 disabled:bg-white-600 disabled:text-gray-500 disabled:shadow-none; */
   .button-outlined {
     @apply button-styles bg-white enabled:shadow-button-outlined border-lime-400 text-lime-400 active:translate-y-1 active:bg-lime-200 active:text-lime-400/70 active:shadow-none enabled:hover:bg-lime-100;
   }
