@@ -10,6 +10,7 @@ import HistoricPoll from './pages/HistoricPoll/HistoricPoll'
 import About from './pages/About/About'
 import PollResult from './pages/PollResult/PollResult'
 import useScrollToTop from './hooks/useScrollToTop'
+import WhitePaper from './pages/Docs/WhitePaper'
 
 const App: React.FC = () => {
   useScrollToTop()
@@ -24,6 +25,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path='/' element={<Landing />} />
         <Route path='/about' element={<About />} />
+        <Route path='/whitepaper' element={<WhitePaper />} />
         <Route path='/daily' element={<DailyPoll />} />
         <Route path='/historic' element={<HistoricPoll />} />
         <Route path='/result' element={<PollResult />} />

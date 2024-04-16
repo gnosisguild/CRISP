@@ -6,7 +6,7 @@ import NotebookIcon from '../assets/icons/notebook.svg'
 import LogoutIcon from '../assets/icons/logout.svg'
 import { useNavigate } from 'react-router-dom'
 //Icons
-import Avatar from '../assets/images/exampleAvatar.svg'
+// import Avatar from '../assets/images/exampleAvatar.svg'
 import ArrowRight from '../assets/icons/arrowRight.svg'
 
 interface NavMenuProps {}
@@ -76,16 +76,17 @@ const NavMenu: React.FC<NavMenuProps> = () => {
       <button
         ref={buttonRef}
         onClick={toggleMenu}
-        className='hover:bg-white bg-white/60 flex items-center justify-between space-x-1 rounded-lg border-2 px-2 py-1 duration-300 ease-in-out'
+        className='flex items-center justify-between space-x-1 rounded-lg border-2 bg-white/60 px-2 py-1 duration-300 ease-in-out hover:bg-white'
       >
-        <img src={Avatar} />
+        {/* <img src={Avatar} /> */}
+        <div className='h-4 w-4 rounded-full bg-slate-300' />
         <p className='text-xs font-bold'>@juliopavila</p>
         <img src={ArrowRight} className={isOpen ? '-rotate-90' : ''} />
       </button>
 
       <div
         ref={menuRef}
-        className={`bg-white absolute right-0 mt-4 w-40 transform rounded-lg border-2 border-slate-600/10 p-4  shadow-md ${
+        className={`absolute right-0 mt-4 w-40 transform rounded-lg border-2 border-slate-600/10 bg-white p-4  shadow-md ${
           isOpen ? 'scale-100' : 'scale-0'
         }`}
       >

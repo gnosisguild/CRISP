@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom'
 
 const Footer: React.FC = () => {
   return (
-    <footer className='w-screen border-t-2 border-slate-600/20 bg-slate-200 p-6'>
+    <footer className='relative z-10 w-screen border-t-2 border-slate-600/20 bg-slate-200 p-6'>
       <div className='mx-auto w-full max-w-screen-xl'>
         <div className='flex items-center justify-between gap-2'>
           <Link to='https://www.gnosisguild.org/' target='_blank'>

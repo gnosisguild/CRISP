@@ -4,6 +4,7 @@ import { DAILY_POLL } from '../../../mocks/polls'
 import { Poll } from '../../../model/poll.model'
 import Modal from '../../../components/Modal'
 import RegisterModal from '../../Register/Register'
+import CircularTiles from '../../../components/CircularTiles'
 
 type DailyPollSectionProps = {
   isScreen?: boolean
@@ -32,7 +33,10 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
   }
   return (
     <>
-      <div className='flex h-screen w-screen flex-col items-center justify-center px-6'>
+      <div className='relative flex h-screen w-screen flex-col items-center justify-center px-6'>
+        <div className='absolute bottom-1 right-0 grid w-[70vh] grid-cols-2 gap-2'>
+          <CircularTiles count={4} />
+        </div>
         <div className='mx-auto flex w-full max-w-screen-md flex-col items-center justify-center space-y-12'>
           <div className='space-y-2'>
             <p className='text-center text-sm font-extrabold uppercase text-slate-800'>Daily Poll</p>
