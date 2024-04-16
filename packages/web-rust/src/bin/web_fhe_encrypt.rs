@@ -2,14 +2,14 @@ mod util;
 
 use wasm_bindgen::prelude::*;
 
-use std::{thread, time, env, sync::Arc};
 use serde::Deserialize;
+use std::{env, sync::Arc, thread, time};
 
 use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
 };
-use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize, DeserializeParametrized};
+use fhe_traits::{DeserializeParametrized, FheDecoder, FheEncoder, FheEncrypter, Serialize};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
 use util::timeit::{timeit, timeit_n};
 
@@ -20,34 +20,42 @@ pub struct Encrypt {
 
 #[wasm_bindgen]
 impl Encrypt {
-    pub fn new(&mut self) {
-        self.encrypted_vote = Vec::new();
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Encrypt {
+        Encrypt {
+            encrypted_vote: Vec::new(),
+        }
     }
 
-    pub fn encrypt_vote(&mut self, vote: u64, public_key: Vec<u8>) -> Vec<u8> {
+    pub fn encrypt_vote(&mut self, vote: u64, public_key: Vec<u8>) -> Result<Vec<u8>, JsValue> {
         let degree = 4096;
         let plaintext_modulus: u64 = 4096;
         let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
-        // Let's generate the BFV parameters structure.
-        let params = timeit!(
-            "Parameters generation",
-            BfvParametersBuilder::new()
-                .set_degree(degree)
-                .set_plaintext_modulus(plaintext_modulus)
-                .set_moduli(&moduli)
-                .build_arc().unwrap()
-        );
-        let pk_deserialized = PublicKey::from_bytes(&public_key, &params).unwrap();
-        let votes: Vec<u64> = [vote].to_vec();
-        let pt = Plaintext::try_encode(&[votes[0]], Encoding::poly(), &params).unwrap();
-        let ct = pk_deserialized.try_encrypt(&pt, &mut thread_rng()).unwrap();
-        //let sol_vote = Bytes::from(ct.to_bytes());
+
+        let params = BfvParametersBuilder::new()
+            .set_degree(degree)
+            .set_plaintext_modulus(plaintext_modulus)
+            .set_moduli(&moduli)
+            .build_arc()
+            .map_err(|e| JsValue::from_str(&format!("Error generating parameters: {}", e)))?;
+
+        let pk_deserialized = PublicKey::from_bytes(&public_key, &params)
+            .map_err(|e| JsValue::from_str(&format!("Error deserializing public key: {}", e)))?;
+
+        let votes = vec![vote];
+        let pt = Plaintext::try_encode(&votes, Encoding::poly(), &params)
+            .map_err(|e| JsValue::from_str(&format!("Error encoding plaintext: {}", e)))?;
+
+        let ct = pk_deserialized
+            .try_encrypt(&pt, &mut thread_rng())
+            .map_err(|e| JsValue::from_str(&format!("Error encrypting vote: {}", e)))?;
+
         self.encrypted_vote = ct.to_bytes();
-        self.encrypted_vote.clone()
+        Ok(self.encrypted_vote.clone())
     }
 
     pub fn test() {
-        println!("Test Function Working");
+        web_sys::console::log_1(&"Test Function Working".into());
     }
 }
 

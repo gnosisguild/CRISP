@@ -1,6 +1,6 @@
 import React from 'react'
-import CircleIcon from '../../assets/icons/caretCircle.svg'
-import CardContent from '../../components/Cards/CardContent'
+import CircleIcon from '@/assets/icons/caretCircle.svg'
+import CardContent from '@/components/Cards/CardContent'
 
 const About: React.FC = () => {
   return (

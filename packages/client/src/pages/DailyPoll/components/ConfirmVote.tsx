@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import CountdownTimer from '../../../components/CountdownTime'
-import CardContent from '../../../components/Cards/CardContent'
-import CircleIcon from '../../../assets/icons/caretCircle.svg'
-import CodeTextDisplay from '../../../components/CodeTextDisplay'
+import CountdownTimer from '@/components/CountdownTime'
+import CardContent from '@/components/Cards/CardContent'
+import CircleIcon from '@/assets/icons/caretCircle.svg'
+import CodeTextDisplay from '@/components/CodeTextDisplay'
 
 type ConfirmVoteProps = {
   endTime: Date

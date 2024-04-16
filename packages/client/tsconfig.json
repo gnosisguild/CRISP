@@ -18,8 +18,12 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "libs/*": ["./libs/*"]
+    }
   },
-  "include": ["src", "src/**/*.d.ts"],
+  "include": ["src", "src/**/*.d.ts", "pkg", "libs/wasm/pkg"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
-import Card from '../../../components/Cards/Card'
-import { DAILY_POLL } from '../../../mocks/polls'
-import { Poll } from '../../../model/poll.model'
-import Modal from '../../../components/Modal'
-import RegisterModal from '../../Register/Register'
+import Card from '@/components/Cards/Card'
+import { DAILY_POLL } from '@/mocks/polls'
+import { Poll } from '@/model/poll.model'
+import Modal from '@/components/Modal'
+import RegisterModal from '@/pages/Register/Register'
 
 type DailyPollSectionProps = {
   isScreen?: boolean

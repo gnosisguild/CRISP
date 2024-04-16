@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
-import { PollOption } from '../../model/poll.model'
-import VotesBadge from '../VotesBadge'
 import { useNavigate } from 'react-router-dom'
-import PollCardResult from './PollCardResult'
-import { markWinner } from '../../utils/methods'
+import { PollOption } from '@/model/poll.model'
+import VotesBadge from '@/components/VotesBadge'
+import PollCardResult from '@/components/Cards/PollCardResult'
+import { markWinner } from '@/utils/methods'
 
 interface PollCardProps {
   pollOptions: PollOption[]
@@ -26,7 +26,7 @@ const PollCard: React.FC<PollCardProps> = ({ pollOptions, totalVotes, date }) =>
 
   return (
     <div
-      className='bg-white/50 relative flex w-full cursor-pointer flex-col items-center justify-center space-y-4 rounded-3xl border-2 border-slate-600/20 p-8 pt-2 shadow-lg md:max-w-[274px]'
+      className='relative flex w-full cursor-pointer flex-col items-center justify-center space-y-4 rounded-3xl border-2 border-slate-600/20 bg-white/50 p-8 pt-2 shadow-lg md:max-w-[274px]'
       onClick={handleNavigation}
     >
       <div className='external-icon absolute right-4 top-4' />

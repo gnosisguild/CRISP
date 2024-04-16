@@ -143,7 +143,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let url_id = "http://127.0.0.1/get_rounds".parse::<hyper::Uri>()?;
             // Get the host and the port
             let host_id = url_id.host().expect("uri has no host");
-            let port_id = url_id.port_u16().unwrap_or(3000);
+            let port_id = url_id.port_u16().unwrap_or(4000);
             let address_id = format!("{}:{}", host_id, port_id);
             // Open a TCP connection to the remote host
             let stream_id = TcpStream::connect(address_id).await?;
@@ -181,7 +181,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let url = "http://127.0.0.1/init_crisp_round".parse::<hyper::Uri>()?;
             // Get the host and the port
             let host = url.host().expect("uri has no host");
-            let port = url.port_u16().unwrap_or(3000);
+            let port = url.port_u16().unwrap_or(4000);
             let address = format!("{}:{}", host, port);
             // Open a TCP connection to the remote host
             let stream = TcpStream::connect(address).await?;
@@ -244,7 +244,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let url_pk = "http://127.0.0.1/get_pk_by_round".parse::<hyper::Uri>()?;
             // Get the host and the port
             let host_pk = url_pk.host().expect("uri has no host");
-            let port_pk = url_pk.port_u16().unwrap_or(3000);
+            let port_pk = url_pk.port_u16().unwrap_or(4000);
             let address_pk = format!("{}:{}", host_pk, port_pk);
             // Open a TCP connection to the remote host
             let stream_pk = TcpStream::connect(address_pk).await?;
@@ -313,7 +313,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 let sol_vote = Bytes::from(ct.to_bytes());
                 //println!("{:?}", votes_encrypted[0].to_bytes());
                 //println!("{:?}", sol_vote);
-                let infura_key = "INFURAKEY";
+                let infura_key = "9a9193c8c1604e0c8f85b44c7674b33f";
                 let infura_val = env::var(infura_key).unwrap();
                 let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
                 RPC_URL.push_str(&infura_val);

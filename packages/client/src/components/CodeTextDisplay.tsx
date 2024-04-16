@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
 import { PrismLight as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism'
-import PaperIcon from '../assets/icons/paper.svg'
-import PaperPurpleIcon from '../assets/icons/paperPurple.svg'
-import FingerprintIcon from '../assets/icons/fingerprint.svg'
-import FingerprintWhiteIcon from '../assets/icons/fingerprintWhite.svg'
+import PaperIcon from '@/assets/icons/paper.svg'
+import PaperPurpleIcon from '@/assets/icons/paperPurple.svg'
+import FingerprintIcon from '@/assets/icons/fingerprint.svg'
+import FingerprintWhiteIcon from '@/assets/icons/fingerprintWhite.svg'
 
 interface CodeTextDisplayProps {}
 

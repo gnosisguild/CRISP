@@ -1,6 +1,6 @@
 import React from 'react'
-import { PollOption } from '../../model/poll.model'
-import Card from './Card'
+import { PollOption } from '@/model/poll.model'
+import Card from '@/components/Cards/Card'
 
 type PollCardResultProps = {
   results: PollOption[]
