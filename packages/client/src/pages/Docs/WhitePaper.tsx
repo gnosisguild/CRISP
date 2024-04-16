@@ -294,7 +294,7 @@ const WhitePaper = () => {
 
   return (
     <div className='relative min-h-screen w-screen px-6 py-28'>
-      <div className='fixed-graphic fixed bottom-1 right-0 grid w-[40vh] grid-cols-2 gap-2'>
+      <div className='fixed-graphic fixed bottom-0 right-0 grid w-[40vh] grid-cols-2 gap-2'>
         <CircularTiles count={4} />
       </div>
       <div className='relative mx-auto w-full max-w-screen-md'>

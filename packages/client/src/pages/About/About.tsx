@@ -2,11 +2,12 @@ import React from 'react'
 import CircleIcon from '../../assets/icons/caretCircle.svg'
 import CardContent from '../../components/Cards/CardContent'
 import CircularTiles from '../../components/CircularTiles'
+import { Link } from 'react-router-dom'
 
 const About: React.FC = () => {
   return (
     <div className='relative flex w-screen flex-col items-center justify-center py-28'>
-      <div className='absolute bottom-1 right-0 grid w-[70vh] grid-cols-2 gap-2'>
+      <div className='absolute bottom-0 right-0 grid w-[70vh] grid-cols-2 gap-2'>
         <CircularTiles count={4} />
       </div>
       <div className='relative space-y-12'>
@@ -39,7 +40,9 @@ const About: React.FC = () => {
             </p>
           </div>
         </CardContent>
-        <button className='button-outlined button-max'>view whitepaper</button>
+        <Link to='/whitepaper' className='inline-flex'>
+          <button className='button-outlined button-max'>view whitepaper</button>
+        </Link>
       </div>
     </div>
   )

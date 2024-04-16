@@ -34,7 +34,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
   return (
     <>
       <div className='relative flex h-screen w-screen flex-col items-center justify-center px-6'>
-        <div className='absolute bottom-1 right-0 grid w-[70vh] grid-cols-2 gap-2'>
+        <div className='absolute bottom-0 right-0 grid w-[70vh] grid-cols-2 gap-2'>
           <CircularTiles count={4} />
         </div>
         <div className='mx-auto flex w-full max-w-screen-md flex-col items-center justify-center space-y-12'>

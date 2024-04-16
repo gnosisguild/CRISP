@@ -7,7 +7,7 @@ import { ArrowSquareOut, Keyhole, ListMagnifyingGlass, ShieldCheck } from '@phos
 const HeroSection: React.FC = () => {
   return (
     <div className='relative flex min-h-screen w-screen items-center justify-center px-6'>
-      <div className='absolute bottom-1 right-0 grid w-[70vh] grid-cols-2 gap-2'>
+      <div className='absolute bottom-0 right-0 grid w-[70vh] grid-cols-2 gap-2'>
         <CircularTiles count={4} />
       </div>
       <div className='relative mx-auto w-full max-w-screen-md space-y-12'>
@@ -46,7 +46,7 @@ const HeroSection: React.FC = () => {
               to='/about'
               className='inline-flex cursor-pointer items-center space-x-1 text-lime-600 duration-300 ease-in-out hover:opacity-70'
             >
-              <ArrowSquareOut size={16} weight='bold' />
+              {/* <ArrowSquareOut size={16} weight='bold' /> */}
               <div>Learn more.</div>
             </Link>
           </div>
