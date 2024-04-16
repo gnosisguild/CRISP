@@ -1,7 +1,4 @@
-import type { Config } from 'tailwindcss'
-import typography from '@tailwindcss/typography'
-
-const config: Config = {
+const config = {
   content: ['./src/**/*.{js,jsx,ts,tsx,mdx}'],
   variant: {
     extend: {
@@ -31,6 +28,6 @@ const config: Config = {
       },
     },
   },
-  plugins: [typography],
+  plugins: [require('@tailwindcss/typography'),]
 }
 export default config
