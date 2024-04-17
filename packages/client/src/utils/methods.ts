@@ -1,4 +1,4 @@
-import { PollOption } from '../model/poll.model'
+import { PollOption } from '@/model/poll.model'
 
 export const markWinner = (options: PollOption[]) => {
   const highestVoteCount = Math.max(...options.map((o) => o.votes))

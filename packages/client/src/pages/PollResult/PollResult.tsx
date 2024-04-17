@@ -1,11 +1,11 @@
 import React, { useState } from 'react'
-import CardContent from '../../components/Cards/CardContent'
-import CircleIcon from '../../assets/icons/caretCircle.svg'
-import CodeTextDisplay from '../../components/CodeTextDisplay'
-import VotesBadge from '../../components/VotesBadge'
-import PollCardResult from '../../components/Cards/PollCardResult'
-import { markWinner } from '../../utils/methods'
-import PastPollSection from '../Landing/components/PastPoll'
+import CardContent from '@/components/Cards/CardContent'
+import CircleIcon from '@/assets/icons/caretCircle.svg'
+import CodeTextDisplay from '@/components/CodeTextDisplay'
+import VotesBadge from '@/components/VotesBadge'
+import PollCardResult from '@/components/Cards/PollCardResult'
+import { markWinner } from '@/utils/methods'
+import PastPollSection from '@/pages/Landing/components/PastPoll'
 
 const POLL = {
   id: 1,

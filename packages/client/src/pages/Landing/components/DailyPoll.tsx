@@ -1,10 +1,10 @@
 import React, { useState } from 'react'
-import Card from '../../../components/Cards/Card'
-import { DAILY_POLL } from '../../../mocks/polls'
-import { Poll } from '../../../model/poll.model'
-import Modal from '../../../components/Modal'
-import RegisterModal from '../../Register/Register'
-import CircularTiles from '../../../components/CircularTiles'
+import { DAILY_POLL } from '@/mocks/polls'
+import { Poll } from '@/model/poll.model'
+import Card from '@/components/Cards/Card'
+import Modal from '@/components/Modal'
+import CircularTiles from '@/components/CircularTiles'
+import RegisterModal from '@/pages/Register/Register'
 
 type DailyPollSectionProps = {
   isScreen?: boolean
@@ -39,7 +39,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
         </div>
         <div className='mx-auto flex w-full max-w-screen-md flex-col items-center justify-center space-y-12'>
           <div className='space-y-2'>
-            <p className='text-center text-sm font-extrabold uppercase text-slate-800'>Daily Poll</p>
+            <p className='text-center text-sm font-extrabold uppercase text-slate-400'>Daily Poll</p>
             <h3 className='font-bold leading-none text-slate-600'>Choose your favorite</h3>
           </div>
           <div className='flex items-center justify-center space-x-2'>

@@ -1,7 +1,6 @@
 import React, { Fragment, useState } from 'react'
-import DailyPollSection from '../Landing/components/DailyPoll'
-
-import ConfirmVote from './components/ConfirmVote'
+import DailyPollSection from '@/pages/Landing/components/DailyPoll'
+import ConfirmVote from '@/pages/DailyPoll/components/ConfirmVote'
 
 const DailyPoll: React.FC = () => {
   const [endTime, setEndTime] = useState<Date | null>(null)

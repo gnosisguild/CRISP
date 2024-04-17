@@ -1,24 +1,30 @@
-import React, { Fragment } from 'react'
-// import init, { greet } from '../public/pkg/rfv'
+import React, { Fragment, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
-import Navbar from './components/Navbar'
-import Footer from './components/Footer'
+import Navbar from '@/components/Navbar'
+import Footer from '@/components/Footer'
 //Pages
-import Landing from './pages/Landing/Landing'
-import DailyPoll from './pages/DailyPoll/DailyPoll'
-import HistoricPoll from './pages/HistoricPoll/HistoricPoll'
-import About from './pages/About/About'
-import PollResult from './pages/PollResult/PollResult'
-import useScrollToTop from './hooks/useScrollToTop'
+import Landing from '@/pages/Landing/Landing'
+import DailyPoll from '@/pages/DailyPoll/DailyPoll'
+import HistoricPoll from '@/pages/HistoricPoll/HistoricPoll'
+import About from '@/pages/About/About'
 import WhitePaper from './pages/Docs/WhitePaper'
+import PollResult from '@/pages/PollResult/PollResult'
+import useScrollToTop from '@/hooks/generic/useScrollToTop'
+import { useVoteManagementContext } from '@/context/voteManagement'
 
 const App: React.FC = () => {
   useScrollToTop()
-  // useEffect(() => {
-  //   init().then(() => {
-  //     greet('World. Consuming web assembly')
-  //   })
-  // }, [])
+  const { initWebAssembly, wasmInstance } = useVoteManagementContext()
+
+  useEffect(() => {
+    if (!wasmInstance) {
+      async function loadWasm() {
+        await initWebAssembly()
+      }
+      loadWasm()
+    }
+  }, [wasmInstance])
+
   return (
     <Fragment>
       <Navbar />

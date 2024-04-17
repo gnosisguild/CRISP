@@ -1,7 +1,7 @@
 import React from 'react'
-import Logo from '../assets/icons/logo.svg'
+import Logo from '@/assets/icons/logo.svg'
 import { Link } from 'react-router-dom'
-import NavMenu from './NavMenu'
+import NavMenu from '@/components/NavMenu'
 
 const PAGES = [
   {

@@ -1,5 +1,5 @@
 import React, { Fragment } from 'react'
-import HeroSection from './components/Hero'
+import HeroSection from '@/pages/Landing/components/Hero'
 // import DailyPollSection from './components/DailyPoll'
 // import PastPollSection from './components/PastPoll'
 

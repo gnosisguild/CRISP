@@ -1,10 +1,49 @@
 import React from 'react'
-import Logo from '../../../assets/icons/logo.svg'
-import CircularTiles from '../../../components/CircularTiles'
+import Logo from '@/assets/icons/logo.svg'
+import CircularTiles from '@/components/CircularTiles'
 import { Link } from 'react-router-dom'
 import { ArrowSquareOut, Keyhole, ListMagnifyingGlass, ShieldCheck } from '@phosphor-icons/react'
+import { useVoteManagementContext } from '@/context/voteManagement'
+import { pk_bytes } from '@/mocks/pk_key'
+import { ethers, utils, providers } from 'ethers'
 
+const contractAddress = '0x51Ec8aB3e53146134052444693Ab3Ec53663a12B'
+const dummy = ''
+
+const contractABI = [
+  {
+    inputs: [
+      {
+        internalType: 'bytes',
+        name: '_encVote',
+        type: 'bytes',
+      },
+    ],
+    name: 'voteEncrypted',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function',
+  },
+]
 const HeroSection: React.FC = () => {
+  const { encryptVote } = useVoteManagementContext()
+
+  const provider = new providers.JsonRpcProvider('https://sepolia.infura.io/v3/')
+  const contractInterface = new utils.Interface(contractABI)
+  const wallet = new ethers.Wallet(dummy, provider)
+
+  const test = async () => {
+    if (!provider) {
+      console.log('no provider')
+      return
+    }
+    const contract = new ethers.Contract(contractAddress, contractInterface, wallet)
+    const voteEncrypted = await encryptVote(BigInt(1), new Uint8Array(pk_bytes))
+    console.log('voteEncrypted', voteEncrypted?.toString())
+    const tx = await contract.voteEncrypted(voteEncrypted)
+    console.log('tx', tx)
+  }
+
   return (
     <div className='relative flex min-h-screen w-screen items-center justify-center px-6'>
       <div className='absolute bottom-0 right-0 grid w-[70vh] grid-cols-2 gap-2'>
@@ -46,13 +85,12 @@ const HeroSection: React.FC = () => {
               to='/about'
               className='inline-flex cursor-pointer items-center space-x-1 text-lime-600 duration-300 ease-in-out hover:opacity-70'
             >
-              {/* <ArrowSquareOut size={16} weight='bold' /> */}
               <div>Learn more.</div>
             </Link>
           </div>
-          <Link to='/daily' className='inline-flex'>
-            <button className='button-primary'>Try Demo</button>
-          </Link>
+          <button className='button-primary' onClick={test}>
+            Try Demo
+          </button>
         </div>
       </div>
     </div>

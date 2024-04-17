@@ -1,7 +1,7 @@
 import React from 'react'
-import PollCard from '../../components/Cards/PollCard'
-import { PAST_POLLS } from '../../mocks/polls'
-import { PollResult } from '../../model/poll.model'
+import PollCard from '@/components/Cards/PollCard'
+import { PAST_POLLS } from '@/mocks/polls'
+import { PollResult } from '@/model/poll.model'
 
 const HistoricPoll: React.FC = () => {
   return (

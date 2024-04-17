@@ -1,6 +1,6 @@
 import React from 'react'
-import GnosisGuildLogo from '../assets/icons/gg.svg'
-import EnclaveLogo from '../assets/icons/enclaveLogo.svg'
+import GnosisGuildLogo from '@/assets/icons/gg.svg'
+import EnclaveLogo from '@/assets/icons/enclaveLogo.svg'
 import { Link } from 'react-router-dom'
 
 const Footer: React.FC = () => {

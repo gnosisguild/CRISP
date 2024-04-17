@@ -152,7 +152,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Client Code Get Rounds
         let url_get_rounds = "http://127.0.0.1/get_rounds".parse::<hyper::Uri>()?;
         let host = url_get_rounds.host().expect("uri has no host");
-        let port = url_get_rounds.port_u16().unwrap_or(3000);
+        let port = url_get_rounds.port_u16().unwrap_or(4000);
         let address = format!("{}:{}", host, port);
         let stream = TcpStream::connect(address).await?;
         let io = TokioIo::new(stream);
@@ -187,7 +187,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             // Currently the number of shares becomes the cipher client ID for the round.
             let url_get_shareid = "http://127.0.0.1/get_pk_share_count".parse::<hyper::Uri>()?;
             let host_get_shareid = url_get_shareid.host().expect("uri has no host");
-            let port_get_shareid = url_get_shareid.port_u16().unwrap_or(3000);
+            let port_get_shareid = url_get_shareid.port_u16().unwrap_or(4000);
             let address_get_shareid = format!("{}:{}", host_get_shareid, port_get_shareid);
             let stream_get_shareid = TcpStream::connect(address_get_shareid).await?;
             let io_get_shareid = TokioIo::new(stream_get_shareid);
@@ -220,7 +220,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             // Client Code Get Server Round CRP
             let url_get_crp = "http://127.0.0.1/get_crp_by_round".parse::<hyper::Uri>()?;
             let host_get_crp = url_get_crp.host().expect("uri has no host");
-            let port_get_crp = url_get_crp.port_u16().unwrap_or(3000);
+            let port_get_crp = url_get_crp.port_u16().unwrap_or(4000);
             let address_get_crp = format!("{}:{}", host_get_crp, port_get_crp);
             let stream_get_crp = TcpStream::connect(address_get_crp).await?;
             let io_get_crp = TokioIo::new(stream_get_crp);
@@ -257,7 +257,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             // Client Code Register PK Share on Enclave server
             let url_register_keyshare = "http://127.0.0.1/register_keyshare".parse::<hyper::Uri>()?;
             let host_key = url_register_keyshare.host().expect("uri has no host");
-            let port_key = url_register_keyshare.port_u16().unwrap_or(3000);
+            let port_key = url_register_keyshare.port_u16().unwrap_or(4000);
             let address_key = format!("{}:{}", host_key, port_key);
             let stream_key = TcpStream::connect(address_key).await?;
             let io_key = TokioIo::new(stream_key);
@@ -293,10 +293,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("polling smart contract...");
             // chain state
             // todo, move into loop and boot up for different chains if needed.
-            let infura_key = "INFURAKEY";
-            let infura_val = env::var(infura_key).unwrap();
-            let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
-            RPC_URL.push_str(&infura_val);
+            // let infura_key = "";
+            // let infura_val = env::var(infura_key).unwrap();
+            let mut RPC_URL = "https://sepolia.infura.io/v3/INFURA".to_string();
+            // RPC_URL.push_str(&infura_val);
             let provider = Provider::<Http>::try_from(RPC_URL.clone())?;
             let block_number: U64 = provider.get_block_number().await?;
             println!("Current block height is {:?}", block_number);
@@ -318,8 +318,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             );
             let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
             let contract_address = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B".parse::<Address>().unwrap();
-            let eth_key = "PRIVATEKEY";
-            let eth_val = env::var(eth_key).unwrap();
+            // let eth_key = "PRIVATEKEY";
+            let eth_val = "PRIVATEKEY";
             let wallet: LocalWallet = eth_val
                 .parse::<LocalWallet>().unwrap()
                 .with_chain_id(11155111 as u64);
@@ -384,7 +384,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     // Client Code register sks share with chrys server
                     let url_register_sks = "http://127.0.0.1/register_sks_share".parse::<hyper::Uri>()?;
                     let host_sks = url_register_sks.host().expect("uri has no host");
-                    let port_sks = url_register_sks.port_u16().unwrap_or(3000);
+                    let port_sks = url_register_sks.port_u16().unwrap_or(4000);
                     let address_sks = format!("{}:{}", host_sks, port_sks);
                     let stream_sks = TcpStream::connect(address_sks).await?;
                     let io_sks = TokioIo::new(stream_sks);
@@ -431,7 +431,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         // Client Code Get all sks shares
                         let url_register_get_sks = "http://127.0.0.1/get_sks_shares".parse::<hyper::Uri>()?;
                         let host_get_sks = url_register_get_sks.host().expect("uri has no host");
-                        let port_get_sks = url_register_get_sks.port_u16().unwrap_or(3000);
+                        let port_get_sks = url_register_get_sks.port_u16().unwrap_or(4000);
                         let address_get_sks = format!("{}:{}", host_get_sks, port_get_sks);
                         let stream_get_sks = TcpStream::connect(address_get_sks).await?;
                         let io_get_sks = TokioIo::new(stream_get_sks);
