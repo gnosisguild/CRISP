@@ -5,6 +5,12 @@ on:
     branches:
       - main
 
+env:
+  VITE_PRIVATE_KEY: ${{ secrets.VITE_PRIVATE_KEY }}
+  VITE_INFURA_API_KEY: ${{ secrets.VITE_INFURA_API_KEY }}
+  VITE_TWITTER_SERVERLESS_API: ${{vars.VITE_TWITTER_SERVERLESS_API}}
+  VITE_CHRYSALIS_API: ${{vars.VITE_CHRYSALIS_API}}
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -30,7 +36,4 @@ jobs:
         with:
           branch: gh-pages # The branch the action should deploy to.
           folder: packages/client/dist # The folder the action should deploy.
-          private-key: ${{ secrets.VITE_PRIVATE_KEY }}
-          infura-api-key: ${{ secrets.VITE_INFURA_API_KEY }}
-          twitter-api: ${{vars.VITE_TWITTER_SERVERLESS_API}}
-          chrysalis-api: ${{vars.VITE_CHRYSALIS_API}}
+
