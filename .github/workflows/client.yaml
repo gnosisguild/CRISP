@@ -30,7 +30,7 @@ jobs:
         with:
           branch: gh-pages # The branch the action should deploy to.
           folder: packages/client/dist # The folder the action should deploy.
-          private-key: ${{ secrets.VITE_PRIVATE_KEY }
+          private-key: ${{ secrets.VITE_PRIVATE_KEY }}
           infura-api-key: ${{ secrets.VITE_INFURA_API_KEY }}
           twitter-api: ${{vars.VITE_TWITTER_SERVERLESS_API}}
           chrysalis-api: ${{vars.VITE_CHRYSALIS_API}}
