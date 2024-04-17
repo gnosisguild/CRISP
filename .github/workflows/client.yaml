@@ -32,3 +32,4 @@ jobs:
           folder: packages/client/dist # The folder the action should deploy.
     env:
       VITE_PRIVATE_KEY: ${{ secrets.VITE_PRIVATE_KEY }}
+      VITE_INFURA_API_KEY: ${{ secrets.VITE_INFURA_API_KEY }}
