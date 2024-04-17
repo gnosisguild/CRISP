@@ -29,7 +29,7 @@ use ethers::{
     providers::{Http, Provider},
     middleware::SignerMiddleware,
     signers::{LocalWallet, Signer, Wallet},
-    types::{Address, U256, Bytes},
+    types::{Address, U256, Bytes, TxHash},
     core::k256,
     utils,
 };
@@ -42,6 +42,12 @@ fn pick_response() -> String {
 #[derive(RustcEncodable, RustcDecodable)]
 struct JsonResponse {
     response: String
+}
+
+#[derive(RustcEncodable, RustcDecodable)]
+struct JsonResponseTxHash {
+    response: String,
+    tx_hash: String,
 }
 
 #[derive(RustcEncodable, RustcDecodable)]
@@ -125,9 +131,9 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     let config: CrispConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
 
     let sol_vote = Bytes::from(incoming.enc_vote_bytes);
-    call_contract(sol_vote).await;
+    let tx_hash = call_contract(sol_vote).await.unwrap();
 
-    let response = JsonResponse { response: "tx_sent".to_string() };
+    let response = JsonResponseTxHash { response: "tx_sent".to_string(), tx_hash: tx_hash.to_string() };
     let out = json::encode(&response).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -135,7 +141,7 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((content_type, status::Ok, out)))
 }
 
-async fn call_contract(enc_vote: Bytes) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn call_contract(enc_vote: Bytes) -> Result<TxHash, Box<dyn std::error::Error + Send + Sync>> {
     println!("calling voting contract");
 
     let infura_key = "INFURAKEY";
@@ -170,8 +176,9 @@ async fn call_contract(enc_vote: Bytes) -> Result<(), Box<dyn std::error::Error 
     let address: Address = VOTE_ADDRESS.parse()?;
     let contract = IVOTE::new(address, Arc::new(client.clone()));
 
-    contract.vote_encrypted(enc_vote).send().await?;
-    Ok(())
+    let test = contract.vote_encrypted(enc_vote).send().await?.clone();
+    println!("{:?}", test);
+    Ok(test)
 }
 
 fn get_crp_by_round(req: &mut Request) -> IronResult<Response> {

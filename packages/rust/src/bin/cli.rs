@@ -42,6 +42,12 @@ struct JsonResponse {
     response: String
 }
 
+#[derive(Deserialize, RustcEncodable, RustcDecodable)]
+struct JsonResponseTxHash {
+    response: String,
+    tx_hash: String,
+}
+
 #[derive(RustcEncodable, RustcDecodable)]
 struct JsonRequestGetRounds {
     response: String,
@@ -355,8 +361,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
             let body_bytes = res_contract.collect().await?.to_bytes();
             let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-            let contract_res: JsonResponse = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+            let contract_res: JsonResponseTxHash = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
             println!("Contract call: {:?}", contract_res.response);
+            println!("TxHash is {:?}", contract_res.tx_hash);
 
             // let sol_vote = Bytes::from(ct.to_bytes());
             // //println!("{:?}", votes_encrypted[0].to_bytes());
