@@ -46,7 +46,7 @@ struct JsonRequest {
     round_id: u32,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
 struct CrispConfig {
     round_id: u32,
     chain_id: u32,
@@ -86,6 +86,12 @@ struct SKSShareRequest {
     round_id: u32,
 }
 
+#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+struct EncryptedVote {
+    round_id: u32,
+    enc_vote_bytes: Vec<u8>,
+}
+
 // fn get_new_crisp_id(req: &mut Request) -> IronResult<Response> {
 
 // }
@@ -94,6 +100,32 @@ struct SKSShareRequest {
     // register ip address or some way to contact nodes when a computation request comes in
 
 // }
+
+fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: EncryptedVote = json::decode(&payload).unwrap();
+    let path = env::current_dir().unwrap();
+
+    let mut keypath = path.display().to_string();
+    keypath.push_str("/keyshares/");
+    keypath.push_str(&incoming.round_id.to_string());
+    keypath.push_str("/config.json");
+    let mut file = File::open(keypath).unwrap();
+    let mut data = String::new();
+    file.read_to_string(&mut data).unwrap();
+    let config: CrispConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
+
+
+
+    let response = JsonResponse { response: "tx_sent".to_string() };
+    let out = json::encode(&response).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    println!("Request for round {:?} send vote tx", incoming.round_id);
+    Ok(Response::with((content_type, status::Ok, out)))
+}
 
 fn get_crp_by_round(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
