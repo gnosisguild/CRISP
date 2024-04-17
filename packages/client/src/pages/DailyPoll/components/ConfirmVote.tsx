@@ -32,7 +32,7 @@ const ConfirmVote: React.FC<ConfirmVoteProps> = ({ endTime }) => {
             </p>
             <div className='flex cursor-pointer items-center space-x-2' onClick={() => setShowCode(!showCode)}>
               <p className='text-lime-400 underline'>See what&apos;s happening under the hood</p>
-              <img src={CircleIcon} className='h-[18] w-[18]' />
+              <img src={CircleIcon} className={`h-[18] w-[18] ${showCode ? '-rotate-90 transition-transform duration-200' : ''}`} />
             </div>
             {showCode && <CodeTextDisplay />}
           </div>

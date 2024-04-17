@@ -6,8 +6,8 @@ import NotebookIcon from '@/assets/icons/notebook.svg'
 import LogoutIcon from '@/assets/icons/logout.svg'
 import { useNavigate } from 'react-router-dom'
 //Icons
-import Avatar from '@/assets/images/exampleAvatar.svg'
 import ArrowRight from '@/assets/icons/arrowRight.svg'
+import { useVoteManagementContext } from '@/context/voteManagement'
 
 interface NavMenuProps {}
 
@@ -31,6 +31,7 @@ const NAV_MENU_OPTIONS = [
 
 const NavMenu: React.FC<NavMenuProps> = () => {
   const navigate = useNavigate()
+  const { user, logout } = useVoteManagementContext()
   const menuRef = useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useState<boolean>(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
@@ -68,19 +69,20 @@ const NavMenu: React.FC<NavMenuProps> = () => {
 
   const handleLogout = () => {
     navigate('/')
+    logout()
     return setIsOpen(!isOpen)
   }
 
-  return (
+  return user ? (
     <div className='relative'>
       <button
         ref={buttonRef}
         onClick={toggleMenu}
         className='flex items-center justify-between space-x-1 rounded-lg border-2 bg-white/60 px-2 py-1 duration-300 ease-in-out hover:bg-white'
       >
-        <img src={Avatar} />
-        <p className='text-xs font-bold'>@juliopavila</p>
-        <img src={ArrowRight} className={isOpen ? '-rotate-90' : ''} />
+        <img src={user.avatar} className='h-[20px] w-[20px] rounded-full' />
+        <p className='text-xs font-bold'>@{user.username}</p>
+        <img src={ArrowRight} className={isOpen ? '-rotate-90 transition-transform duration-200' : ''} />
       </button>
 
       <div
@@ -105,7 +107,7 @@ const NavMenu: React.FC<NavMenuProps> = () => {
         </div>
       </div>
     </div>
-  )
+  ) : null
 }
 
 export default NavMenu

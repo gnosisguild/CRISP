@@ -19,7 +19,7 @@ const About: React.FC = () => {
             </p>
             <div className='flex cursor-pointer items-center space-x-2'>
               <p className='text-lime-400 underline'>See what&apos;s happening under the hood</p>
-              <img src={CircleIcon} className='h-[18] w-[18]' />
+              <img src={CircleIcon} className='h-[18] w-[18] ' />
             </div>
           </div>
         </div>
