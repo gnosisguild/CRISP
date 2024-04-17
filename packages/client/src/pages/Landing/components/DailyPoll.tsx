@@ -48,6 +48,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
         <div className='absolute bottom-0 right-0 grid w-[70vh] grid-cols-2 gap-2'>
           <CircularTiles count={4} />
         </div>
+
         <div className='mx-auto flex w-full max-w-screen-md flex-col items-center justify-center space-y-12'>
           <div className='space-y-2'>
             <p className='text-center text-sm font-extrabold uppercase text-slate-400'>Daily Poll</p>
@@ -62,7 +63,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
               23 votes
             </div>
           </div>
-          <LoadingAnimation isLoading={true} />
+          {loading && <LoadingAnimation isLoading={loading} />}
           <div className='grid w-full grid-cols-2 gap-4 md:gap-8'>
             {pollOptions.map((poll) => (
               <div key={poll.id} className='col-span-2 md:col-span-1'>
