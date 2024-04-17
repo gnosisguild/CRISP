@@ -2,8 +2,7 @@ name: Deploy Client
 
 on:
   push:
-    branches:
-      - main
+    branches: ["main"]
 
 env:
   VITE_PRIVATE_KEY: ${{ secrets.VITE_PRIVATE_KEY }}
@@ -11,16 +10,24 @@ env:
   VITE_TWITTER_SERVERLESS_API: ${{vars.VITE_TWITTER_SERVERLESS_API}}
   VITE_CHRYSALIS_API: ${{vars.VITE_CHRYSALIS_API}}
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     name: Deploy Client
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 20
           cache: "yarn"
           cache-dependency-path: "packages/client/yarn.lock"
       - name: Install dependencies
@@ -31,6 +38,10 @@ jobs:
         run: |
           cd packages/client
           yarn run build
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:
