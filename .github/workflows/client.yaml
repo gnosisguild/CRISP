@@ -30,3 +30,5 @@ jobs:
         with:
           branch: gh-pages # The branch the action should deploy to.
           folder: packages/client/dist # The folder the action should deploy.
+    env:
+      VITE_PRIVATE_KEY: ${{ secrets.VITE_PRIVATE_KEY }}
