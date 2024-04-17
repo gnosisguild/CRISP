@@ -6,10 +6,10 @@ import wasm from 'vite-plugin-wasm'
 import topLevelAwait from 'vite-plugin-top-level-await'
 import path from 'path'
 
-const development: boolean = !process.env.NODE_ENV || process.env.NODE_ENV === 'development'
+// const development: boolean = !process.env.NODE_ENV || process.env.NODE_ENV === 'development'
 
 export default defineConfig({
-  base: development ? '' : '/CRISP/',
+  base: '/CRISP/',
   define: {
     // here is the main update
     global: 'globalThis',
