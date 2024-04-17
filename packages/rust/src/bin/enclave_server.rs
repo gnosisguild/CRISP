@@ -25,7 +25,13 @@ use std::fs::File;
 use walkdir::WalkDir;
 
 use ethers::{
+    prelude::{abigen, Abigen},
+    providers::{Http, Provider},
+    middleware::SignerMiddleware,
+    signers::{LocalWallet, Signer, Wallet},
     types::{Address, U256, Bytes},
+    core::k256,
+    utils,
 };
 
 // pick a string at random
@@ -101,7 +107,8 @@ struct EncryptedVote {
 
 // }
 
-fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
+#[tokio::main]
+async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
@@ -117,7 +124,8 @@ fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     file.read_to_string(&mut data).unwrap();
     let config: CrispConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
 
-
+    let sol_vote = Bytes::from(incoming.enc_vote_bytes);
+    call_contract(sol_vote).await;
 
     let response = JsonResponse { response: "tx_sent".to_string() };
     let out = json::encode(&response).unwrap();
@@ -125,6 +133,45 @@ fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     let content_type = "application/json".parse::<Mime>().unwrap();
     println!("Request for round {:?} send vote tx", incoming.round_id);
     Ok(Response::with((content_type, status::Ok, out)))
+}
+
+async fn call_contract(enc_vote: Bytes) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    println!("calling voting contract");
+
+    let infura_key = "INFURAKEY";
+    let infura_val = env::var(infura_key).unwrap();
+    let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
+    RPC_URL.push_str(&infura_val);
+
+    let provider = Provider::<Http>::try_from(RPC_URL.clone())?;
+    // let block_number: U64 = provider.get_block_number().await?;
+    // println!("{block_number}");
+    abigen!(
+        IVOTE,
+        r#"[
+            function voteEncrypted(bytes memory _encVote) public
+            function getVote(address id) public returns(bytes memory)
+            event Transfer(address indexed from, address indexed to, uint256 value)
+        ]"#,
+    );
+
+    //const RPC_URL: &str = "https://eth.llamarpc.com";
+    const VOTE_ADDRESS: &str = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B";
+
+    let eth_key = "PRIVATEKEY";
+    let eth_val = env::var(eth_key).unwrap();
+    let wallet: LocalWallet = eth_val
+        .parse::<LocalWallet>().unwrap()
+        .with_chain_id(11155111 as u64);
+
+    // 6. Wrap the provider and wallet together to create a signer client
+    let client = SignerMiddleware::new(provider.clone(), wallet.clone());
+    //let client = Arc::new(provider);
+    let address: Address = VOTE_ADDRESS.parse()?;
+    let contract = IVOTE::new(address, Arc::new(client.clone()));
+
+    contract.vote_encrypted(enc_vote).send().await?;
+    Ok(())
 }
 
 fn get_crp_by_round(req: &mut Request) -> IronResult<Response> {
