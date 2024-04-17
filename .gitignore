@@ -11,4 +11,4 @@ build
 *.log
 .pnp.*
 package-lock.json
-
+.DS_Store
