@@ -5,20 +5,23 @@ import Card from '@/components/Cards/Card'
 import Modal from '@/components/Modal'
 import CircularTiles from '@/components/CircularTiles'
 import RegisterModal from '@/pages/Register/Register'
+import { useVoteManagementContext } from '@/context/voteManagement'
+import LoadingAnimation from '@/components/LoadingAnimation'
 
 type DailyPollSectionProps = {
-  isScreen?: boolean
-  onVoted?: () => void
+  onVoted?: (vote: Poll) => void
+  loading?: boolean
 }
 
-const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
+const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading }) => {
+  const { user } = useVoteManagementContext()
   const [pollOptions, setPollOptions] = useState<Poll[]>(DAILY_POLL)
-  const [noPollSelected, setPollSelected] = useState<boolean>(true)
+  const [pollSelected, setPollSelected] = useState<Poll | null>(null)
+  const [noPollSelected, setNoPollSelected] = useState<boolean>(true)
   const [modalOpen, setModalOpen] = useState(false)
 
   const openModal = () => setModalOpen(true)
   const closeModal = () => {
-    onVoted && onVoted()
     setModalOpen(false)
   }
 
@@ -27,10 +30,18 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
       ...option,
       checked: !option.checked && option.id === selectedId,
     }))
-
+    setPollSelected(updatedOptions.find((opt) => opt.checked) ?? null)
     setPollOptions(updatedOptions)
-    setPollSelected(updatedOptions.every((poll) => !poll.checked))
+    setNoPollSelected(updatedOptions.every((poll) => !poll.checked))
   }
+
+  const castVote = () => {
+    if (!user) return openModal()
+    if (pollSelected && onVoted) {
+      onVoted(pollSelected)
+    }
+  }
+
   return (
     <>
       <div className='relative flex h-screen w-screen flex-col items-center justify-center px-6'>
@@ -51,6 +62,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
               23 votes
             </div>
           </div>
+          <LoadingAnimation isLoading={true} />
           <div className='grid w-full grid-cols-2 gap-4 md:gap-8'>
             {pollOptions.map((poll) => (
               <div key={poll.id} className='col-span-2 md:col-span-1'>
@@ -64,8 +76,8 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
             {noPollSelected && <div className='text-center text-sm leading-none text-slate-500'>Select your favorite</div>}
             <button
               className={`button-outlined button-max ${noPollSelected ? 'button-disabled' : ''}`}
-              disabled={noPollSelected}
-              onClick={openModal}
+              disabled={noPollSelected || loading}
+              onClick={castVote}
             >
               cast vote
             </button>
