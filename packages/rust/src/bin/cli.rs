@@ -37,6 +37,11 @@ use ethers::{
 
 type Client = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
 
+#[derive(Deserialize, RustcEncodable, RustcDecodable)]
+struct JsonResponse {
+    response: String
+}
+
 #[derive(RustcEncodable, RustcDecodable)]
 struct JsonRequestGetRounds {
     response: String,
@@ -69,6 +74,13 @@ struct PKRequest {
     round_id: u32,
     pk_bytes: Vec<u8>,
 }
+
+#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+struct EncryptedVote {
+    round_id: u32,
+    enc_vote_bytes: Vec<u8>,
+}
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -299,67 +311,98 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 .interact()
                 .unwrap();
 
+            let mut vote_choice: u64 = 0;
             if(selection_3 == 0){
                 println!("Exiting voting system. You may choose to vote later.");
+                vote_choice = 0;
             }
             if(selection_3 == 1){
-                println!("Encrypting vote.");
-                let votes: Vec<u64> = [1].to_vec();
-                let pt = Plaintext::try_encode(&[votes[0]], Encoding::poly(), &params)?;
-                let ct = pk_deserialized.try_encrypt(&pt, &mut thread_rng())?;
-                println!("Vote encrypted.");
-                println!("Calling voting contract with encrypted vote.");
-                // TODO: contact server to broadcast vote
-
-                // let sol_vote = Bytes::from(ct.to_bytes());
-                // //println!("{:?}", votes_encrypted[0].to_bytes());
-                // //println!("{:?}", sol_vote);
-                // let infura_key = "9a9193c8c1604e0c8f85b44c7674b33f";
-                // let infura_val = env::var(infura_key).unwrap();
-                // let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
-                // RPC_URL.push_str(&infura_val);
-
-                // let provider = Provider::<Http>::try_from(RPC_URL.clone())?;
-                // // let block_number: U64 = provider.get_block_number().await?;
-                // // println!("{block_number}");
-                // abigen!(
-                //     IVOTE,
-                //     r#"[
-                //         function tester() external view returns (string)
-                //         function id() external view returns (uint256)
-                //         function voteEncrypted(bytes memory _encVote) public
-                //         function getVote(address id) public returns(bytes memory)
-                //         function totalSupply() external view returns (uint256)
-                //         function balanceOf(address account) external view returns (uint256)
-                //         function transfer(address recipient, uint256 amount) external returns (bool)
-                //         function allowance(address owner, address spender) external view returns (uint256)
-                //         function approve(address spender, uint256 amount) external returns (bool)
-                //         function transferFrom( address sender, address recipient, uint256 amount) external returns (bool)
-                //         event Transfer(address indexed from, address indexed to, uint256 value)
-                //         event Approval(address indexed owner, address indexed spender, uint256 value)
-                //     ]"#,
-                // );
-
-                // //const RPC_URL: &str = "https://eth.llamarpc.com";
-                // const VOTE_ADDRESS: &str = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B";
-
-                // let eth_key = "PRIVATEKEY";
-                // let eth_val = env::var(eth_key).unwrap();
-                // let wallet: LocalWallet = eth_val
-                //     .parse::<LocalWallet>().unwrap()
-                //     .with_chain_id(11155111 as u64);
-
-                // // 6. Wrap the provider and wallet together to create a signer client
-                // let client = SignerMiddleware::new(provider.clone(), wallet.clone());
-                // //let client = Arc::new(provider);
-                // let address: Address = VOTE_ADDRESS.parse()?;
-                // let contract = IVOTE::new(address, Arc::new(client.clone()));
-
-                // contract.vote_encrypted(sol_vote).send().await?;
-
+                vote_choice = 1;
             }
             if(selection_3 == 2){
-            }            
+                vote_choice = 0;
+            }
+            println!("Encrypting vote.");
+            let votes: Vec<u64> = [vote_choice].to_vec();
+            let pt = Plaintext::try_encode(&[votes[0]], Encoding::poly(), &params)?;
+            let ct = pk_deserialized.try_encrypt(&pt, &mut thread_rng())?;
+            println!("Vote encrypted.");
+            println!("Calling voting contract with encrypted vote.");
+            // contact server to broadcast vote
+            // Client Code
+            let url_contract = "http://127.0.0.1/broadcast_enc_vote".parse::<hyper::Uri>()?;
+            let host_contract = url_contract.host().expect("uri has no host");
+            let port_contract = url_contract.port_u16().unwrap_or(4000);
+            let address_contract = format!("{}:{}", host_contract, port_contract);
+            let stream_contract = TcpStream::connect(address_contract).await?;
+            let io_contract = TokioIo::new(stream_contract);
+            let (mut sender_contract, conn_contract) = hyper::client::conn::http1::handshake(io_contract).await?;
+            tokio::task::spawn(async move {
+                if let Err(err) = conn_contract.await {
+                    println!("Connection failed: {:?}", err);
+                }
+            });
+            let authority_contract = url_contract.authority().unwrap().clone();
+            let request_contract = EncryptedVote { round_id: input_crisp_id, enc_vote_bytes: ct.to_bytes()};
+            let out_contract = json::encode(&request_contract).unwrap();
+            let req_contract = Request::post("http://127.0.0.1/")
+                .uri(url_contract.clone())
+                .header(hyper::header::HOST, authority_contract.as_str())
+                .body(out_contract)?;
+            let mut res_contract = sender_contract.send_request(req_contract).await?;
+
+            println!("Response status: {}", res_contract.status());
+
+            let body_bytes = res_contract.collect().await?.to_bytes();
+            let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+            let contract_res: JsonResponse = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+            println!("Contract call: {:?}", contract_res.response);
+
+            // let sol_vote = Bytes::from(ct.to_bytes());
+            // //println!("{:?}", votes_encrypted[0].to_bytes());
+            // //println!("{:?}", sol_vote);
+            // let infura_key = "9a9193c8c1604e0c8f85b44c7674b33f";
+            // let infura_val = env::var(infura_key).unwrap();
+            // let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
+            // RPC_URL.push_str(&infura_val);
+
+            // let provider = Provider::<Http>::try_from(RPC_URL.clone())?;
+            // // let block_number: U64 = provider.get_block_number().await?;
+            // // println!("{block_number}");
+            // abigen!(
+            //     IVOTE,
+            //     r#"[
+            //         function tester() external view returns (string)
+            //         function id() external view returns (uint256)
+            //         function voteEncrypted(bytes memory _encVote) public
+            //         function getVote(address id) public returns(bytes memory)
+            //         function totalSupply() external view returns (uint256)
+            //         function balanceOf(address account) external view returns (uint256)
+            //         function transfer(address recipient, uint256 amount) external returns (bool)
+            //         function allowance(address owner, address spender) external view returns (uint256)
+            //         function approve(address spender, uint256 amount) external returns (bool)
+            //         function transferFrom( address sender, address recipient, uint256 amount) external returns (bool)
+            //         event Transfer(address indexed from, address indexed to, uint256 value)
+            //         event Approval(address indexed owner, address indexed spender, uint256 value)
+            //     ]"#,
+            // );
+
+            // //const RPC_URL: &str = "https://eth.llamarpc.com";
+            // const VOTE_ADDRESS: &str = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B";
+
+            // let eth_key = "PRIVATEKEY";
+            // let eth_val = env::var(eth_key).unwrap();
+            // let wallet: LocalWallet = eth_val
+            //     .parse::<LocalWallet>().unwrap()
+            //     .with_chain_id(11155111 as u64);
+
+            // // 6. Wrap the provider and wallet together to create a signer client
+            // let client = SignerMiddleware::new(provider.clone(), wallet.clone());
+            // //let client = Arc::new(provider);
+            // let address: Address = VOTE_ADDRESS.parse()?;
+            // let contract = IVOTE::new(address, Arc::new(client.clone()));
+
+            // contract.vote_encrypted(sol_vote).send().await?;
 	    }
 
     }

@@ -293,10 +293,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("polling smart contract...");
             // chain state
             // todo, move into loop and boot up for different chains if needed.
-            // let infura_key = "";
-            // let infura_val = env::var(infura_key).unwrap();
-            let mut RPC_URL = "https://sepolia.infura.io/v3/INFURA".to_string();
-            // RPC_URL.push_str(&infura_val);
+            let infura_key = "INFURAKEY";
+            let infura_val = env::var(infura_key).unwrap();
+            let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
+            RPC_URL.push_str(&infura_val);
             let provider = Provider::<Http>::try_from(RPC_URL.clone())?;
             let block_number: U64 = provider.get_block_number().await?;
             println!("Current block height is {:?}", block_number);
@@ -318,8 +318,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             );
             let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
             let contract_address = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B".parse::<Address>().unwrap();
-            // let eth_key = "PRIVATEKEY";
-            let eth_val = "PRIVATEKEY";
+            let eth_key = "PRIVATEKEY";
+            let eth_val = env::var(eth_key).unwrap();
             let wallet: LocalWallet = eth_val
                 .parse::<LocalWallet>().unwrap()
                 .with_chain_id(11155111 as u64);

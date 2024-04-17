@@ -584,6 +584,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/register_sks_share", register_sks_share, "register_sks_share");
     router.post("/get_sks_shares", get_sks_shares, "get_sks_shares");
     router.post("/get_crp_by_round", get_crp_by_round, "get_crp_by_round");
+    router.post("/broadcast_enc_vote", broadcast_enc_vote, "broadcast_enc_vote");
 
     Iron::new(router).http("127.0.0.1:4000").unwrap();
 
