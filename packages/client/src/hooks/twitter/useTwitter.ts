@@ -16,7 +16,7 @@ export const useTwitter = () => {
   const { setUser } = useVoteManagementContext()
 
   const extractUsernameFromUrl = (url: string): string | null => {
-    const regex = /https:\/\/twitter\.com\/([^\/]+)\/status\/\d+/
+    const regex = /https:\/\/[^\/]+\/([^\/]+)\/status\/\d+/
     const match = url.match(regex)
     return match ? match[1] : null
   }
