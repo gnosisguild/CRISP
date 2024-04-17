@@ -18,12 +18,14 @@
     "ethers": "^6.12.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "react-markdown": "^9.0.1",
     "react-router-dom": "^6.22.3",
     "react-syntax-highlighter": "^15.5.0",
     "vite-plugin-top-level-await": "^1.4.1",
     "vite-tsconfig-paths": "^4.3.2"
   },
   "devDependencies": {
+    "@tailwindcss/typography": "^0.5.12",
     "@types/react": "^18.2.66",
     "@types/react-dom": "^18.2.22",
     "@types/react-syntax-highlighter": "^15.5.11",

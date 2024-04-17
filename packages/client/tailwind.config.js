@@ -1,8 +1,5 @@
-import type { Config } from 'tailwindcss'
-
-const config: Config = {
+const config = {
   content: ['./src/**/*.{js,jsx,ts,tsx,mdx}'],
-  // safelist: ["show-scrollbar", "hide-scrollbar"],
   variant: {
     extend: {
       borderColor: ['disabled'],
@@ -31,6 +28,6 @@ const config: Config = {
       },
     },
   },
-  plugins: [],
+  plugins: [require('@tailwindcss/typography'),]
 }
 export default config

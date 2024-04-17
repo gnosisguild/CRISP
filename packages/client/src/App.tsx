@@ -7,9 +7,9 @@ import Landing from '@/pages/Landing/Landing'
 import DailyPoll from '@/pages/DailyPoll/DailyPoll'
 import HistoricPoll from '@/pages/HistoricPoll/HistoricPoll'
 import About from '@/pages/About/About'
+import WhitePaper from './pages/Docs/WhitePaper'
 import PollResult from '@/pages/PollResult/PollResult'
 import useScrollToTop from '@/hooks/generic/useScrollToTop'
-
 import { useVoteManagementContext } from '@/context/voteManagement'
 
 const App: React.FC = () => {
@@ -32,6 +32,7 @@ const App: React.FC = () => {
       <Routes>
         <Route path='/' element={<Landing />} />
         <Route path='/about' element={<About />} />
+        <Route path='/whitepaper' element={<WhitePaper />} />
         <Route path='/daily' element={<DailyPoll />} />
         <Route path='/historic' element={<HistoricPoll />} />
         <Route path='/result' element={<PollResult />} />

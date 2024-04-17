@@ -7,8 +7,8 @@ import { ArrowSquareOut, Keyhole, ListMagnifyingGlass, ShieldCheck } from '@phos
 const HeroSection: React.FC = () => {
   return (
     <div className='relative flex min-h-screen w-screen items-center justify-center px-6'>
-      <div className='absolute bottom-1 right-0 w-[40vh] space-y-2'>
-        <CircularTiles count={2} />
+      <div className='absolute bottom-0 right-0 grid w-[70vh] grid-cols-2 gap-2'>
+        <CircularTiles count={4} />
       </div>
       <div className='relative mx-auto w-full max-w-screen-md space-y-12'>
         <div className='space-y-4'>
@@ -39,16 +39,18 @@ const HeroSection: React.FC = () => {
             </div>
           </li>
         </ul>
-        <div className='space-y-3'>
-          <Link to='/daily'>
+        <div className='space-y-4'>
+          <div className='flex flex-wrap items-center space-x-2 text-sm'>
+            <div className='text-slate-400'>This is a simple demonstration of CRISP technology.</div>
+            <Link
+              to='/about'
+              className='inline-flex cursor-pointer items-center space-x-1 text-lime-600 duration-300 ease-in-out hover:underline hover:opacity-70'
+            >
+              <div>Learn more.</div>
+            </Link>
+          </div>
+          <Link to='/daily' className='inline-flex'>
             <button className='button-primary'>Try Demo</button>
-          </Link>
-          <Link
-            to='/about'
-            className='inline-flex cursor-pointer items-center space-x-2 text-lime-600 duration-300 ease-in-out hover:opacity-70'
-          >
-            <ArrowSquareOut size={20} weight='bold' />
-            <div>Learn more.</div>
           </Link>
         </div>
       </div>

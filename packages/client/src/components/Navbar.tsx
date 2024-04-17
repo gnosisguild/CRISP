@@ -10,7 +10,7 @@ const PAGES = [
   },
   {
     label: 'Docs',
-    path: '/docs',
+    path: '/whitepaper',
   },
 ]
 

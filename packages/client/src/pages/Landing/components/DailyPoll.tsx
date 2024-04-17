@@ -1,10 +1,12 @@
 import React, { useState } from 'react'
-import Card from '@/components/Cards/Card'
 import { DAILY_POLL } from '@/mocks/polls'
 import { Poll } from '@/model/poll.model'
+import Card from '@/components/Cards/Card'
 import Modal from '@/components/Modal'
+import CircularTiles from '@/components/CircularTiles'
 import RegisterModal from '@/pages/Register/Register'
 import { useVoteManagementContext } from '@/context/voteManagement'
+import LoadingAnimation from '@/components/LoadingAnimation'
 
 type DailyPollSectionProps = {
   onVoted?: (vote: Poll) => void
@@ -42,7 +44,11 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
 
   return (
     <>
-      <div className='flex h-screen w-screen flex-col items-center justify-center px-6'>
+      <div className='relative flex h-screen w-screen flex-col items-center justify-center px-6'>
+        <div className='absolute bottom-0 right-0 grid w-[70vh] grid-cols-2 gap-2'>
+          <CircularTiles count={4} />
+        </div>
+
         <div className='mx-auto flex w-full max-w-screen-md flex-col items-center justify-center space-y-12'>
           <div className='space-y-2'>
             <p className='text-center text-sm font-extrabold uppercase text-slate-400'>Daily Poll</p>
@@ -57,6 +63,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
               23 votes
             </div>
           </div>
+          {loading && <LoadingAnimation isLoading={loading} />}
           <div className='grid w-full grid-cols-2 gap-4 md:gap-8'>
             {pollOptions.map((poll) => (
               <div key={poll.id} className='col-span-2 md:col-span-1'>
