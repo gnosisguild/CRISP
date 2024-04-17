@@ -5,3 +5,8 @@ export interface VotingConfigRequest {
   ciphernode_count: number
   voter_count: number
 }
+
+export interface VotingRound {
+  round_id: number
+  pk_bytes: number[]
+}

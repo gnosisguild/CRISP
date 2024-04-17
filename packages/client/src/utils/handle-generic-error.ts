@@ -1,3 +1,4 @@
 export const handleGenericError = (functionName: string, error: Error) => {
-  throw new Error(`[${functionName}] -  ${error}`)
+  console.error(`[${functionName}] - ${error.message}`)
+  // throw new Error(`[${functionName}] -  ${error.message}`)
 }

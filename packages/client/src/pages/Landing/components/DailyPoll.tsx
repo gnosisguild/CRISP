@@ -4,20 +4,22 @@ import { DAILY_POLL } from '@/mocks/polls'
 import { Poll } from '@/model/poll.model'
 import Modal from '@/components/Modal'
 import RegisterModal from '@/pages/Register/Register'
+import { useVoteManagementContext } from '@/context/voteManagement'
 
 type DailyPollSectionProps = {
-  isScreen?: boolean
-  onVoted?: () => void
+  onVoted?: (vote: Poll) => void
+  loading?: boolean
 }
 
-const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
+const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading }) => {
+  const { user } = useVoteManagementContext()
   const [pollOptions, setPollOptions] = useState<Poll[]>(DAILY_POLL)
-  const [noPollSelected, setPollSelected] = useState<boolean>(true)
+  const [pollSelected, setPollSelected] = useState<Poll | null>(null)
+  const [noPollSelected, setNoPollSelected] = useState<boolean>(true)
   const [modalOpen, setModalOpen] = useState(false)
 
   const openModal = () => setModalOpen(true)
   const closeModal = () => {
-    onVoted && onVoted()
     setModalOpen(false)
   }
 
@@ -26,10 +28,18 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
       ...option,
       checked: !option.checked && option.id === selectedId,
     }))
-
+    setPollSelected(updatedOptions.find((opt) => opt.checked) ?? null)
     setPollOptions(updatedOptions)
-    setPollSelected(updatedOptions.every((poll) => !poll.checked))
+    setNoPollSelected(updatedOptions.every((poll) => !poll.checked))
   }
+
+  const castVote = () => {
+    if (!user) return openModal()
+    if (pollSelected && onVoted) {
+      onVoted(pollSelected)
+    }
+  }
+
   return (
     <>
       <div className='flex h-screen w-screen flex-col items-center justify-center px-6'>
@@ -60,8 +70,8 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted }) => {
             {noPollSelected && <div className='text-center text-sm leading-none text-slate-500'>Select your favorite</div>}
             <button
               className={`button-outlined button-max ${noPollSelected ? 'button-disabled' : ''}`}
-              disabled={noPollSelected}
-              onClick={openModal}
+              disabled={noPollSelected || loading}
+              onClick={castVote}
             >
               cast vote
             </button>
