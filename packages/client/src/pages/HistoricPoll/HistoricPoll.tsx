@@ -8,9 +8,9 @@ const HistoricPoll: React.FC = () => {
     <div className='my-28 flex w-screen flex-col items-center justify-center space-y-12'>
       <h1 className='text-h1 font-bold text-slate-600'>Historic polls</h1>
       <div className='mx-auto grid w-full max-w-7xl grid-cols-1 gap-8 overflow-y-auto p-4 md:grid-cols-3'>
-        {PAST_POLLS.map(({ totalVotes, options, id, date }: PollResult) => (
-          <div className='flex items-center justify-center' key={id}>
-            <PollCard key={id} pollOptions={options} totalVotes={totalVotes} date={date} />
+        {PAST_POLLS.map(({ totalVotes, options, roundId, date }: PollResult) => (
+          <div className='flex items-center justify-center' key={roundId}>
+            <PollCard pollOptions={options} totalVotes={totalVotes} date={date} />
           </div>
         ))}
       </div>

@@ -1,19 +1,19 @@
 export interface PollOption {
-  id: number
+  value: number
   votes: number
   label: string // emoji
   checked?: boolean
 }
 
 export interface PollResult {
-  id: number
+  roundId: number
   totalVotes: number
   date: string
   options: PollOption[]
 }
 
 export interface Poll {
-  id: number
+  value: number
   checked: boolean
   label: string
 }

@@ -29,7 +29,7 @@ jobs:
           VITE_PRIVATE_KEY: ${{ secrets.VITE_PRIVATE_KEY }}
           VITE_INFURA_API_KEY: ${{ secrets.VITE_INFURA_API_KEY }}
           VITE_TWITTER_SERVERLESS_API: ${{vars.VITE_TWITTER_SERVERLESS_API}}
-          VITE_CHRYSALIS_API: ${{vars.VITE_CHRYSALIS_API}}
+          VITE_ENCLAVE_API: ${{vars.VITE_ENCLAVE_API}}
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:

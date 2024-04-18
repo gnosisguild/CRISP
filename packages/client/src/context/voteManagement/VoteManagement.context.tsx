@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 import { SocialAuth } from '@/model/twitter.model'
 import useLocalStorage from '@/hooks/generic/useLocalStorage'
 import { VotingRound } from '@/model/vote.model'
-import { useChrysalisServer } from '@/hooks/chrysalis/useChrysalisServer'
+import { useEnclaveServer } from '@/hooks/enclave/useEnclaveServer'
 
 const [useVoteManagementContext, VoteManagementContextProvider] = createGenericContext<VoteManagementContextType>()
 
@@ -22,7 +22,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
    * Voting Management Methods
    **/
   const { isLoading: wasmLoading, wasmInstance, encryptInstance, initWebAssembly, encryptVote } = useWebAssemblyHook()
-  const { isLoading: chrysalisLoading, getPkByRound: getPkByRoundRequest } = useChrysalisServer()
+  const { isLoading: enclaveLoading, getPkByRound: getPkByRoundRequest } = useEnclaveServer()
 
   const logout = () => {
     setUser(null)
@@ -35,11 +35,11 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   }
 
   useEffect(() => {
-    if ([wasmLoading, chrysalisLoading].includes(true)) {
+    if ([wasmLoading, enclaveLoading].includes(true)) {
       return setIsLoading(true)
     }
     setIsLoading(false)
-  }, [wasmLoading, chrysalisLoading])
+  }, [wasmLoading, enclaveLoading])
 
   console.log('votingRound', votingRound)
 

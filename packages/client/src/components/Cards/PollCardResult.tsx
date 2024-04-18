@@ -21,7 +21,7 @@ const PollCardResult: React.FC<PollCardResultProps> = ({ isResult, results, tota
         <div className='col-span-1 w-full'>
           <div
             className={`flex w-full flex-col items-center justify-center ${isResult ? 'aspect-square space-y-6' : 'space-y-4'}`}
-            key={poll.id}
+            key={poll.label}
           >
             <Card isDetails checked={poll.checked}>
               <p className={isResult ? 'text-8xl' : 'text-5xl'}>{poll.label}</p>
