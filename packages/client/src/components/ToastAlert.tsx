@@ -1,14 +1,15 @@
 // ToastAlert.tsx
 import React, { useEffect } from 'react'
-import { X } from '@phosphor-icons/react'
+import { Link, X } from '@phosphor-icons/react'
 
 type ToastAlertProps = {
   type: 'success' | 'danger'
+  linkUrl?: string
   message: string
   onClose: () => void
 }
 
-const ToastAlert: React.FC<ToastAlertProps> = ({ message, type, onClose }) => {
+const ToastAlert: React.FC<ToastAlertProps> = ({ message, type, linkUrl, onClose }) => {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose()
@@ -38,7 +39,18 @@ const ToastAlert: React.FC<ToastAlertProps> = ({ message, type, onClose }) => {
         className={`shadow-toast flex h-[46px] w-[366px] items-center rounded-[16px] border-2 ${currentAlertStyle.container} bg-white px-6`}
       >
         <div className='flex w-full items-center justify-between'>
-          <p className={`text-base font-extrabold uppercase leading-6 ${currentAlertStyle.text}`}>{message}</p>
+          {linkUrl && (
+            <a
+              href={linkUrl}
+              target='_blank'
+              className={`flex items-center text-base font-extrabold uppercase leading-6 ${currentAlertStyle.text}`}
+            >
+              <Link size={16} weight='bold' className={`mr-2 ${currentAlertStyle.button}`} />
+              {message}
+            </a>
+          )}
+          {!linkUrl && <p className={`text-base font-extrabold uppercase leading-6 ${currentAlertStyle.text}`}>{message}</p>}
+
           <button onClick={onClose}>
             <X weight='bold' size={16} className={currentAlertStyle.button} />
           </button>

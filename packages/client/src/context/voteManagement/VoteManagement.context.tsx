@@ -22,12 +22,23 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
    * Voting Management Methods
    **/
   const { isLoading: wasmLoading, wasmInstance, encryptInstance, initWebAssembly, encryptVote } = useWebAssemblyHook()
-  const { isLoading: enclaveLoading, getPkByRound: getPkByRoundRequest } = useEnclaveServer()
+  const { isLoading: enclaveLoading, getPkByRound: getPkByRoundRequest, getRound, broadcastVote } = useEnclaveServer()
+
+  const initialLoad = async () => {
+    await initWebAssembly()
+    const round = await getRound()
+    if (round) {
+      await getPkByRound({ round_id: round.round_count, pk_bytes: [0] })
+    }
+  }
+
+  console.log('votingRound', votingRound)
 
   const logout = () => {
     setUser(null)
     setSocialAuth(null)
   }
+
   const getPkByRound = async (votingRound: VotingRound) => {
     const round = await getPkByRoundRequest(votingRound)
     setVotingRound(round ?? null)
@@ -41,8 +52,6 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
     setIsLoading(false)
   }, [wasmLoading, enclaveLoading])
 
-  console.log('votingRound', votingRound)
-
   return (
     <VoteManagementContextProvider
       value={{
@@ -51,6 +60,8 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         encryptInstance,
         user,
         votingRound,
+        initialLoad,
+        broadcastVote,
         setVotingRound,
         getPkByRound,
         setUser,

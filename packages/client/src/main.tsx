@@ -4,12 +4,15 @@ import App from './App.tsx'
 import './globals.css'
 import { HashRouter } from 'react-router-dom'
 import { VoteManagementProvider } from '@/context/voteManagement/index.ts'
+import { NotificationAlertProvider } from './context/NotificationAlert/NotificationAlert.context.tsx'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <HashRouter>
       <VoteManagementProvider>
-        <App />
+        <NotificationAlertProvider>
+          <App />
+        </NotificationAlertProvider>
       </VoteManagementProvider>
     </HashRouter>
   </React.StrictMode>,

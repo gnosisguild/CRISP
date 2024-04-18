@@ -19,6 +19,7 @@ export const useEnclaveServer = () => {
       }
     } catch (error) {
       handleGenericError('useEnclaveServer - getPkByRound', error as Error)
+      return
     } finally {
       setIsLoading(false)
     }
@@ -33,6 +34,7 @@ export const useEnclaveServer = () => {
       }
     } catch (error) {
       handleGenericError('useEnclaveServer - getRound', error as Error)
+      return
     } finally {
       setIsLoading(false)
     }
@@ -47,6 +49,7 @@ export const useEnclaveServer = () => {
       }
     } catch (error) {
       handleGenericError('useEnclaveServer - broadcastVote', error as Error)
+      return
     } finally {
       setIsLoading(false)
     }

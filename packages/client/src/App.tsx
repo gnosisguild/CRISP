@@ -14,13 +14,12 @@ import { useVoteManagementContext } from '@/context/voteManagement'
 
 const App: React.FC = () => {
   useScrollToTop()
-  const { initWebAssembly, wasmInstance, getPkByRound } = useVoteManagementContext()
+  const { initialLoad, wasmInstance } = useVoteManagementContext()
 
   useEffect(() => {
     if (!wasmInstance) {
       async function loadWasm() {
-        await initWebAssembly()
-        await getPkByRound({ round_id: 1, pk_bytes: [0] })
+        await initialLoad()
       }
       loadWasm()
     }
