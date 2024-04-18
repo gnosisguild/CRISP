@@ -132,8 +132,17 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
 
     let sol_vote = Bytes::from(incoming.enc_vote_bytes);
     let tx_hash = call_contract(sol_vote).await.unwrap();
+    let mut converter = "0x".to_string();
+    for i in 0..32 {
+        if(tx_hash[i] <= 16) {
+            converter.push_str("0");
+            converter.push_str(&format!("{:x}", tx_hash[i]));
+        } else {
+            converter.push_str(&format!("{:x}", tx_hash[i]));
+        }
+    }
 
-    let response = JsonResponseTxHash { response: "tx_sent".to_string(), tx_hash: tx_hash.to_string() };
+    let response = JsonResponseTxHash { response: "tx_sent".to_string(), tx_hash: converter };
     let out = json::encode(&response).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
