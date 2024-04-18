@@ -7,7 +7,7 @@ const Footer: React.FC = () => {
   return (
     <footer className='relative z-10 w-screen border-t-2 border-slate-600/20 bg-slate-200 p-6'>
       <div className='mx-auto w-full max-w-screen-xl'>
-        <div className='flex items-center justify-between gap-2'>
+        <div className='flex justify-between gap-4 max-md:flex-col md:items-center md:gap-2'>
           <Link to='/whitepaper#' className='duration-300 ease-in-out hover:opacity-70'>
             <p className='text-sm font-bold'>CRISP Whitepaper</p>
           </Link>

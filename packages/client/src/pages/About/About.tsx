@@ -6,7 +6,7 @@ import { Link } from 'react-router-dom'
 
 const About: React.FC = () => {
   return (
-    <div className='relative flex w-screen flex-col items-center justify-center py-28'>
+    <div className='relative flex w-screen flex-col items-center justify-center px-6 py-28'>
       <div className='absolute bottom-0 right-0 grid w-[70vh] grid-cols-2 gap-2'>
         <CircularTiles count={4} />
       </div>
@@ -16,7 +16,7 @@ const About: React.FC = () => {
           <div className='space-y-4'>
             <p className='text-base font-extrabold uppercase text-slate-600/50'>what is crisp?</p>
             <div className='space-y-2'>
-              <p className='text-xl leading-8 text-slate-600'>
+              <p className='leading-8 text-slate-600'>
                 CRISP (Collusion-Resistant Impartial Selection Protocol) is a groundbreaking component of the Enclave protocol, focused on
                 revolutionizing privacy and security in digital decision-making. It leverages advanced technologies like Fully Homomorphic
                 Encryption (FHE), threshold cryptography, and zero-knowledge proofs (ZKPs) to enable secure, anonymous voting. This protocol
@@ -31,7 +31,7 @@ const About: React.FC = () => {
           </div>
           <div className='space-y-4'>
             <p className='text-base font-extrabold uppercase text-slate-600/50'>why is this important?</p>
-            <p className='text-xl leading-8 text-slate-600'>
+            <p className='leading-8 text-slate-600'>
               In a digital age marked by increasing concerns over privacy, security, and the integrity of information, CRISP emerges as a
               crucial innovation. By protecting against collusion, mitigating vulnerabilities in governance, and preserving the
               confidentiality of data, CRISP fosters a secure and impartial environment for decision-making. It empowers users and
