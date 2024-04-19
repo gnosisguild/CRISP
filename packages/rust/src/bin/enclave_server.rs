@@ -1,6 +1,6 @@
 mod util;
 
-use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path};
+use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path, str};
 use chrono::{DateTime, TimeZone, Utc};
 use console::style;
 use fhe::{
@@ -114,21 +114,18 @@ struct EncryptedVote {
 
 // }
 
-struct Database {
-    round_count: u32,
-    rounds: Vec<Round>,
-}
-
+#[derive(RustcEncodable, RustcDecodable)]
 struct Round {
     id: u32,
     ciphernode_count: u32,
     pk_share_count: u32,
     sks_share_count: u32,
     vote_count: u32,
-    start_time: DateTime<Utc>,
+    start_time: i64,
     ciphernodes: Vec<Ciphernode>,
 }
 
+#[derive(RustcEncodable, RustcDecodable)]
 struct Ciphernode {
     id: u32,
 }
@@ -326,35 +323,83 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     println!("ID: {:?}", incoming.round_id); // TODO: check that client sent the expected next round_id
     println!("Address: {:?}", incoming.voting_address);
 
-    let path = env::current_dir().unwrap();
-    let mut pathst = path.display().to_string();
-    pathst.push_str("/keyshares/");
-    pathst.push_str(&incoming.round_id.to_string());
-    println!("Initiate CRISP... directory is {}", pathst);
-    fs::create_dir_all(pathst.clone()).unwrap();
+    // --------------
+    let pathdb = env::current_dir().unwrap();
+    let mut pathdbst = pathdb.display().to_string();
+    pathdbst.push_str("/database");
 
-    pathst.push_str("/config.json");
-    let configfile = json::encode(&incoming).unwrap();
-    fs::write(pathst.clone(), configfile).unwrap();
+    let db = sled::open(pathdbst.clone()).unwrap();
+    let key = "round_count";
+    //db.remove(key)?;
+    let round = db.get(key).unwrap();
+    if(round == None) {
+        println!("initializing first round in db");
+        db.insert(key, b"0".to_vec()).unwrap();
+    }
+    let mut round_key = std::str::from_utf8(round.unwrap().as_ref()).unwrap().to_string();
+    let mut round_int = round_key.parse::<u32>().unwrap();
+    round_int = round_int + 1;
+    round_key.push_str("-storage");
+    println!("Database key is {:?} and round int is {:?}", round_key, round_int);
 
-    // write new round count to file
-    let mut round_pathst = path.display().to_string();
-    round_pathst.push_str("/keyshares/round_count.json");
-    let mut file = File::open(round_pathst.clone()).unwrap();
-    let mut data = String::new();
-    file.read_to_string(&mut data).unwrap();
-    let mut count: RoundCount = serde_json::from_str(&data).expect("JSON was not well-formatted");
-    count.round_count += 1;
-    let countfile = json::encode(&count).unwrap();
-    fs::write(round_pathst.clone(), countfile).unwrap();
+    let init_time = Utc::now();
+    let timestamp = init_time.timestamp();
+    println!("timestamp {:?}", timestamp);
 
-    // write crp bytes
-    let crp_path = env::current_dir().unwrap();
-    let mut crp_pathst = crp_path.display().to_string();
-    crp_pathst.push_str("/keyshares/");
-    crp_pathst.push_str(&incoming.round_id.to_string());
-    crp_pathst.push_str("/CRP");
-    fs::write(crp_pathst.clone(), crp_bytes).unwrap();
+    let state = Round {
+        id: round_int,
+        ciphernode_count: 0,
+        pk_share_count: 0,
+        sks_share_count: 0,
+        vote_count: 0,
+        start_time: timestamp,
+        ciphernodes: vec![
+            Ciphernode {
+                id: 0,
+            }
+        ],
+    };
+
+    let state_str = json::encode(&state).unwrap();
+    let state_bytes = state_str.into_bytes();
+    let key2 = round_int.to_string();
+    //db.insert(key2, state_bytes).unwrap();
+    let state_out = db.get(key2).unwrap().unwrap();
+    let state_out_str = str::from_utf8(&state_out).unwrap();
+    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
+    println!("db id for round {:?}", state_out_struct.id);
+    // --------------
+
+    // let path = env::current_dir().unwrap();
+    // let mut pathst = path.display().to_string();
+    // pathst.push_str("/keyshares/");
+
+    // pathst.push_str(&incoming.round_id.to_string());
+    // println!("Initiate CRISP... directory is {}", pathst);
+    // fs::create_dir_all(pathst.clone()).unwrap();
+
+    // pathst.push_str("/config.json");
+    // let configfile = json::encode(&incoming).unwrap();
+    // fs::write(pathst.clone(), configfile).unwrap();
+
+    // // write new round count to file
+    // let mut round_pathst = path.display().to_string();
+    // round_pathst.push_str("/keyshares/round_count.json");
+    // let mut file = File::open(round_pathst.clone()).unwrap();
+    // let mut data = String::new();
+    // file.read_to_string(&mut data).unwrap();
+    // let mut count: RoundCount = serde_json::from_str(&data).expect("JSON was not well-formatted");
+    // count.round_count += 1;
+    // let countfile = json::encode(&count).unwrap();
+    // fs::write(round_pathst.clone(), countfile).unwrap();
+
+    // // write crp bytes
+    // let crp_path = env::current_dir().unwrap();
+    // let mut crp_pathst = crp_path.display().to_string();
+    // crp_pathst.push_str("/keyshares/");
+    // crp_pathst.push_str(&incoming.round_id.to_string());
+    // crp_pathst.push_str("/CRP");
+    // fs::write(crp_pathst.clone(), crp_bytes).unwrap();
 
     // create a response with our random string, and pass in the string from the POST body
     let response = JsonResponse { response: "CRISP Initiated".to_string() };
@@ -609,36 +654,6 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // Database
-    let init_time = Utc::now();
-
-    let state = Database {
-        round_count: 0,
-        rounds: vec![
-            Round {
-                id: 0,
-                ciphernode_count: 0,
-                pk_share_count: 0,
-                sks_share_count: 0,
-                vote_count: 0,
-                start_time: init_time,
-                ciphernodes: vec![
-                    Ciphernode {
-                        id: 0,
-                    }
-                ],
-            }
-        ],
-    };
-
-    // let t = Test {
-    //     nodes: vec![
-    //         Ciphernode {
-    //             id: 0,
-    //         }
-    //     ],
-    // };
-
     // Server Code
     let mut router = Router::new();
     router.get("/", handler, "index");
