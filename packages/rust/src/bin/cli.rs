@@ -217,7 +217,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             // The authority of our URL will be the hostname of the httpbin remote
             let authority = url.authority().unwrap().clone();
             let round_id = count.round_count + 1;
-            let response = CrispConfig { round_id: round_id, chain_id: 5, voting_address: config.voting_address, ciphernode_count: 3, voter_count: config.voter_count };
+            let response = CrispConfig { round_id: round_id, chain_id: 5, voting_address: config.voting_address, ciphernode_count: config.ciphernode_count, voter_count: config.voter_count };
             //let response = JsonRequest { response: "Test".to_string(), pk_share: 0, id: 0, round_id: 0 };
             let out = json::encode(&response).unwrap();
             let req = Request::post("http://127.0.0.1/")

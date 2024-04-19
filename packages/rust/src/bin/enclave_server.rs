@@ -35,6 +35,8 @@ use ethers::{
     utils,
 };
 
+use sled::Db;
+
 // pick a string at random
 fn pick_response() -> String {
     "Test".to_string()
@@ -143,16 +145,19 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: EncryptedVote = json::decode(&payload).unwrap();
-    let path = env::current_dir().unwrap();
 
-    let mut keypath = path.display().to_string();
-    keypath.push_str("/keyshares/");
-    keypath.push_str(&incoming.round_id.to_string());
-    keypath.push_str("/config.json");
-    let mut file = File::open(keypath).unwrap();
-    let mut data = String::new();
-    file.read_to_string(&mut data).unwrap();
-    let config: CrispConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
+    // let pathdb = env::current_dir().unwrap();
+    // let mut pathdbst = pathdb.display().to_string();
+    // pathdbst.push_str("/database");
+    // let db = sled::open(pathdbst.clone()).unwrap();
+
+    // let mut round_key = incoming.round_id.to_string();
+    // round_key.push_str("-storage");
+    // println!("Database key is {:?}", round_key);
+
+    // let state_out = db.get(round_key.clone()).unwrap().unwrap();
+    // let state_out_str = str::from_utf8(&state_out).unwrap();
+    // let mut state_out_struct: Round = json::decode(&state_out_str).unwrap();
 
     let sol_vote = Bytes::from(incoming.enc_vote_bytes);
     let tx_hash = call_contract(sol_vote).await.unwrap();
@@ -245,14 +250,20 @@ fn get_pk_by_round(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: PKRequest = json::decode(&payload).unwrap();
-    let path = env::current_dir().unwrap();
 
-    let mut keypath = path.display().to_string();
-    keypath.push_str("/keyshares/");
-    keypath.push_str(&incoming.round_id.to_string());
-    keypath.push_str("/PublicKey");
-    let data = fs::read(keypath).expect("Unable to read file");
-    incoming.pk_bytes = data;
+    let pathdb = env::current_dir().unwrap();
+    let mut pathdbst = pathdb.display().to_string();
+    pathdbst.push_str("/database");
+    let db = sled::open(pathdbst.clone()).unwrap();
+
+    let mut round_key = incoming.round_id.to_string();
+    round_key.push_str("-storage");
+    println!("Database key is {:?}", round_key);
+    let state_out = db.get(round_key).unwrap().unwrap();
+    let state_out_str = str::from_utf8(&state_out).unwrap();
+    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
+
+    incoming.pk_bytes = state_out_struct.pk;
     let out = json::encode(&incoming).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -279,16 +290,6 @@ fn get_pk_share_count(req: &mut Request) -> IronResult<Response> {
     let state_out_str = str::from_utf8(&state_out).unwrap();
     let state_out_struct: Round = json::decode(&state_out_str).unwrap();
 
-
-    // let path = env::current_dir().unwrap();
-
-    // let mut keypath = path.display().to_string();
-    // keypath.push_str("/keyshares/");
-    // keypath.push_str(&incoming.round_id.to_string());
-
-    // let share_count = WalkDir::new(keypath.clone()).into_iter().count() - 2;
-    // println!("Pk Share Count: {:?}", share_count);
-    // //let response = JsonResponse { response: share_count.to_string() };
     incoming.share_id = state_out_struct.pk_share_count;
     let out = json::encode(&incoming).unwrap();
 
@@ -424,7 +425,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
 }
 
 
-async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn aggregate_pk_shares(round_id: u32, db: Db) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("aggregating validator keyshare");
 
     let degree = 4096;
@@ -444,10 +445,10 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
             .build_arc()?
     );
 
-    let pathdb = env::current_dir().unwrap();
-    let mut pathdbst = pathdb.display().to_string();
-    pathdbst.push_str("/database");
-    let db = sled::open(pathdbst.clone()).unwrap();
+    // let pathdb = env::current_dir().unwrap();
+    // let mut pathdbst = pathdb.display().to_string();
+    // pathdbst.push_str("/database");
+    // let db = sled::open(pathdbst.clone()).unwrap();
 
     let mut round_key = round_id.to_string();
     round_key.push_str("-storage");
@@ -456,7 +457,9 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
     let state_out = db.get(round_key.clone()).unwrap().unwrap();
     let state_out_str = str::from_utf8(&state_out).unwrap();
     let mut state_out_struct: Round = json::decode(&state_out_str).unwrap();
-
+    println!("checking db after drop {:?}", state_out_struct.ciphernode_count);
+    println!("{:?}", state_out_struct.ciphernodes[0].id);
+    //println!("{:?}", state_out_struct.ciphernodes[0].pk_share);
 
 
     //let crp = CommonRandomPoly::new_deterministic(&params, seed)?;
@@ -469,7 +472,7 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
     }
     //let mut parties = Vec::with_capacity(num_parties);
     let mut parties :Vec<Party> = Vec::new();
-    for i in 0..state_out_struct.ciphernode_total {
+    for i in 1..state_out_struct.ciphernode_total + 1 { // todo fix init code that cuases offset
         // read in pk_shares from storage
         println!("Aggregating PKShare... id {}", i);
         let data_des = PublicKeyShare::deserialize(&state_out_struct.ciphernodes[i as usize].pk_share, &params, crp.clone()).unwrap();
@@ -515,25 +518,30 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
     println!("{:?}", incoming.response);
     println!("ID: {:?}", incoming.id); // cipher node id (based on first upload of pk share)
     println!("Round ID: {:?}", incoming.round_id);
-    let path = env::current_dir().unwrap();
 
-    let mut keypath = path.display().to_string();
-    keypath.push_str("/keyshares/");
-    keypath.push_str(&incoming.round_id.to_string());
+    let pathdb = env::current_dir().unwrap();
+    let mut pathdbst = pathdb.display().to_string();
+    pathdbst.push_str("/database");
+    let db = sled::open(pathdbst.clone()).unwrap();
 
-    let mut pathst = path.display().to_string();
-    pathst.push_str("/keyshares/");
-    pathst.push_str(&incoming.round_id.to_string());
-    pathst.push_str("/sks-share-");
-    pathst.push_str(&incoming.id.to_string());
-    println!("Registering SKS_Share... directory is {}", pathst);
-    fs::write(pathst.clone(), incoming.sks_share).unwrap();
+    let mut round_key = incoming.round_id.to_string();
+    round_key.push_str("-storage");
+    println!("Database key is {:?}", round_key);
 
-    let share_count = WalkDir::new(keypath.clone()).into_iter().count();
-    println!("Share Files: {}", WalkDir::new(keypath.clone()).into_iter().count());
+    let state_out = db.get(round_key.clone()).unwrap().unwrap();
+    let state_out_str = str::from_utf8(&state_out).unwrap();
+    let mut state_out_struct: Round = json::decode(&state_out_str).unwrap();
+    state_out_struct.sks_share_count = state_out_struct.sks_share_count + 1;
+
+    let index = incoming.id + 1; // offset from vec push
+    state_out_struct.ciphernodes[index as usize].sks_share = incoming.sks_share;
+    let state_str = json::encode(&state_out_struct).unwrap();
+    let state_bytes = state_str.into_bytes();
+    db.insert(round_key, state_bytes).unwrap();
+    println!("sks share stored for node id {:?}", incoming.id);
 
     // toso get share threshold from client config
-    if(share_count == 8) {
+    if(state_out_struct.sks_share_count == state_out_struct.ciphernode_total) {
         println!("All sks shares received");
         //aggregate_pk_shares(incoming.round_id).await;
         // TODO: maybe notify cipher nodes
@@ -556,7 +564,7 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
     struct SKSSharePoll {
         response: String,
         round_id: u32,
-        ciphernode_count: u32,
+        ciphernode_count: u32, //TODO: dont need this
     }
     // we're expecting the POST to match the format of our JsonRequest struct
     let incoming: SKSSharePoll = json::decode(&payload).unwrap();
@@ -569,29 +577,27 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
         sks_shares: Vec<Vec<u8>>,
     }
 
-    let path = env::current_dir().unwrap();
+    let pathdb = env::current_dir().unwrap();
+    let mut pathdbst = pathdb.display().to_string();
+    pathdbst.push_str("/database");
+    let db = sled::open(pathdbst.clone()).unwrap();
 
-    let mut keypath = path.display().to_string();
-    keypath.push_str("/keyshares/");
-    keypath.push_str(&incoming.round_id.to_string());
+    let mut round_key = incoming.round_id.to_string();
+    round_key.push_str("-storage");
+    println!("Database key is {:?}", round_key);
 
-    let mut pathst = path.display().to_string();
-    pathst.push_str("/keyshares/");
-    pathst.push_str(&incoming.round_id.to_string());
-    pathst.push_str("/sks-share-");
+    let state_out = db.get(round_key.clone()).unwrap().unwrap();
+    let state_out_str = str::from_utf8(&state_out).unwrap();
+    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
 
-    let share_count = WalkDir::new(keypath.clone()).into_iter().count();
-    //let shares = Vec<Vec<u8>>;
     let mut shares = Vec::with_capacity(incoming.ciphernode_count as usize);
+
     // toso get share threshold from client config
-    if(share_count == 8) {
-        println!("All sks shares received");
-        for i in 0..incoming.ciphernode_count {
-            let mut share_path = pathst.clone();
-            share_path.push_str(&i.to_string());
-            println!("reading share {:?} from {:?}", i, share_path);
-            let data = fs::read(share_path).expect("Unable to read file");
-            shares.push(data);
+    if(state_out_struct.sks_share_count == state_out_struct.ciphernode_total) {
+        println!("All sks shares received... sending to cipher nodes");
+        for i in 1..state_out_struct.ciphernode_total + 1 {
+            println!("reading share {:?}", i);
+            shares.push(state_out_struct.ciphernodes[i as usize].sks_share.clone());
         }
         let response = SKSShareResponse { 
             response: "final".to_string(),
@@ -653,12 +659,15 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     let state_str = json::encode(&state_out_struct).unwrap();
     let state_bytes = state_str.into_bytes();
     db.insert(round_key, state_bytes).unwrap();
+    //drop(db);
     println!("pk share store for node id {:?}", incoming.id);
-
+    println!("ciphernode count {:?}", state_out_struct.ciphernode_count);
+    println!("ciphernode total {:?}", state_out_struct.ciphernode_total);
+    println!("pk share count {:?}", state_out_struct.pk_share_count);
     // toso get share threshold from client config
     if(state_out_struct.ciphernode_count == state_out_struct.ciphernode_total) {
         println!("All shares received");
-        aggregate_pk_shares(incoming.round_id).await;
+        aggregate_pk_shares(incoming.round_id, db).await;
     }
 
     // create a response with our random string, and pass in the string from the POST body

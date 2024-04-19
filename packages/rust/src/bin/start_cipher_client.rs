@@ -364,6 +364,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 votes_encrypted.push(deserialized_vote);
                 counter += 1;
 
+                // TODO: replace with timestamp check
                 if counter == 2 {
                     print!("all votes collected... performing fhe computation");
                     let tally = timeit!("Vote tallying", {
@@ -399,7 +400,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         }
                     });
                     let authority_sks = url_register_sks.authority().unwrap().clone();
-                    let response_sks = SKSShareRequest { response: "Register_SKS_Share".to_string(), sks_share: sks_bytes, id: share_count.share_id-1, round_id: count.round_count };
+                    let response_sks = SKSShareRequest { response: "Register_SKS_Share".to_string(), sks_share: sks_bytes, id: share_count.share_id, round_id: count.round_count };
                     let out_sks = json::encode(&response_sks).unwrap();
                     let req_sks = Request::post("http://127.0.0.1/")
                         .uri(url_register_sks.clone())
