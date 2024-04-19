@@ -1,6 +1,7 @@
 mod util;
 
 use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path};
+use chrono::{DateTime, TimeZone, Utc};
 use console::style;
 use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
@@ -112,6 +113,25 @@ struct EncryptedVote {
     // register ip address or some way to contact nodes when a computation request comes in
 
 // }
+
+struct Database {
+    round_count: u32,
+    rounds: Vec<Round>,
+}
+
+struct Round {
+    id: u32,
+    ciphernode_count: u32,
+    pk_share_count: u32,
+    sks_share_count: u32,
+    vote_count: u32,
+    start_time: DateTime<Utc>,
+    ciphernodes: Vec<Ciphernode>,
+}
+
+struct Ciphernode {
+    id: u32,
+}
 
 #[tokio::main]
 async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
@@ -589,6 +609,36 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    // Database
+    let init_time = Utc::now();
+
+    let state = Database {
+        round_count: 0,
+        rounds: vec![
+            Round {
+                id: 0,
+                ciphernode_count: 0,
+                pk_share_count: 0,
+                sks_share_count: 0,
+                vote_count: 0,
+                start_time: init_time,
+                ciphernodes: vec![
+                    Ciphernode {
+                        id: 0,
+                    }
+                ],
+            }
+        ],
+    };
+
+    // let t = Test {
+    //     nodes: vec![
+    //         Ciphernode {
+    //             id: 0,
+    //         }
+    //     ],
+    // };
+
     // Server Code
     let mut router = Router::new();
     router.get("/", handler, "index");
