@@ -1,6 +1,6 @@
 mod util;
 
-use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path};
+use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path, process};
 use console::style;
 use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
@@ -181,6 +181,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!("Internal Round Count: {:?}", internal_round_count.round_count);
 
         // Check to see if the server reported a new round
+        // TODO: also check timestamp to be sure round isnt over, or already registered
         if(count.round_count > internal_round_count.round_count) {
             println!("Getting latest PK share ID.");
             // Client Code get the number of pk_shares on the server.
@@ -213,6 +214,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let body_bytes = res_get_shareid.collect().await?.to_bytes();
             let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
             let share_count: PKShareCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+            println!("database round count {:?}", share_count.round_id);
+            println!("database pk share id {:?}", share_count.share_id);
 
             // --------------------------------------
             println!("Generating share and serializing.");
@@ -269,7 +272,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             });
             let authority_key = url_register_keyshare.authority().unwrap().clone();
 
-            let response_key = PKShareRequest { response: "Test".to_string(), pk_share: pk_share_bytes, id: share_count.share_id-1, round_id: count.round_count };
+            let response_key = PKShareRequest { response: "Test".to_string(), pk_share: pk_share_bytes, id: share_count.share_id, round_id: count.round_count };
             let out_key = json::encode(&response_key).unwrap();
             let req_key = Request::post("http://127.0.0.1/")
                 .uri(url_register_keyshare.clone())
@@ -287,6 +290,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
 
             internal_round_count.round_count += 1;
+            //process::exit(1);
 
             //TODO: put blockchain polling in a seperate thread so cipher nodes can act on more than one round at a time
             // ------------------------------------
