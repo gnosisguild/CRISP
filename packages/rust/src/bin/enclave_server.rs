@@ -93,6 +93,18 @@ struct CRPRequest {
     crp_bytes: Vec<u8>,
 }
 
+#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+struct TimestampRequest {
+    round_id: u32,
+    timestamp: i64,
+}
+
+#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+struct VoteCountRequest {
+    round_id: u32,
+    vote_count: u32,
+}
+
 #[derive(RustcEncodable, RustcDecodable)]
 struct SKSShareRequest {
     response: String,
@@ -217,6 +229,58 @@ async fn call_contract(enc_vote: Bytes) -> Result<TxHash, Box<dyn std::error::Er
     let test = contract.vote_encrypted(enc_vote).send().await?.clone();
     println!("{:?}", test);
     Ok(test)
+}
+
+fn get_vote_count_by_round(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: VoteCountRequest = json::decode(&payload).unwrap();
+    println!("Request for round {:?} crp", incoming.round_id);
+
+    let pathdb = env::current_dir().unwrap();
+    let mut pathdbst = pathdb.display().to_string();
+    pathdbst.push_str("/database");
+    let db = sled::open(pathdbst.clone()).unwrap();
+
+    let mut round_key = incoming.round_id.to_string();
+    round_key.push_str("-storage");
+    println!("Database key is {:?}", round_key);
+    let state_out = db.get(round_key).unwrap().unwrap();
+    let state_out_str = str::from_utf8(&state_out).unwrap();
+    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
+
+    incoming.vote_count = state_out_struct.vote_count;
+    let out = json::encode(&incoming).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
+fn get_start_time_by_round(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: TimestampRequest = json::decode(&payload).unwrap();
+    println!("Request for round {:?} crp", incoming.round_id);
+
+    let pathdb = env::current_dir().unwrap();
+    let mut pathdbst = pathdb.display().to_string();
+    pathdbst.push_str("/database");
+    let db = sled::open(pathdbst.clone()).unwrap();
+
+    let mut round_key = incoming.round_id.to_string();
+    round_key.push_str("-storage");
+    println!("Database key is {:?}", round_key);
+    let state_out = db.get(round_key).unwrap().unwrap();
+    let state_out_str = str::from_utf8(&state_out).unwrap();
+    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
+
+    incoming.timestamp = state_out_struct.start_time;
+    let out = json::encode(&incoming).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
 }
 
 fn get_crp_by_round(req: &mut Request) -> IronResult<Response> {
