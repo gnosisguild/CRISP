@@ -10,6 +10,10 @@ export interface VotingRound {
   round_id: number
   pk_bytes: number[]
 }
+export interface VoteCount {
+  round_id: number
+  vote_count: number
+}
 
 export interface RoundCount {
   round_count: number
@@ -23,4 +27,9 @@ export interface BroadcastVoteRequest {
 export interface BroadcastVoteResponse {
   response: string
   tx_hash: string
+}
+
+export interface VotingTime {
+  round_id: number
+  timestamp: number
 }

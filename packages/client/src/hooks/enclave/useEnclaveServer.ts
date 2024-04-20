@@ -1,64 +1,35 @@
-import { useState } from 'react'
-import axios from 'axios'
 import { handleGenericError } from '@/utils/handle-generic-error'
-import { BroadcastVoteRequest, BroadcastVoteResponse, RoundCount, VotingRound } from '@/model/vote.model'
+import { BroadcastVoteRequest, BroadcastVoteResponse, RoundCount, VoteCount, VotingRound, VotingTime } from '@/model/vote.model'
+import { useApi } from '../generic/useFetchApi'
 
 const ENCLAVE_API = import.meta.env.VITE_ENCLAVE_API
 
 if (!ENCLAVE_API) handleGenericError('useEnclaveServer', { name: 'ENCLAVE_API', message: 'Missing env VITE_ENCLAVE_API' })
 
+const EnclaveEndpoints = {
+  GetVoteCountByRound: `${ENCLAVE_API}/get_vote_count_by_round`,
+  GetPkByRound: `${ENCLAVE_API}/get_pk_by_round`,
+  GetRound: `${ENCLAVE_API}/get_rounds`,
+  GetStartTimeByRound: `${ENCLAVE_API}/get_start_time_by_round`,
+  BroadcastVote: `${ENCLAVE_API}/broadcast_enc_vote`,
+} as const
+
 export const useEnclaveServer = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const { GetVoteCountByRound, GetPkByRound, GetRound, BroadcastVote, GetStartTimeByRound } = EnclaveEndpoints
+  const { fetchData, isLoading } = useApi()
 
-  const getPkByRound = async (round: VotingRound): Promise<VotingRound | undefined> => {
-    try {
-      setIsLoading(true)
-      const result = await axios.post<VotingRound>(`${ENCLAVE_API}/get_pk_by_round`, round)
-      if (result.data) {
-        return result.data
-      }
-    } catch (error) {
-      handleGenericError('useEnclaveServer - getPkByRound', error as Error)
-      return
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const getRound = async (): Promise<RoundCount | undefined> => {
-    try {
-      setIsLoading(true)
-      const result = await axios.get<RoundCount>(`${ENCLAVE_API}/get_rounds`)
-      if (result.data) {
-        return result.data
-      }
-    } catch (error) {
-      handleGenericError('useEnclaveServer - getRound', error as Error)
-      return
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const broadcastVote = async (vote: BroadcastVoteRequest): Promise<BroadcastVoteResponse | undefined> => {
-    try {
-      setIsLoading(true)
-      const result = await axios.post<BroadcastVoteResponse>(`${ENCLAVE_API}/broadcast_enc_vote`, vote)
-      if (result.data) {
-        return result.data
-      }
-    } catch (error) {
-      handleGenericError('useEnclaveServer - broadcastVote', error as Error)
-      return
-    } finally {
-      setIsLoading(false)
-    }
-  }
+  const getVoteCountByRound = (round: VoteCount) => fetchData<VoteCount, VoteCount>(GetVoteCountByRound, 'post', round)
+  const getPkByRound = (round: VotingRound) => fetchData<VotingRound, VotingRound>(GetPkByRound, 'post', round)
+  const getRound = () => fetchData<RoundCount>(GetRound)
+  const getStartTimeByRound = (votingStart: VotingTime) => fetchData<VotingTime, VotingTime>(GetStartTimeByRound, 'post', votingStart)
+  const broadcastVote = (vote: BroadcastVoteRequest) => fetchData<BroadcastVoteResponse, BroadcastVoteRequest>(BroadcastVote, 'post', vote)
 
   return {
     isLoading,
     getPkByRound,
     getRound,
+    getVoteCountByRound,
+    getStartTimeByRound,
     broadcastVote,
   }
 }

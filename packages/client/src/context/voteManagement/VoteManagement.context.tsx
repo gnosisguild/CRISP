@@ -4,8 +4,9 @@ import { useWebAssemblyHook } from '@/hooks/wasm/useWebAssembly'
 import { useEffect, useState } from 'react'
 import { SocialAuth } from '@/model/twitter.model'
 import useLocalStorage from '@/hooks/generic/useLocalStorage'
-import { VotingRound } from '@/model/vote.model'
+import { VotingRound, VotingTime } from '@/model/vote.model'
 import { useEnclaveServer } from '@/hooks/enclave/useEnclaveServer'
+import { convertTimestampToDate } from '@/utils/methods'
 
 const [useVoteManagementContext, VoteManagementContextProvider] = createGenericContext<VoteManagementContextType>()
 
@@ -16,13 +17,20 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   const [socialAuth, setSocialAuth] = useLocalStorage<SocialAuth | null>('socialAuth', null)
   const [user, setUser] = useState<SocialAuth | null>(socialAuth)
   const [votingRound, setVotingRound] = useState<VotingRound | null>(null)
+  const [roundEndDate, setRoundEndDate] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
 
   /**
    * Voting Management Methods
    **/
   const { isLoading: wasmLoading, wasmInstance, encryptInstance, initWebAssembly, encryptVote } = useWebAssemblyHook()
-  const { isLoading: enclaveLoading, getPkByRound: getPkByRoundRequest, getRound, broadcastVote } = useEnclaveServer()
+  const {
+    isLoading: enclaveLoading,
+    getPkByRound: getPkByRoundRequest,
+    getStartTimeByRound: getStartTimeByRoundRequest,
+    getRound,
+    broadcastVote,
+  } = useEnclaveServer()
 
   const initialLoad = async () => {
     await initWebAssembly()
@@ -31,8 +39,6 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
       await getPkByRound({ round_id: round.round_count, pk_bytes: [0] })
     }
   }
-
-  console.log('votingRound', votingRound)
 
   const logout = () => {
     setUser(null)
@@ -43,6 +49,14 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
     const round = await getPkByRoundRequest(votingRound)
     setVotingRound(round ?? null)
     return round
+  }
+
+  const getStartTimeByRound = async (votingStart: VotingTime) => {
+    const time = await getStartTimeByRoundRequest(votingStart)
+    if (time) {
+      const endDate = convertTimestampToDate(time?.timestamp)
+      setRoundEndDate(endDate)
+    }
   }
 
   useEffect(() => {
@@ -60,6 +74,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         encryptInstance,
         user,
         votingRound,
+        roundEndDate,
         initialLoad,
         broadcastVote,
         setVotingRound,
@@ -67,6 +82,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         setUser,
         initWebAssembly,
         encryptVote,
+        getStartTimeByRound,
         logout,
       }}
     >

@@ -1,17 +1,17 @@
-import { useState } from 'react'
-import axios from 'axios'
 import { handleGenericError } from '@/utils/handle-generic-error'
 import { Twitter, SocialAuth } from '@/model/twitter.model'
 import useLocalStorage from '@/hooks/generic/useLocalStorage'
 import { AUTH_MSG } from '@/pages/Register/Register'
 import { useVoteManagementContext } from '@/context/voteManagement'
+import { useApi } from '@/hooks/generic/useFetchApi'
 
 const TWITTER_API = import.meta.env.VITE_TWITTER_SERVERLESS_API
 
 if (!TWITTER_API) handleGenericError('useTwitter', { name: 'TWITTER_API', message: 'Missing env VITE_TWITTER_SERVERLESS_API' })
 
 export const useTwitter = () => {
-  const [isLoading, setIsLoading] = useState<boolean>(false)
+  const url = `${TWITTER_API}/twitter-data`
+  const { fetchData, isLoading } = useApi()
   const [_socialAuth, setSocialAuth] = useLocalStorage<SocialAuth | null>('socialAuth', null)
   const { setUser } = useVoteManagementContext()
 
@@ -22,30 +22,25 @@ export const useTwitter = () => {
   }
 
   const handleTwitterPostVerification = async (postUrl: string) => {
-    try {
-      setIsLoading(true)
-      const username = extractUsernameFromUrl(postUrl)
-      const result = await axios.post<Twitter>(`${TWITTER_API}/twitter-data`, { url: postUrl })
-
-      if (result.data) {
-        const descriptionLowerCase = result.data.description.toLowerCase()
-        const authMsgLowerCase = AUTH_MSG.toLowerCase()
-        if (descriptionLowerCase.includes(authMsgLowerCase)) {
-          const user = {
-            validationDate: new Date(),
-            avatar: result.data.open_graph.images[0].url ?? '',
-            username: username ?? '',
-          }
-          setUser(user)
-          setSocialAuth(user)
+    const username = extractUsernameFromUrl(postUrl)
+    const result = await verifyPost(postUrl)
+    if (result) {
+      const descriptionLowerCase = result.description.toLowerCase()
+      const authMsgLowerCase = AUTH_MSG.toLowerCase()
+      if (descriptionLowerCase.includes(authMsgLowerCase)) {
+        const user = {
+          validationDate: new Date(),
+          avatar: result.open_graph.images[0].url ?? '',
+          username: username ?? '',
         }
+        setUser(user)
+        setSocialAuth(user)
       }
-    } catch (error) {
-      handleGenericError('handlePostVerification', error as Error)
-    } finally {
-      setIsLoading(false)
     }
   }
+
+  //Api
+  const verifyPost = (postUrl: string) => fetchData<Twitter, { url: string }>(url, 'post', { url: postUrl })
 
   return {
     isLoading,
