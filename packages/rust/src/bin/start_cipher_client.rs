@@ -97,7 +97,28 @@ pub struct Voted {
     pub vote: Bytes,
 }
 
+#[derive(RustcEncodable, RustcDecodable)]
+struct Round {
+    id: u32,
+    voting_address: String,
+    chain_id: u32,
+    ciphernode_count: u32,
+    pk_share_count: u32,
+    sks_share_count: u32,
+    vote_count: u32,
+    crp: Vec<u8>,
+    pk: Vec<u8>,
+    start_time: i64,
+    ciphernode_total:  u32,
+    ciphernodes: Vec<Ciphernode>,
+}
 
+#[derive(RustcEncodable, RustcDecodable)]
+struct Ciphernode {
+    id: u32,
+    pk_share: Vec<u8>,
+    sks_share: Vec<u8>,
+}
 
 // async fn get_server_conn(url: &str) -> Result<()> {
 //     let _url = url.parse::<hyper::Uri>();
@@ -183,7 +204,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Check to see if the server reported a new round
         // TODO: also check timestamp to be sure round isnt over, or already registered
         if(count.round_count > internal_round_count.round_count) {
-            println!("Getting latest PK share ID.");
+            // TODO: Get round config from enclave server
+
+
+
+
+            println!("Getting Ciphernode ID."); // This is the current pk share count for now.
             // Client Code get the number of pk_shares on the server.
             // Currently the number of shares becomes the cipher client ID for the round.
             let url_get_shareid = "http://127.0.0.1/get_pk_share_count".parse::<hyper::Uri>()?;
@@ -310,13 +336,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     function tester() external view returns (string)
                     function id() external view returns (uint256)
                     function voteEncrypted(bytes memory encVote) public
-                    function getVote(address id) public returns(bytes memory)
-                    function totalSupply() external view returns (uint256)
-                    function balanceOf(address account) external view returns (uint256)
-                    function transfer(address recipient, uint256 amount) external returns (bool)
-                    function allowance(address owner, address spender) external view returns (uint256)
-                    function approve(address spender, uint256 amount) external returns (bool)
-                    function transferFrom( address sender, address recipient, uint256 amount) external returns (bool)
                     event Voted(address indexed voter, bytes vote)
                 ]"#,
             );
@@ -456,6 +475,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                         let mut res_get_sks = sender_get_sks.send_request(req_get_sks).await?;
                         println!("Response status: {}", res_get_sks.status());
+
+                        if(res_get_sks.status().to_string() == "500 Internal Server Error") {
+                            println!("enclave resource failed, trying to poll for sks shares again...");
+                            continue;
+                        }
 
                         let body_bytes = res_get_sks.collect().await?.to_bytes();
                         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();

@@ -119,9 +119,10 @@ struct EncryptedVote {
     enc_vote_bytes: Vec<u8>,
 }
 
-// fn get_new_crisp_id(req: &mut Request) -> IronResult<Response> {
-
-// }
+#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+struct GetRoundRequest {
+    round_id: u32,
+}
 
 // fn register_cyphernode(req: &mut Request) -> IronResult<Response> {
     // register ip address or some way to contact nodes when a computation request comes in
@@ -151,6 +152,20 @@ struct Ciphernode {
     sks_share: Vec<u8>,
 }
 
+fn get_state(round_id: u32) -> Round {
+    let pathdb = env::current_dir().unwrap();
+    let mut pathdbst = pathdb.display().to_string();
+    pathdbst.push_str("/database");
+    let db = sled::open(pathdbst.clone()).unwrap();
+    let mut round_key = round_id.to_string();
+    round_key.push_str("-storage");
+    println!("Database key is {:?}", round_key);
+    let state_out = db.get(round_key).unwrap().unwrap();
+    let state_out_str = str::from_utf8(&state_out).unwrap();
+    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
+    state_out_struct
+}
+
 #[tokio::main]
 async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
@@ -158,21 +173,10 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: EncryptedVote = json::decode(&payload).unwrap();
 
-    // let pathdb = env::current_dir().unwrap();
-    // let mut pathdbst = pathdb.display().to_string();
-    // pathdbst.push_str("/database");
-    // let db = sled::open(pathdbst.clone()).unwrap();
-
-    // let mut round_key = incoming.round_id.to_string();
-    // round_key.push_str("-storage");
-    // println!("Database key is {:?}", round_key);
-
-    // let state_out = db.get(round_key.clone()).unwrap().unwrap();
-    // let state_out_str = str::from_utf8(&state_out).unwrap();
-    // let mut state_out_struct: Round = json::decode(&state_out_str).unwrap();
+    let state = get_state(incoming.round_id);
 
     let sol_vote = Bytes::from(incoming.enc_vote_bytes);
-    let tx_hash = call_contract(sol_vote).await.unwrap();
+    let tx_hash = call_contract(sol_vote, state.voting_address).await.unwrap();
     let mut converter = "0x".to_string();
     for i in 0..32 {
         if(tx_hash[i] <= 16) {
@@ -191,7 +195,7 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((content_type, status::Ok, out)))
 }
 
-async fn call_contract(enc_vote: Bytes) -> Result<TxHash, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<dyn std::error::Error + Send + Sync>> {
     println!("calling voting contract");
 
     let infura_key = "INFURAKEY";
@@ -212,7 +216,7 @@ async fn call_contract(enc_vote: Bytes) -> Result<TxHash, Box<dyn std::error::Er
     );
 
     //const RPC_URL: &str = "https://eth.llamarpc.com";
-    const VOTE_ADDRESS: &str = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B";
+    let VOTE_ADDRESS: &str = &address;
 
     let eth_key = "PRIVATEKEY";
     let eth_val = env::var(eth_key).unwrap();
@@ -231,6 +235,20 @@ async fn call_contract(enc_vote: Bytes) -> Result<TxHash, Box<dyn std::error::Er
     Ok(test)
 }
 
+fn get_round_state(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: GetRoundRequest = json::decode(&payload).unwrap();
+    println!("Request config for round {:?}", incoming.round_id);
+
+    let state = get_state(incoming.round_id);
+    let out = json::encode(&state).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
 fn get_vote_count_by_round(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
@@ -238,19 +256,8 @@ fn get_vote_count_by_round(req: &mut Request) -> IronResult<Response> {
     let mut incoming: VoteCountRequest = json::decode(&payload).unwrap();
     println!("Request for round {:?} crp", incoming.round_id);
 
-    let pathdb = env::current_dir().unwrap();
-    let mut pathdbst = pathdb.display().to_string();
-    pathdbst.push_str("/database");
-    let db = sled::open(pathdbst.clone()).unwrap();
-
-    let mut round_key = incoming.round_id.to_string();
-    round_key.push_str("-storage");
-    println!("Database key is {:?}", round_key);
-    let state_out = db.get(round_key).unwrap().unwrap();
-    let state_out_str = str::from_utf8(&state_out).unwrap();
-    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
-
-    incoming.vote_count = state_out_struct.vote_count;
+    let state = get_state(incoming.round_id);
+    incoming.vote_count = state.vote_count;
     let out = json::encode(&incoming).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -264,19 +271,8 @@ fn get_start_time_by_round(req: &mut Request) -> IronResult<Response> {
     let mut incoming: TimestampRequest = json::decode(&payload).unwrap();
     println!("Request for round {:?} crp", incoming.round_id);
 
-    let pathdb = env::current_dir().unwrap();
-    let mut pathdbst = pathdb.display().to_string();
-    pathdbst.push_str("/database");
-    let db = sled::open(pathdbst.clone()).unwrap();
-
-    let mut round_key = incoming.round_id.to_string();
-    round_key.push_str("-storage");
-    println!("Database key is {:?}", round_key);
-    let state_out = db.get(round_key).unwrap().unwrap();
-    let state_out_str = str::from_utf8(&state_out).unwrap();
-    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
-
-    incoming.timestamp = state_out_struct.start_time;
+    let state = get_state(incoming.round_id);
+    incoming.timestamp = state.start_time;
     let out = json::encode(&incoming).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -290,19 +286,8 @@ fn get_crp_by_round(req: &mut Request) -> IronResult<Response> {
     let mut incoming: CRPRequest = json::decode(&payload).unwrap();
     println!("Request for round {:?} crp", incoming.round_id);
 
-    let pathdb = env::current_dir().unwrap();
-    let mut pathdbst = pathdb.display().to_string();
-    pathdbst.push_str("/database");
-    let db = sled::open(pathdbst.clone()).unwrap();
-
-    let mut round_key = incoming.round_id.to_string();
-    round_key.push_str("-storage");
-    println!("Database key is {:?}", round_key);
-    let state_out = db.get(round_key).unwrap().unwrap();
-    let state_out_str = str::from_utf8(&state_out).unwrap();
-    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
-
-    incoming.crp_bytes = state_out_struct.crp;
+    let state = get_state(incoming.round_id);
+    incoming.crp_bytes = state.crp;
     let out = json::encode(&incoming).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -315,19 +300,8 @@ fn get_pk_by_round(req: &mut Request) -> IronResult<Response> {
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: PKRequest = json::decode(&payload).unwrap();
 
-    let pathdb = env::current_dir().unwrap();
-    let mut pathdbst = pathdb.display().to_string();
-    pathdbst.push_str("/database");
-    let db = sled::open(pathdbst.clone()).unwrap();
-
-    let mut round_key = incoming.round_id.to_string();
-    round_key.push_str("-storage");
-    println!("Database key is {:?}", round_key);
-    let state_out = db.get(round_key).unwrap().unwrap();
-    let state_out_str = str::from_utf8(&state_out).unwrap();
-    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
-
-    incoming.pk_bytes = state_out_struct.pk;
+    let state = get_state(incoming.round_id);
+    incoming.pk_bytes = state.pk;
     let out = json::encode(&incoming).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -342,19 +316,8 @@ fn get_pk_share_count(req: &mut Request) -> IronResult<Response> {
 
     let mut incoming: PKShareCount = json::decode(&payload).unwrap();
 
-    let pathdb = env::current_dir().unwrap();
-    let mut pathdbst = pathdb.display().to_string();
-    pathdbst.push_str("/database");
-    let db = sled::open(pathdbst.clone()).unwrap();
-
-    let mut round_key = incoming.round_id.to_string();
-    round_key.push_str("-storage");
-    println!("Database key is {:?}", round_key);
-    let state_out = db.get(round_key).unwrap().unwrap();
-    let state_out_str = str::from_utf8(&state_out).unwrap();
-    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
-
-    incoming.share_id = state_out_struct.pk_share_count;
+    let state = get_state(incoming.round_id);
+    incoming.share_id = state.pk_share_count;
     let out = json::encode(&incoming).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -468,18 +431,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
 
     let new_round_bytes = key2.into_bytes();
     db.insert(key, new_round_bytes).unwrap();
-    //db.remove(key).unwrap();
 
-    // let test = db.get(key).unwrap();
-    // let mut test_key = std::str::from_utf8(test.unwrap().as_ref()).unwrap().to_string();
-    // let mut test_int = test_key.parse::<u32>().unwrap();
-    // println!("Database key is {:?} and round int is {:?}", test_key, test_int);
-
-    // let state_out = db.get(key2).unwrap().unwrap();
-    // let state_out_str = str::from_utf8(&state_out).unwrap();
-    // let state_out_struct: Round = json::decode(&state_out_str).unwrap();
-    // println!("db id for round {:?}", state_out_struct.voting_address);
-    // --------------
     // create a response with our random string, and pass in the string from the POST body
     let response = JsonResponse { response: "CRISP Initiated".to_string() };
     let out = json::encode(&response).unwrap();
@@ -489,7 +441,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
 }
 
 
-async fn aggregate_pk_shares(round_id: u32, db: Db) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+async fn aggregate_pk_shares(round_id: u32, db: &Db) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("aggregating validator keyshare");
 
     let degree = 4096;
@@ -509,37 +461,31 @@ async fn aggregate_pk_shares(round_id: u32, db: Db) -> Result<(), Box<dyn std::e
             .build_arc()?
     );
 
-    // let pathdb = env::current_dir().unwrap();
-    // let mut pathdbst = pathdb.display().to_string();
-    // pathdbst.push_str("/database");
-    // let db = sled::open(pathdbst.clone()).unwrap();
-
     let mut round_key = round_id.to_string();
     round_key.push_str("-storage");
     println!("Database key is {:?}", round_key);
 
     let state_out = db.get(round_key.clone()).unwrap().unwrap();
     let state_out_str = str::from_utf8(&state_out).unwrap();
-    let mut state_out_struct: Round = json::decode(&state_out_str).unwrap();
-    println!("checking db after drop {:?}", state_out_struct.ciphernode_count);
-    println!("{:?}", state_out_struct.ciphernodes[0].id);
-    //println!("{:?}", state_out_struct.ciphernodes[0].pk_share);
-
+    let mut state: Round = json::decode(&state_out_str).unwrap();
+    println!("checking db after drop {:?}", state.ciphernode_count);
+    println!("{:?}", state.ciphernodes[0].id);
+    //println!("{:?}", state.ciphernodes[0].pk_share);
 
     //let crp = CommonRandomPoly::new_deterministic(&params, seed)?;
-    let crp = CommonRandomPoly::deserialize(&state_out_struct.crp, &params)?;
+    let crp = CommonRandomPoly::deserialize(&state.crp, &params)?;
 
     // Party setup: each party generates a secret key and shares of a collective
     // public key.
     struct Party {
         pk_share: PublicKeyShare,
     }
-    //let mut parties = Vec::with_capacity(num_parties);
+
     let mut parties :Vec<Party> = Vec::new();
-    for i in 1..state_out_struct.ciphernode_total + 1 { // todo fix init code that cuases offset
+    for i in 1..state.ciphernode_total + 1 { // todo fix init code that causes offset
         // read in pk_shares from storage
         println!("Aggregating PKShare... id {}", i);
-        let data_des = PublicKeyShare::deserialize(&state_out_struct.ciphernodes[i as usize].pk_share, &params, crp.clone()).unwrap();
+        let data_des = PublicKeyShare::deserialize(&state.ciphernodes[i as usize].pk_share, &params, crp.clone()).unwrap();
         // let pk_share = PublicKeyShare::new(&sk_share, crp.clone(), &mut thread_rng())?;
         parties.push(Party { pk_share: data_des });
     }
@@ -553,8 +499,8 @@ async fn aggregate_pk_shares(round_id: u32, db: Db) -> Result<(), Box<dyn std::e
     //println!("{:?}", pk);
     println!("Multiparty Public Key Generated");
     let store_pk = pk.to_bytes();
-    state_out_struct.pk = store_pk;
-    let state_str = json::encode(&state_out_struct).unwrap();
+    state.pk = store_pk;
+    let state_str = json::encode(&state).unwrap();
     let state_bytes = state_str.into_bytes();
     db.insert(round_key, state_bytes).unwrap();
     println!("aggregate pk stored for round {:?}", round_id);
@@ -704,34 +650,33 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     let mut pathdbst = pathdb.display().to_string();
     pathdbst.push_str("/database");
     let db = sled::open(pathdbst.clone()).unwrap();
-
     let mut round_key = incoming.round_id.to_string();
     round_key.push_str("-storage");
     println!("Database key is {:?}", round_key);
-
     let state_out = db.get(round_key.clone()).unwrap().unwrap();
     let state_out_str = str::from_utf8(&state_out).unwrap();
-    let mut state_out_struct: Round = json::decode(&state_out_str).unwrap();
-    state_out_struct.pk_share_count = state_out_struct.pk_share_count + 1;
-    state_out_struct.ciphernode_count = state_out_struct.ciphernode_count + 1;
+    let mut state: Round = json::decode(&state_out_str).unwrap();
+
+    state.pk_share_count = state.pk_share_count + 1;
+    state.ciphernode_count = state.ciphernode_count + 1;
     let cnode = Ciphernode {
         id: incoming.id,
         pk_share: incoming.pk_share,
         sks_share: vec![0],
     };
-    state_out_struct.ciphernodes.push(cnode);
-    let state_str = json::encode(&state_out_struct).unwrap();
+    state.ciphernodes.push(cnode);
+    let state_str = json::encode(&state).unwrap();
     let state_bytes = state_str.into_bytes();
     db.insert(round_key, state_bytes).unwrap();
-    //drop(db);
+
     println!("pk share store for node id {:?}", incoming.id);
-    println!("ciphernode count {:?}", state_out_struct.ciphernode_count);
-    println!("ciphernode total {:?}", state_out_struct.ciphernode_total);
-    println!("pk share count {:?}", state_out_struct.pk_share_count);
-    // toso get share threshold from client config
-    if(state_out_struct.ciphernode_count == state_out_struct.ciphernode_total) {
+    println!("ciphernode count {:?}", state.ciphernode_count);
+    println!("ciphernode total {:?}", state.ciphernode_total);
+    println!("pk share count {:?}", state.pk_share_count);
+
+    if(state.ciphernode_count == state.ciphernode_total) {
         println!("All shares received");
-        aggregate_pk_shares(incoming.round_id, db).await;
+        aggregate_pk_shares(incoming.round_id, &db).await;
     }
 
     // create a response with our random string, and pass in the string from the POST body
