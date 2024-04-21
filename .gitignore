@@ -5,6 +5,7 @@ target
 keyshares
 dist
 build
+database
 
 # files
 *.env
