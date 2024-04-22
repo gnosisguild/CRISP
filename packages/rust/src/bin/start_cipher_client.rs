@@ -1,17 +1,17 @@
 mod util;
 
-use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path};
+use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path, process};
 use console::style;
 use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare, SecretKeySwitchShare},
 };
-use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize, DeserializeParametrized};
+use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize as FheSerialize, DeserializeParametrized};
 //use fhe_math::rq::{Poly};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use util::timeit::{timeit, timeit_n};
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 use http_body_util::Empty;
 use hyper::Request;
 //use hyper::body::Bytes;
@@ -19,7 +19,6 @@ use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
 use http_body_util::BodyExt;
 use tokio::io::{AsyncWriteExt as _, self};
-use rustc_serialize::json;
 
 use std::{thread, time};
 
@@ -34,12 +33,12 @@ use ethers::{
     contract::abigen,
 };
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct JsonRequest {
     response: String,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct PKShareRequest {
     response: String,
     pk_share: Vec<u8>,
@@ -47,7 +46,7 @@ struct PKShareRequest {
     round_id: u32,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct SKSShareRequest {
     response: String,
     sks_share: Vec<u8>,
@@ -55,7 +54,7 @@ struct SKSShareRequest {
     round_id: u32,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct CrispConfig {
     round_id: u32,
     chain_id: u32,
@@ -65,18 +64,18 @@ struct CrispConfig {
     // todo start_block: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct RoundCount {
     round_count: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct PKShareCount {
     round_id: u32,
     share_id: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct CRPRequest {
     round_id: u32,
     crp_bytes: Vec<u8>,
@@ -97,7 +96,47 @@ pub struct Voted {
     pub vote: Bytes,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct SKSShareResponse {
+    response: String,
+    round_id: u32,
+    sks_shares: Vec<Vec<u8>>,
+}
+#[derive(Debug, Deserialize, Serialize)]
+struct SKSSharePoll {
+    response: String,
+    round_id: u32,
+    ciphernode_count: u32
+}
 
+#[derive(Debug, Deserialize, Serialize)]
+struct VoteCountRequest {
+    round_id: u32,
+    vote_count: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Round {
+    id: u32,
+    voting_address: String,
+    chain_id: u32,
+    ciphernode_count: u32,
+    pk_share_count: u32,
+    sks_share_count: u32,
+    vote_count: u32,
+    crp: Vec<u8>,
+    pk: Vec<u8>,
+    start_time: i64,
+    ciphernode_total:  u32,
+    ciphernodes: Vec<Ciphernode>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct Ciphernode {
+    id: u32,
+    pk_share: Vec<u8>,
+    sks_share: Vec<u8>,
+}
 
 // async fn get_server_conn(url: &str) -> Result<()> {
 //     let _url = url.parse::<hyper::Uri>();
@@ -165,7 +204,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let authority = url_get_rounds.authority().unwrap().clone();
 
         let response = JsonRequest { response: "get_rounds".to_string() };
-        let out = json::encode(&response).unwrap();
+        let out = serde_json::to_string(&response).unwrap();
         let req = Request::get("http://127.0.0.1/")
             .uri(url_get_rounds.clone())
             .header(hyper::header::HOST, authority.as_str())
@@ -181,8 +220,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!("Internal Round Count: {:?}", internal_round_count.round_count);
 
         // Check to see if the server reported a new round
+        // TODO: also check timestamp to be sure round isnt over, or already registered
         if(count.round_count > internal_round_count.round_count) {
-            println!("Getting latest PK share ID.");
+            // TODO: Get round config from enclave server
+
+            println!("Getting Ciphernode ID."); // This is the current pk share count for now.
             // Client Code get the number of pk_shares on the server.
             // Currently the number of shares becomes the cipher client ID for the round.
             let url_get_shareid = "http://127.0.0.1/get_pk_share_count".parse::<hyper::Uri>()?;
@@ -200,7 +242,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let authority_get_shareid = url_get_shareid.authority().unwrap().clone();
 
             let response_get_shareid = PKShareCount { round_id: count.round_count, share_id: 0 };
-            let out_get_shareid = json::encode(&response_get_shareid).unwrap();
+            let out_get_shareid = serde_json::to_string(&response_get_shareid).unwrap();
             let req_get_shareid = Request::post("http://127.0.0.1/")
                 .uri(url_get_shareid.clone())
                 .header(hyper::header::HOST, authority_get_shareid.as_str())
@@ -213,6 +255,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let body_bytes = res_get_shareid.collect().await?.to_bytes();
             let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
             let share_count: PKShareCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+            println!("database round count {:?}", share_count.round_id);
+            println!("database pk share id {:?}", share_count.share_id);
 
             // --------------------------------------
             println!("Generating share and serializing.");
@@ -233,7 +277,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let authority_get_crp = url_get_crp.authority().unwrap().clone();
 
             let response_get_crp = CRPRequest { round_id: count.round_count, crp_bytes: vec![0] };
-            let out_get_crp = json::encode(&response_get_crp).unwrap();
+            let out_get_crp = serde_json::to_string(&response_get_crp).unwrap();
             let req_get_crp = Request::post("http://127.0.0.1/")
                 .uri(url_get_crp.clone())
                 .header(hyper::header::HOST, authority_get_crp.as_str())
@@ -269,8 +313,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             });
             let authority_key = url_register_keyshare.authority().unwrap().clone();
 
-            let response_key = PKShareRequest { response: "Test".to_string(), pk_share: pk_share_bytes, id: share_count.share_id-1, round_id: count.round_count };
-            let out_key = json::encode(&response_key).unwrap();
+            let response_key = PKShareRequest { response: "Test".to_string(), pk_share: pk_share_bytes, id: share_count.share_id, round_id: count.round_count };
+            let out_key = serde_json::to_string(&response_key).unwrap();
             let req_key = Request::post("http://127.0.0.1/")
                 .uri(url_register_keyshare.clone())
                 .header(hyper::header::HOST, authority_key.as_str())
@@ -287,16 +331,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
 
             internal_round_count.round_count += 1;
+            //process::exit(1);
 
             //TODO: put blockchain polling in a seperate thread so cipher nodes can act on more than one round at a time
             // ------------------------------------
             println!("polling smart contract...");
             // chain state
             // todo, move into loop and boot up for different chains if needed.
-            // let infura_key = "";
-            // let infura_val = env::var(infura_key).unwrap();
-            let mut RPC_URL = "https://sepolia.infura.io/v3/INFURA".to_string();
-            // RPC_URL.push_str(&infura_val);
+            let infura_key = "INFURAKEY";
+            let infura_val = env::var(infura_key).unwrap();
+            let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
+            RPC_URL.push_str(&infura_val);
             let provider = Provider::<Http>::try_from(RPC_URL.clone())?;
             let block_number: U64 = provider.get_block_number().await?;
             println!("Current block height is {:?}", block_number);
@@ -306,20 +351,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     function tester() external view returns (string)
                     function id() external view returns (uint256)
                     function voteEncrypted(bytes memory encVote) public
-                    function getVote(address id) public returns(bytes memory)
-                    function totalSupply() external view returns (uint256)
-                    function balanceOf(address account) external view returns (uint256)
-                    function transfer(address recipient, uint256 amount) external returns (bool)
-                    function allowance(address owner, address spender) external view returns (uint256)
-                    function approve(address spender, uint256 amount) external returns (bool)
-                    function transferFrom( address sender, address recipient, uint256 amount) external returns (bool)
                     event Voted(address indexed voter, bytes vote)
                 ]"#,
             );
             let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
             let contract_address = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B".parse::<Address>().unwrap();
-            // let eth_key = "PRIVATEKEY";
-            let eth_val = "PRIVATEKEY";
+            let eth_key = "PRIVATEKEY";
+            let eth_val = env::var(eth_key).unwrap();
             let wallet: LocalWallet = eth_val
                 .parse::<LocalWallet>().unwrap()
                 .with_chain_id(11155111 as u64);
@@ -360,6 +398,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 votes_encrypted.push(deserialized_vote);
                 counter += 1;
 
+                // TODO: replace with timestamp check
                 if counter == 2 {
                     print!("all votes collected... performing fhe computation");
                     let tally = timeit!("Vote tallying", {
@@ -395,8 +434,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         }
                     });
                     let authority_sks = url_register_sks.authority().unwrap().clone();
-                    let response_sks = SKSShareRequest { response: "Register_SKS_Share".to_string(), sks_share: sks_bytes, id: share_count.share_id-1, round_id: count.round_count };
-                    let out_sks = json::encode(&response_sks).unwrap();
+                    let response_sks = SKSShareRequest { response: "Register_SKS_Share".to_string(), sks_share: sks_bytes, id: share_count.share_id, round_id: count.round_count };
+                    let out_sks = serde_json::to_string(&response_sks).unwrap();
                     let req_sks = Request::post("http://127.0.0.1/")
                         .uri(url_register_sks.clone())
                         .header(hyper::header::HOST, authority_sks.as_str())
@@ -415,19 +454,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                     // poll the chrys server to get all sks shares.
                     loop {
-                        #[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
-                        struct SKSShareResponse {
-                            response: String,
-                            round_id: u32,
-                            sks_shares: Vec<Vec<u8>>,
-                        }
-                        #[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
-                        struct SKSSharePoll {
-                            response: String,
-                            round_id: u32,
-                            ciphernode_count: u32
-                        }
-
                         // Client Code Get all sks shares
                         let url_register_get_sks = "http://127.0.0.1/get_sks_shares".parse::<hyper::Uri>()?;
                         let host_get_sks = url_register_get_sks.host().expect("uri has no host");
@@ -443,7 +469,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         });
                         let authority_get_sks = url_register_get_sks.authority().unwrap().clone();
                         let response_get_sks = SKSSharePoll { response: "Get_All_SKS_Shares".to_string(), round_id: count.round_count, ciphernode_count: num_parties as u32};
-                        let out_get_sks = json::encode(&response_get_sks).unwrap();
+                        let out_get_sks = serde_json::to_string(&response_get_sks).unwrap();
                         let req_get_sks = Request::post("http://127.0.0.1/")
                             .uri(url_register_get_sks.clone())
                             .header(hyper::header::HOST, authority_get_sks.as_str())
@@ -451,6 +477,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                         let mut res_get_sks = sender_get_sks.send_request(req_get_sks).await?;
                         println!("Response status: {}", res_get_sks.status());
+
+                        if(res_get_sks.status().to_string() == "500 Internal Server Error") {
+                            println!("enclave resource failed, trying to poll for sks shares again...");
+                            continue;
+                        }
 
                         let body_bytes = res_get_sks.collect().await?.to_bytes();
                         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();

@@ -2,7 +2,7 @@ import React from 'react'
 import Logo from '@/assets/icons/logo.svg'
 import CircularTiles from '@/components/CircularTiles'
 import { Link } from 'react-router-dom'
-import { ArrowSquareOut, Keyhole, ListMagnifyingGlass, ShieldCheck } from '@phosphor-icons/react'
+import { Keyhole, ListMagnifyingGlass, ShieldCheck } from '@phosphor-icons/react'
 
 const HeroSection: React.FC = () => {
   return (

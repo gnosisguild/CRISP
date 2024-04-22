@@ -15,13 +15,14 @@ type RemainingTime = {
 const CountdownTimer: React.FC<CountdownTimerProps> = ({ endTime }) => {
   const [remainingTime, setRemainingTime] = useState<RemainingTime | null>(null)
   const [loading, setLoading] = useState<boolean>(true)
+
   useEffect(() => {
     const timer = setInterval(() => {
       const now = new Date()
       const difference = endTime.getTime() - now.getTime()
-
       if (difference <= 0) {
         clearInterval(timer)
+        setLoading(false)
         setRemainingTime({ days: '0', hours: '0', minutes: '0', seconds: '0' })
         return
       }

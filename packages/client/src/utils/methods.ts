@@ -7,3 +7,7 @@ export const markWinner = (options: PollOption[]) => {
     checked: option.votes === highestVoteCount,
   }))
 }
+
+export const convertTimestampToDate = (timestamp: number): Date => {
+  return new Date(timestamp * 1000)
+}

@@ -25,8 +25,12 @@ jobs:
         run: |
           cd packages/client
           yarn run build
+        env:
+          VITE_TWITTER_SERVERLESS_API: ${{secrets.VITE_TWITTER_SERVERLESS_API}}
+          VITE_ENCLAVE_API: ${{secrets.VITE_ENCLAVE_API}}
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:
           branch: gh-pages # The branch the action should deploy to.
           folder: packages/client/dist # The folder the action should deploy.
+

@@ -12,8 +12,8 @@ const POLL = {
   totalVotes: 451,
   date: 'March 25, 2024',
   options: [
-    { id: 1, votes: 230, label: '🌮' },
-    { id: 2, votes: 221, label: '🍕' },
+    { value: 0, votes: 230, label: '🌮' },
+    { value: 1, votes: 221, label: '🍕' },
   ],
 }
 const PollResult: React.FC = () => {

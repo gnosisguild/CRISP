@@ -1,7 +1,25 @@
 @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap');
 @tailwind base;
-@tailwind components;
 @tailwind utilities;
+@tailwind components;
+
+@layer components {
+  .toast-alert {
+    @apply translate-x-[-10rem] opacity-0; /* Start off-screen to the left */
+    animation: slideIn 0.5s forwards;
+  }
+
+  @keyframes slideIn {
+    from {
+      opacity: 0;
+      transform: translateX(-10rem); /* Start from -10rem on the X axis */
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0); /* End at 0 on the X axis */
+    }
+  }
+}
 
 @layer base {
   /* Global Styles */

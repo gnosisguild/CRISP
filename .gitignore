@@ -5,10 +5,11 @@ target
 keyshares
 dist
 build
+database
 
 # files
 *.env
 *.log
 .pnp.*
 package-lock.json
-
+.DS_Store

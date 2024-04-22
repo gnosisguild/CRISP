@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import { DAILY_POLL } from '@/mocks/polls'
 import { Poll } from '@/model/poll.model'
 import Card from '@/components/Cards/Card'
 import Modal from '@/components/Modal'
@@ -7,6 +6,7 @@ import CircularTiles from '@/components/CircularTiles'
 import RegisterModal from '@/pages/Register/Register'
 import { useVoteManagementContext } from '@/context/voteManagement'
 import LoadingAnimation from '@/components/LoadingAnimation'
+import { generateRandomPoll } from '@/utils/generate-random-poll'
 
 type DailyPollSectionProps = {
   onVoted?: (vote: Poll) => void
@@ -15,7 +15,7 @@ type DailyPollSectionProps = {
 
 const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading }) => {
   const { user } = useVoteManagementContext()
-  const [pollOptions, setPollOptions] = useState<Poll[]>(DAILY_POLL)
+  const [pollOptions, setPollOptions] = useState<Poll[]>(generateRandomPoll())
   const [pollSelected, setPollSelected] = useState<Poll | null>(null)
   const [noPollSelected, setNoPollSelected] = useState<boolean>(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -28,7 +28,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
   const handleChecked = (selectedId: number) => {
     const updatedOptions = pollOptions.map((option) => ({
       ...option,
-      checked: !option.checked && option.id === selectedId,
+      checked: !option.checked && option.value === selectedId,
     }))
     setPollSelected(updatedOptions.find((opt) => opt.checked) ?? null)
     setPollOptions(updatedOptions)
@@ -66,8 +66,8 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
           {loading && <LoadingAnimation isLoading={loading} />}
           <div className='grid w-full grid-cols-2 gap-4 md:gap-8'>
             {pollOptions.map((poll) => (
-              <div key={poll.id} className='col-span-2 md:col-span-1'>
-                <Card checked={poll.checked} onChecked={() => handleChecked(poll.id)}>
+              <div key={poll.label} className='col-span-2 md:col-span-1'>
+                <Card checked={poll.checked} onChecked={() => handleChecked(poll.value)}>
                   <p className='inline-block text-8xl leading-none'>{poll.label}</p>
                 </Card>
               </div>
