@@ -8,7 +8,7 @@ use fhe::{
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
 };
 use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize as FheSerialize}; // TODO: see if we can use serde Serialize in fhe lib
-use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
+use rand::{Rng, distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use util::timeit::{timeit, timeit_n};
 use serde::{Deserialize, Serialize};
@@ -123,6 +123,12 @@ struct GetRoundRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+struct GetEmojisRequest {
+    round_id: u32,
+    emojis: [String; 2],
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct SKSSharePoll {
     response: String,
     round_id: u32,
@@ -154,6 +160,7 @@ struct Round {
     pk: Vec<u8>,
     start_time: i64,
     ciphernode_total:  u32,
+    emojis: [String; 2],
     ciphernodes: Vec<Ciphernode>,
 }
 
@@ -162,6 +169,131 @@ struct Ciphernode {
     id: u32,
     pk_share: Vec<u8>,
     sks_share: Vec<u8>,
+}
+
+fn generate_emoji() -> (String, String) {
+    let emojis = [
+        "🍇",
+        "🍈",
+        "🍉",
+        "🍊",
+        "🍋",
+        "🍌",
+        "🍍",
+        "🥭",
+        "🍎",
+        "🍏",
+        "🍐",
+        "🍑",
+        "🍒",
+        "🍓",
+        "🫐",
+        "🥝",
+        "🍅",
+        "🫒",
+        "🥥",
+        "🥑",
+        "🍆",
+        "🥔",
+        "🥕",
+        "🌽",
+        "🌶️",
+        "🫑",
+        "🥒",
+        "🥬",
+        "🥦",
+        "🧄",
+        "🧅",
+        "🍄",
+        "🥜",
+        "🫘",
+        "🌰",
+        "🍞",
+        "🥐",
+        "🥖",
+        "🫓",
+        "🥨",
+        "🥯",
+        "🥞",
+        "🧇",
+        "🧀",
+        "🍖",
+        "🍗",
+        "🥩",
+        "🥓",
+        "🍔",
+        "🍟",
+        "🍕",
+        "🌭",
+        "🥪",
+        "🌮",
+        "🌯",
+        "🫔",
+        "🥙",
+        "🧆",
+        "🥚",
+        "🍳",
+        "🥘",
+        "🍲",
+        "🫕",
+        "🥣",
+        "🥗",
+        "🍿",
+        "🧈",
+        "🧂",
+        "🥫",
+        "🍱",
+        "🍘",
+        "🍙",
+        "🍚",
+        "🍛",
+        "🍜",
+        "🍝",
+        "🍠",
+        "🍢",
+        "🍣",
+        "🍤",
+        "🍥",
+        "🥮",
+        "🍡",
+        "🥟",
+        "🥠",
+        "🥡",
+        "🦀",
+        "🦞",
+        "🦐",
+        "🦑",
+        "🦪",
+        "🍦",
+        "🍧",
+        "🍨",
+        "🍩",
+        "🍪",
+        "🎂",
+        "🍰",
+        "🧁",
+        "🥧",
+        "🍫",
+        "🍬",
+        "🍭",
+        "🍮",
+        "🍯",
+        "🍼",
+        "🥛",
+        "☕",
+        "🍵",
+        "🍾",
+        "🍷",
+        "🍸",
+        "🍹",
+        "🍺",
+        "🍻",
+        "🥂",
+        "🥃",
+    ];
+    let index1 = rand::thread_rng().gen_range(0..emojis.len());
+    let index2 = rand::thread_rng().gen_range(0..emojis.len());
+    (emojis[index1].to_string(), emojis[index2].to_string())
 }
 
 fn get_state(round_id: u32) -> (Round, Db, String) {
@@ -251,12 +383,27 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
     Ok(test)
 }
 
+fn get_emojis_by_round(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: GetEmojisRequest = serde_json::from_str(&payload).unwrap();
+    println!("Request emojis for round {:?}", incoming.round_id);
+
+    let (state, db, key) = get_state(incoming.round_id);
+    incoming.emojis = state.emojis;
+    let out = serde_json::to_string(&incoming).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
 fn get_round_state(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request config for round {:?}", incoming.round_id);
+    println!("Request state for round {:?}", incoming.round_id);
 
     let (state, db, key) = get_state(incoming.round_id);
     let out = serde_json::to_string(&state).unwrap();
@@ -270,7 +417,7 @@ fn get_vote_count_by_round(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: VoteCountRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request for round {:?} crp", incoming.round_id);
+    println!("Request vote count for round {:?}", incoming.round_id);
 
     let (state, db, key) = get_state(incoming.round_id);
     incoming.vote_count = state.vote_count;
@@ -285,7 +432,7 @@ fn get_start_time_by_round(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: TimestampRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request for round {:?} crp", incoming.round_id);
+    println!("Request start time for round {:?}", incoming.round_id);
 
     let (state, db, key) = get_state(incoming.round_id);
     incoming.timestamp = state.start_time;
@@ -300,7 +447,7 @@ fn get_crp_by_round(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: CRPRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request for round {:?} crp", incoming.round_id);
+    println!("Request crp for round {:?}", incoming.round_id);
 
     let (state, db, key) = get_state(incoming.round_id);
     incoming.crp_bytes = state.crp;
@@ -419,6 +566,8 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     let timestamp = init_time.timestamp();
     println!("timestamp {:?}", timestamp);
 
+    let (emoji1, emoji2) = generate_emoji();
+
     let state = Round {
         id: round_int,
         voting_address: incoming.voting_address,
@@ -431,6 +580,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
         pk: vec![0],
         start_time: timestamp,
         ciphernode_total: incoming.ciphernode_count,
+        emojis: [emoji1, emoji2],
         ciphernodes: vec![
             Ciphernode {
                 id: 0,
@@ -715,6 +865,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/broadcast_enc_vote", broadcast_enc_vote, "broadcast_enc_vote");
     router.post("/get_vote_count_by_round", get_vote_count_by_round, "get_vote_count_by_round");
     router.post("/get_start_time_by_round", get_start_time_by_round, "get_start_time_by_round");
+    router.post("/get_emojis_by_round", get_emojis_by_round, "get_emojis_by_round");
 
     Iron::new(router).http("127.0.0.1:4000").unwrap();
 
