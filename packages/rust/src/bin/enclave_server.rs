@@ -164,7 +164,7 @@ struct Ciphernode {
     sks_share: Vec<u8>,
 }
 
-fn get_state(round_id: u32) -> Round {
+fn get_state(round_id: u32) -> (Round, Db) {
     let pathdb = env::current_dir().unwrap();
     let mut pathdbst = pathdb.display().to_string();
     pathdbst.push_str("/database");
@@ -175,7 +175,7 @@ fn get_state(round_id: u32) -> Round {
     let state_out = db.get(round_key).unwrap().unwrap();
     let state_out_str = str::from_utf8(&state_out).unwrap();
     let state_out_struct: Round = serde_json::from_str(&state_out_str).unwrap();
-    state_out_struct
+    (state_out_struct, db)
 }
 
 #[tokio::main]
@@ -185,7 +185,12 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: EncryptedVote = serde_json::from_str(&payload).unwrap();
 
-    let state = get_state(incoming.round_id);
+    let (mut state, db) = get_state(incoming.round_id);
+    state.vote_count = state.vote_count + 1;
+    let state_str = serde_json::to_string(&state).unwrap();
+    let state_bytes = state_str.into_bytes();
+    let key = incoming.round_id.to_string();
+    db.insert(key, state_bytes).unwrap();
 
     let sol_vote = Bytes::from(incoming.enc_vote_bytes);
     let tx_hash = call_contract(sol_vote, state.voting_address).await.unwrap();
@@ -254,7 +259,7 @@ fn get_round_state(req: &mut Request) -> IronResult<Response> {
     let mut incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
     println!("Request config for round {:?}", incoming.round_id);
 
-    let state = get_state(incoming.round_id);
+    let (state, db) = get_state(incoming.round_id);
     let out = serde_json::to_string(&state).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -268,7 +273,7 @@ fn get_vote_count_by_round(req: &mut Request) -> IronResult<Response> {
     let mut incoming: VoteCountRequest = serde_json::from_str(&payload).unwrap();
     println!("Request for round {:?} crp", incoming.round_id);
 
-    let state = get_state(incoming.round_id);
+    let (state, db) = get_state(incoming.round_id);
     incoming.vote_count = state.vote_count;
     let out = serde_json::to_string(&incoming).unwrap();
 
@@ -283,7 +288,7 @@ fn get_start_time_by_round(req: &mut Request) -> IronResult<Response> {
     let mut incoming: TimestampRequest = serde_json::from_str(&payload).unwrap();
     println!("Request for round {:?} crp", incoming.round_id);
 
-    let state = get_state(incoming.round_id);
+    let (state, db) = get_state(incoming.round_id);
     incoming.timestamp = state.start_time;
     let out = serde_json::to_string(&incoming).unwrap();
 
@@ -298,7 +303,7 @@ fn get_crp_by_round(req: &mut Request) -> IronResult<Response> {
     let mut incoming: CRPRequest = serde_json::from_str(&payload).unwrap();
     println!("Request for round {:?} crp", incoming.round_id);
 
-    let state = get_state(incoming.round_id);
+    let (state, db) = get_state(incoming.round_id);
     incoming.crp_bytes = state.crp;
     let out = serde_json::to_string(&incoming).unwrap();
 
@@ -312,7 +317,7 @@ fn get_pk_by_round(req: &mut Request) -> IronResult<Response> {
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: PKRequest = serde_json::from_str(&payload).unwrap();
 
-    let state = get_state(incoming.round_id);
+    let (state, db) = get_state(incoming.round_id);
     incoming.pk_bytes = state.pk;
     let out = serde_json::to_string(&incoming).unwrap();
 
@@ -328,7 +333,7 @@ fn get_pk_share_count(req: &mut Request) -> IronResult<Response> {
 
     let mut incoming: PKShareCount = serde_json::from_str(&payload).unwrap();
 
-    let state = get_state(incoming.round_id);
+    let (state, db) = get_state(incoming.round_id);
     incoming.share_id = state.pk_share_count;
     let out = serde_json::to_string(&incoming).unwrap();
 
