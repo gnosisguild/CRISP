@@ -109,6 +109,11 @@ struct SKSSharePoll {
     ciphernode_count: u32
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct VoteCountRequest {
+    round_id: u32,
+    vote_count: u32,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 struct Round {
@@ -218,9 +223,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // TODO: also check timestamp to be sure round isnt over, or already registered
         if(count.round_count > internal_round_count.round_count) {
             // TODO: Get round config from enclave server
-
-
-
 
             println!("Getting Ciphernode ID."); // This is the current pk share count for now.
             // Client Code get the number of pk_shares on the server.
