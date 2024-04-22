@@ -71,10 +71,10 @@ const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
               future daily polls.
             </p>
           </div>
-          <div className='flex items-center space-x-4'>
+          <div className='flex items-center gap-4 max-md:flex-col'>
             <textarea rows={2} className='input h-auto' disabled value={AUTH_MSG} />
-            <div className='h-16 w-0.5 bg-slate-200' />
-            <button className='button-primary button-max whitespace-nowrap' onClick={handlePost}>
+            <div className='hidden h-16 w-0.5 bg-slate-200 md:block' />
+            <button className='button-primary md:button-max whitespace-nowrap max-md:w-full' onClick={handlePost}>
               Share post
             </button>
           </div>

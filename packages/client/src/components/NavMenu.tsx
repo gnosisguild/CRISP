@@ -1,31 +1,33 @@
 // NavMenu.tsx
 import React, { useEffect, useRef, useState } from 'react'
-import CalendarIcon from '@/assets/icons/calendarCheck.svg'
-import CheckIcon from '@/assets/icons/check.svg'
-import NotebookIcon from '@/assets/icons/notebook.svg'
 import LogoutIcon from '@/assets/icons/logout.svg'
 import { useNavigate } from 'react-router-dom'
-//Icons
-import ArrowRight from '@/assets/icons/arrowRight.svg'
 import { useVoteManagementContext } from '@/context/voteManagement'
+//Icons
+import { CaretRight, CalendarCheck, CheckFat, File, Notebook } from '@phosphor-icons/react'
 
 interface NavMenuProps {}
 
 const NAV_MENU_OPTIONS = [
   {
     name: 'Daily Poll',
-    icon: CalendarIcon,
+    icon: <CalendarCheck />,
     path: '/daily',
   },
   {
     name: 'Historic Polls',
-    icon: CheckIcon,
+    icon: <CheckFat />,
     path: '/historic',
   },
   {
     name: 'About',
-    icon: NotebookIcon,
+    icon: <Notebook />,
     path: '/about',
+  },
+  {
+    name: 'Docs',
+    icon: <File />,
+    path: '/whitepaper',
   },
 ]
 
@@ -82,7 +84,7 @@ const NavMenu: React.FC<NavMenuProps> = () => {
       >
         <img src={user.avatar} className='h-[20px] w-[20px] rounded-full' />
         <p className='text-xs font-bold'>@{user.username}</p>
-        <img src={ArrowRight} className={isOpen ? '-rotate-90 transition-transform duration-200' : ''} />
+        <CaretRight className={isOpen ? '-rotate-90 transition-transform duration-200' : ''} />
       </button>
 
       <div
@@ -94,7 +96,7 @@ const NavMenu: React.FC<NavMenuProps> = () => {
         <div className='space-y-2'>
           {NAV_MENU_OPTIONS.map(({ name, path, icon }) => (
             <div key={name} className='flex cursor-pointer space-x-2 rounded p-1 hover:bg-gray-100' onClick={() => handleNavigation(path)}>
-              <img src={icon} />
+              {icon}
               <p className='block rounded-md text-sm font-semibold '>{name}</p>
             </div>
           ))}

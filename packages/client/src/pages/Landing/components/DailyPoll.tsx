@@ -44,12 +44,12 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
 
   return (
     <>
-      <div className='relative flex h-screen w-screen flex-col items-center justify-center px-6'>
-        <div className='absolute bottom-0 right-0 z-0 grid w-[70vh] grid-cols-2 gap-2'>
+      <div className='relative flex min-h-screen w-screen flex-col items-center justify-center px-6 py-28'>
+        <div className='absolute bottom-0 right-0 grid w-[70vh] grid-cols-2 gap-2'>
           <CircularTiles count={4} />
         </div>
 
-        <div className=' z-10 mx-auto flex w-full max-w-screen-md flex-col items-center justify-center space-y-12'>
+        <div className='relative mx-auto flex w-full max-w-screen-md flex-col items-center justify-center space-y-12'>
           <div className='space-y-2'>
             <p className='text-center text-sm font-extrabold uppercase text-slate-400'>Daily Poll</p>
             <h3 className='font-bold leading-none text-slate-600'>Choose your favorite</h3>
