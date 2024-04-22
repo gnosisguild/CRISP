@@ -6,12 +6,12 @@ use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare, SecretKeySwitchShare},
 };
-use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize, DeserializeParametrized};
+use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize as FheSerialize, DeserializeParametrized};
 //use fhe_math::rq::{Poly};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use util::timeit::{timeit, timeit_n};
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 use http_body_util::Empty;
 use hyper::Request;
 //use hyper::body::Bytes;
@@ -19,7 +19,6 @@ use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
 use http_body_util::BodyExt;
 use tokio::io::{AsyncWriteExt as _, self};
-use rustc_serialize::json;
 
 use std::{thread, time};
 
@@ -34,12 +33,12 @@ use ethers::{
     contract::abigen,
 };
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct JsonRequest {
     response: String,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct PKShareRequest {
     response: String,
     pk_share: Vec<u8>,
@@ -47,7 +46,7 @@ struct PKShareRequest {
     round_id: u32,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct SKSShareRequest {
     response: String,
     sks_share: Vec<u8>,
@@ -55,7 +54,7 @@ struct SKSShareRequest {
     round_id: u32,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct CrispConfig {
     round_id: u32,
     chain_id: u32,
@@ -65,18 +64,18 @@ struct CrispConfig {
     // todo start_block: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct RoundCount {
     round_count: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct PKShareCount {
     round_id: u32,
     share_id: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct CRPRequest {
     round_id: u32,
     crp_bytes: Vec<u8>,
@@ -97,7 +96,21 @@ pub struct Voted {
     pub vote: Bytes,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
+struct SKSShareResponse {
+    response: String,
+    round_id: u32,
+    sks_shares: Vec<Vec<u8>>,
+}
+#[derive(Debug, Deserialize, Serialize)]
+struct SKSSharePoll {
+    response: String,
+    round_id: u32,
+    ciphernode_count: u32
+}
+
+
+#[derive(Debug, Deserialize, Serialize)]
 struct Round {
     id: u32,
     voting_address: String,
@@ -113,7 +126,7 @@ struct Round {
     ciphernodes: Vec<Ciphernode>,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Ciphernode {
     id: u32,
     pk_share: Vec<u8>,
@@ -186,7 +199,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let authority = url_get_rounds.authority().unwrap().clone();
 
         let response = JsonRequest { response: "get_rounds".to_string() };
-        let out = json::encode(&response).unwrap();
+        let out = serde_json::to_string(&response).unwrap();
         let req = Request::get("http://127.0.0.1/")
             .uri(url_get_rounds.clone())
             .header(hyper::header::HOST, authority.as_str())
@@ -227,7 +240,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let authority_get_shareid = url_get_shareid.authority().unwrap().clone();
 
             let response_get_shareid = PKShareCount { round_id: count.round_count, share_id: 0 };
-            let out_get_shareid = json::encode(&response_get_shareid).unwrap();
+            let out_get_shareid = serde_json::to_string(&response_get_shareid).unwrap();
             let req_get_shareid = Request::post("http://127.0.0.1/")
                 .uri(url_get_shareid.clone())
                 .header(hyper::header::HOST, authority_get_shareid.as_str())
@@ -262,7 +275,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let authority_get_crp = url_get_crp.authority().unwrap().clone();
 
             let response_get_crp = CRPRequest { round_id: count.round_count, crp_bytes: vec![0] };
-            let out_get_crp = json::encode(&response_get_crp).unwrap();
+            let out_get_crp = serde_json::to_string(&response_get_crp).unwrap();
             let req_get_crp = Request::post("http://127.0.0.1/")
                 .uri(url_get_crp.clone())
                 .header(hyper::header::HOST, authority_get_crp.as_str())
@@ -299,7 +312,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let authority_key = url_register_keyshare.authority().unwrap().clone();
 
             let response_key = PKShareRequest { response: "Test".to_string(), pk_share: pk_share_bytes, id: share_count.share_id, round_id: count.round_count };
-            let out_key = json::encode(&response_key).unwrap();
+            let out_key = serde_json::to_string(&response_key).unwrap();
             let req_key = Request::post("http://127.0.0.1/")
                 .uri(url_register_keyshare.clone())
                 .header(hyper::header::HOST, authority_key.as_str())
@@ -420,7 +433,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     });
                     let authority_sks = url_register_sks.authority().unwrap().clone();
                     let response_sks = SKSShareRequest { response: "Register_SKS_Share".to_string(), sks_share: sks_bytes, id: share_count.share_id, round_id: count.round_count };
-                    let out_sks = json::encode(&response_sks).unwrap();
+                    let out_sks = serde_json::to_string(&response_sks).unwrap();
                     let req_sks = Request::post("http://127.0.0.1/")
                         .uri(url_register_sks.clone())
                         .header(hyper::header::HOST, authority_sks.as_str())
@@ -439,19 +452,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                     // poll the chrys server to get all sks shares.
                     loop {
-                        #[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
-                        struct SKSShareResponse {
-                            response: String,
-                            round_id: u32,
-                            sks_shares: Vec<Vec<u8>>,
-                        }
-                        #[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
-                        struct SKSSharePoll {
-                            response: String,
-                            round_id: u32,
-                            ciphernode_count: u32
-                        }
-
                         // Client Code Get all sks shares
                         let url_register_get_sks = "http://127.0.0.1/get_sks_shares".parse::<hyper::Uri>()?;
                         let host_get_sks = url_register_get_sks.host().expect("uri has no host");
@@ -467,7 +467,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         });
                         let authority_get_sks = url_register_get_sks.authority().unwrap().clone();
                         let response_get_sks = SKSSharePoll { response: "Get_All_SKS_Shares".to_string(), round_id: count.round_count, ciphernode_count: num_parties as u32};
-                        let out_get_sks = json::encode(&response_get_sks).unwrap();
+                        let out_get_sks = serde_json::to_string(&response_get_sks).unwrap();
                         let req_get_sks = Request::post("http://127.0.0.1/")
                             .uri(url_register_get_sks.clone())
                             .header(hyper::header::HOST, authority_get_sks.as_str())

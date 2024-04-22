@@ -2,7 +2,7 @@ mod util;
 
 use dialoguer::{theme::ColorfulTheme, Input, FuzzySelect};
 use std::{thread, time, env, sync::Arc};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Read;
 
@@ -10,7 +10,7 @@ use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
 };
-use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize, DeserializeParametrized};
+use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize as FheSerialize, DeserializeParametrized};
 //use fhe_math::rq::{Poly};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
@@ -23,7 +23,6 @@ use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
 use http_body_util::BodyExt;
 use tokio::io::{AsyncWriteExt as _, self};
-use rustc_serialize::json;
 
 use ethers::{
     prelude::{abigen, Abigen},
@@ -37,28 +36,28 @@ use ethers::{
 
 type Client = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
 
-#[derive(Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct JsonResponse {
     response: String
 }
 
-#[derive(Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct JsonResponseTxHash {
     response: String,
     tx_hash: String,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct JsonRequestGetRounds {
     response: String,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct RoundCount {
     round_count: u32,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct JsonRequest {
     response: String,
     pk_share: u32,
@@ -66,7 +65,7 @@ struct JsonRequest {
     round_id: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct CrispConfig {
     round_id: u32,
     chain_id: u32,
@@ -75,13 +74,13 @@ struct CrispConfig {
     voter_count: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct PKRequest {
     round_id: u32,
     pk_bytes: Vec<u8>,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct EncryptedVote {
     round_id: u32,
     enc_vote_bytes: Vec<u8>,
@@ -179,7 +178,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             // The authority of our URL will be the hostname of the httpbin remote
             let authority_id = url_id.authority().unwrap().clone();
             let response_id = JsonRequestGetRounds { response: "Test".to_string() };
-            let out_id = json::encode(&response_id).unwrap();
+            let out_id = serde_json::to_string(&response_id).unwrap();
             let req_id = Request::get("http://127.0.0.1/")
                 .uri(url_id.clone())
                 .header(hyper::header::HOST, authority_id.as_str())
@@ -219,7 +218,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let round_id = count.round_count + 1;
             let response = CrispConfig { round_id: round_id, chain_id: 5, voting_address: config.voting_address, ciphernode_count: config.ciphernode_count, voter_count: config.voter_count };
             //let response = JsonRequest { response: "Test".to_string(), pk_share: 0, id: 0, round_id: 0 };
-            let out = json::encode(&response).unwrap();
+            let out = serde_json::to_string(&response).unwrap();
             let req = Request::post("http://127.0.0.1/")
                 .uri(url.clone())
                 .header(hyper::header::HOST, authority.as_str())
@@ -281,7 +280,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let authority_pk = url_pk.authority().unwrap().clone();
             let v: Vec<u8> = vec! [0];
             let response_pk = PKRequest { round_id: input_crisp_id, pk_bytes: v };
-            let out_pk = json::encode(&response_pk).unwrap();
+            let out_pk = serde_json::to_string(&response_pk).unwrap();
             let req_pk = Request::post("http://127.0.0.1/")
                 .uri(url_pk.clone())
                 .header(hyper::header::HOST, authority_pk.as_str())
@@ -350,7 +349,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             });
             let authority_contract = url_contract.authority().unwrap().clone();
             let request_contract = EncryptedVote { round_id: input_crisp_id, enc_vote_bytes: ct.to_bytes()};
-            let out_contract = json::encode(&request_contract).unwrap();
+            let out_contract = serde_json::to_string(&request_contract).unwrap();
             let req_contract = Request::post("http://127.0.0.1/")
                 .uri(url_contract.clone())
                 .header(hyper::header::HOST, authority_contract.as_str())

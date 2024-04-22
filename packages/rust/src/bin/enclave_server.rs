@@ -7,18 +7,16 @@ use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
 };
-use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize};
+use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize as FheSerialize}; // TODO: see if we can use serde Serialize in fhe lib
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use util::timeit::{timeit, timeit_n};
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 //use serde_json::{Result, Value};
 
 use iron::prelude::*;
 use iron::status;
 use iron::mime::Mime;
-use rustc_serialize::json;
-use rustc_serialize::json::Json;
 use router::Router;
 use std::io::Read;
 use std::fs::File;
@@ -42,18 +40,18 @@ fn pick_response() -> String {
     "Test".to_string()
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct JsonResponse {
     response: String
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct JsonResponseTxHash {
     response: String,
     tx_hash: String,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct JsonRequest {
     response: String,
     pk_share: Vec<u8>,
@@ -61,7 +59,7 @@ struct JsonRequest {
     round_id: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct CrispConfig {
     round_id: u32,
     chain_id: u32,
@@ -70,42 +68,42 @@ struct CrispConfig {
     voter_count: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct RoundCount {
     round_count: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct PKShareCount {
     round_id: u32,
     share_id: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct PKRequest {
     round_id: u32,
     pk_bytes: Vec<u8>,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct CRPRequest {
     round_id: u32,
     crp_bytes: Vec<u8>,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct TimestampRequest {
     round_id: u32,
     timestamp: i64,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct VoteCountRequest {
     round_id: u32,
     vote_count: u32,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct SKSShareRequest {
     response: String,
     sks_share: Vec<u8>,
@@ -113,15 +111,29 @@ struct SKSShareRequest {
     round_id: u32,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct EncryptedVote {
     round_id: u32,
     enc_vote_bytes: Vec<u8>,
 }
 
-#[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct GetRoundRequest {
     round_id: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct SKSSharePoll {
+    response: String,
+    round_id: u32,
+    ciphernode_count: u32, //TODO: dont need this
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct SKSShareResponse {
+    response: String,
+    round_id: u32,
+    sks_shares: Vec<Vec<u8>>,
 }
 
 // fn register_cyphernode(req: &mut Request) -> IronResult<Response> {
@@ -129,7 +141,7 @@ struct GetRoundRequest {
 
 // }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Round {
     id: u32,
     voting_address: String,
@@ -145,7 +157,7 @@ struct Round {
     ciphernodes: Vec<Ciphernode>,
 }
 
-#[derive(RustcEncodable, RustcDecodable)]
+#[derive(Debug, Deserialize, Serialize)]
 struct Ciphernode {
     id: u32,
     pk_share: Vec<u8>,
@@ -162,7 +174,7 @@ fn get_state(round_id: u32) -> Round {
     println!("Database key is {:?}", round_key);
     let state_out = db.get(round_key).unwrap().unwrap();
     let state_out_str = str::from_utf8(&state_out).unwrap();
-    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
+    let state_out_struct: Round = serde_json::from_str(&state_out_str).unwrap();
     state_out_struct
 }
 
@@ -171,7 +183,7 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: EncryptedVote = json::decode(&payload).unwrap();
+    let mut incoming: EncryptedVote = serde_json::from_str(&payload).unwrap();
 
     let state = get_state(incoming.round_id);
 
@@ -188,7 +200,7 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     }
 
     let response = JsonResponseTxHash { response: "tx_sent".to_string(), tx_hash: converter };
-    let out = json::encode(&response).unwrap();
+    let out = serde_json::to_string(&response).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     println!("Request for round {:?} send vote tx", incoming.round_id);
@@ -239,11 +251,11 @@ fn get_round_state(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: GetRoundRequest = json::decode(&payload).unwrap();
+    let mut incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
     println!("Request config for round {:?}", incoming.round_id);
 
     let state = get_state(incoming.round_id);
-    let out = json::encode(&state).unwrap();
+    let out = serde_json::to_string(&state).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok, out)))
@@ -253,12 +265,12 @@ fn get_vote_count_by_round(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: VoteCountRequest = json::decode(&payload).unwrap();
+    let mut incoming: VoteCountRequest = serde_json::from_str(&payload).unwrap();
     println!("Request for round {:?} crp", incoming.round_id);
 
     let state = get_state(incoming.round_id);
     incoming.vote_count = state.vote_count;
-    let out = json::encode(&incoming).unwrap();
+    let out = serde_json::to_string(&incoming).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok, out)))
@@ -268,12 +280,12 @@ fn get_start_time_by_round(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: TimestampRequest = json::decode(&payload).unwrap();
+    let mut incoming: TimestampRequest = serde_json::from_str(&payload).unwrap();
     println!("Request for round {:?} crp", incoming.round_id);
 
     let state = get_state(incoming.round_id);
     incoming.timestamp = state.start_time;
-    let out = json::encode(&incoming).unwrap();
+    let out = serde_json::to_string(&incoming).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok, out)))
@@ -283,12 +295,12 @@ fn get_crp_by_round(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: CRPRequest = json::decode(&payload).unwrap();
+    let mut incoming: CRPRequest = serde_json::from_str(&payload).unwrap();
     println!("Request for round {:?} crp", incoming.round_id);
 
     let state = get_state(incoming.round_id);
     incoming.crp_bytes = state.crp;
-    let out = json::encode(&incoming).unwrap();
+    let out = serde_json::to_string(&incoming).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok, out)))
@@ -298,11 +310,11 @@ fn get_pk_by_round(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: PKRequest = json::decode(&payload).unwrap();
+    let mut incoming: PKRequest = serde_json::from_str(&payload).unwrap();
 
     let state = get_state(incoming.round_id);
     incoming.pk_bytes = state.pk;
-    let out = json::encode(&incoming).unwrap();
+    let out = serde_json::to_string(&incoming).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     println!("Request for round {:?} public key", incoming.round_id);
@@ -314,11 +326,11 @@ fn get_pk_share_count(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
 
-    let mut incoming: PKShareCount = json::decode(&payload).unwrap();
+    let mut incoming: PKShareCount = serde_json::from_str(&payload).unwrap();
 
     let state = get_state(incoming.round_id);
     incoming.share_id = state.pk_share_count;
-    let out = json::encode(&incoming).unwrap();
+    let out = serde_json::to_string(&incoming).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok, out)))
@@ -343,7 +355,7 @@ fn get_rounds(req: &mut Request) -> IronResult<Response> {
     println!("round_count: {:?}", count.round_count);
 
     let response = JsonResponse { response: "Round Count Retrieved".to_string() };
-    let out = json::encode(&count).unwrap();
+    let out = serde_json::to_string(&count).unwrap();
     println!("get rounds hit");
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -375,7 +387,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     req.body.read_to_string(&mut payload).unwrap();
 
     // we're expecting the POST to match the format of our JsonRequest struct
-    let incoming: CrispConfig = json::decode(&payload).unwrap();
+    let incoming: CrispConfig = serde_json::from_str(&payload).unwrap();
     println!("ID: {:?}", incoming.round_id); // TODO: check that client sent the expected next round_id
     println!("Address: {:?}", incoming.voting_address);
 
@@ -424,7 +436,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
         ],
     };
 
-    let state_str = json::encode(&state).unwrap();
+    let state_str = serde_json::to_string(&state).unwrap();
     let state_bytes = state_str.into_bytes();
     let key2 = round_int.to_string();
     db.insert(inc_round_key, state_bytes).unwrap();
@@ -434,7 +446,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
 
     // create a response with our random string, and pass in the string from the POST body
     let response = JsonResponse { response: "CRISP Initiated".to_string() };
-    let out = json::encode(&response).unwrap();
+    let out = serde_json::to_string(&response).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok, out)))
@@ -467,7 +479,7 @@ async fn aggregate_pk_shares(round_id: u32, db: &Db) -> Result<(), Box<dyn std::
 
     let state_out = db.get(round_key.clone()).unwrap().unwrap();
     let state_out_str = str::from_utf8(&state_out).unwrap();
-    let mut state: Round = json::decode(&state_out_str).unwrap();
+    let mut state: Round = serde_json::from_str(&state_out_str).unwrap();
     println!("checking db after drop {:?}", state.ciphernode_count);
     println!("{:?}", state.ciphernodes[0].id);
     //println!("{:?}", state.ciphernodes[0].pk_share);
@@ -500,7 +512,7 @@ async fn aggregate_pk_shares(round_id: u32, db: &Db) -> Result<(), Box<dyn std::
     println!("Multiparty Public Key Generated");
     let store_pk = pk.to_bytes();
     state.pk = store_pk;
-    let state_str = json::encode(&state).unwrap();
+    let state_str = serde_json::to_string(&state).unwrap();
     let state_bytes = state_str.into_bytes();
     db.insert(round_key, state_bytes).unwrap();
     println!("aggregate pk stored for round {:?}", round_id);
@@ -509,7 +521,7 @@ async fn aggregate_pk_shares(round_id: u32, db: &Db) -> Result<(), Box<dyn std::
 
 fn handler(req: &mut Request) -> IronResult<Response> {
     let response = JsonResponse { response: pick_response() };
-    let out = json::encode(&response).unwrap();
+    let out = serde_json::to_string(&response).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok, out)))
@@ -524,7 +536,7 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
     req.body.read_to_string(&mut payload).unwrap();
 
     // we're expecting the POST to match the format of our JsonRequest struct
-    let incoming: SKSShareRequest = json::decode(&payload).unwrap();
+    let incoming: SKSShareRequest = serde_json::from_str(&payload).unwrap();
     println!("{:?}", incoming.response);
     println!("ID: {:?}", incoming.id); // cipher node id (based on first upload of pk share)
     println!("Round ID: {:?}", incoming.round_id);
@@ -540,12 +552,12 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
 
     let state_out = db.get(round_key.clone()).unwrap().unwrap();
     let state_out_str = str::from_utf8(&state_out).unwrap();
-    let mut state_out_struct: Round = json::decode(&state_out_str).unwrap();
+    let mut state_out_struct: Round = serde_json::from_str(&state_out_str).unwrap();
     state_out_struct.sks_share_count = state_out_struct.sks_share_count + 1;
 
     let index = incoming.id + 1; // offset from vec push
     state_out_struct.ciphernodes[index as usize].sks_share = incoming.sks_share;
-    let state_str = json::encode(&state_out_struct).unwrap();
+    let state_str = serde_json::to_string(&state_out_struct).unwrap();
     let state_bytes = state_str.into_bytes();
     db.insert(round_key, state_bytes).unwrap();
     println!("sks share stored for node id {:?}", incoming.id);
@@ -559,7 +571,7 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
 
     // create a response with our random string, and pass in the string from the POST body
     let response = JsonResponse { response: pick_response() };
-    let out = json::encode(&response).unwrap();
+    let out = serde_json::to_string(&response).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok, out)))
@@ -570,22 +582,10 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
 
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    #[derive(Debug, Deserialize, RustcEncodable, RustcDecodable)]
-    struct SKSSharePoll {
-        response: String,
-        round_id: u32,
-        ciphernode_count: u32, //TODO: dont need this
-    }
-    // we're expecting the POST to match the format of our JsonRequest struct
-    let incoming: SKSSharePoll = json::decode(&payload).unwrap();
-    //const length: usize = incoming.cyphernode_count;
 
-    #[derive(RustcEncodable, RustcDecodable)]
-    struct SKSShareResponse {
-        response: String,
-        round_id: u32,
-        sks_shares: Vec<Vec<u8>>,
-    }
+    // we're expecting the POST to match the format of our JsonRequest struct
+    let incoming: SKSSharePoll = serde_json::from_str(&payload).unwrap();
+    //const length: usize = incoming.cyphernode_count;
 
     let pathdb = env::current_dir().unwrap();
     let mut pathdbst = pathdb.display().to_string();
@@ -598,7 +598,7 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
 
     let state_out = db.get(round_key.clone()).unwrap().unwrap();
     let state_out_str = str::from_utf8(&state_out).unwrap();
-    let state_out_struct: Round = json::decode(&state_out_str).unwrap();
+    let state_out_struct: Round = serde_json::from_str(&state_out_str).unwrap();
 
     let mut shares = Vec::with_capacity(incoming.ciphernode_count as usize);
 
@@ -614,7 +614,7 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
             round_id: incoming.round_id,
             sks_shares: shares,
         };
-        let out = json::encode(&response).unwrap();
+        let out = serde_json::to_string(&response).unwrap();
         println!("get rounds hit");
 
         let content_type = "application/json".parse::<Mime>().unwrap();
@@ -625,7 +625,7 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
             round_id: incoming.round_id,
             sks_shares: shares,
         };
-        let out = json::encode(&response).unwrap();
+        let out = serde_json::to_string(&response).unwrap();
         println!("get rounds hit");
 
         let content_type = "application/json".parse::<Mime>().unwrap();
@@ -641,7 +641,7 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     req.body.read_to_string(&mut payload).unwrap();
 
     // we're expecting the POST to match the format of our JsonRequest struct
-    let incoming: JsonRequest = json::decode(&payload).unwrap();
+    let incoming: JsonRequest = serde_json::from_str(&payload).unwrap();
     println!("{:?}", incoming.response);
     println!("ID: {:?}", incoming.id);
     println!("Round ID: {:?}", incoming.round_id);
@@ -655,7 +655,7 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     println!("Database key is {:?}", round_key);
     let state_out = db.get(round_key.clone()).unwrap().unwrap();
     let state_out_str = str::from_utf8(&state_out).unwrap();
-    let mut state: Round = json::decode(&state_out_str).unwrap();
+    let mut state: Round = serde_json::from_str(&state_out_str).unwrap();
 
     state.pk_share_count = state.pk_share_count + 1;
     state.ciphernode_count = state.ciphernode_count + 1;
@@ -665,7 +665,7 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
         sks_share: vec![0],
     };
     state.ciphernodes.push(cnode);
-    let state_str = json::encode(&state).unwrap();
+    let state_str = serde_json::to_string(&state).unwrap();
     let state_bytes = state_str.into_bytes();
     db.insert(round_key, state_bytes).unwrap();
 
@@ -681,7 +681,7 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
 
     // create a response with our random string, and pass in the string from the POST body
     let response = JsonResponse { response: pick_response() };
-    let out = json::encode(&response).unwrap();
+    let out = serde_json::to_string(&response).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok, out)))

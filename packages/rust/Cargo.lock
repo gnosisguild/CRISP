@@ -2908,7 +2908,6 @@ dependencies = [
  "rand",
  "rand_chacha",
  "router",
- "rustc-serialize",
  "serde",
  "serde_json",
  "sled",

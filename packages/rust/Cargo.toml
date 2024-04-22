@@ -25,7 +25,6 @@ hyper = { version = "1", features = ["full"] }
 http-body-util = "0.1"
 hyper-util = { version = "0.1", features = ["full"] }
 iron = "0.4.0"
-rustc-serialize = "0.3"
 router = "0.4.0"
 walkdir = "2.5.0"
 dialoguer = { version = "0.11.0", features = ["fuzzy-select"] }
