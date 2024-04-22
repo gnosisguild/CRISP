@@ -2,7 +2,6 @@ import React from 'react'
 import Logo from '@/assets/icons/logo.svg'
 import { Link } from 'react-router-dom'
 import NavMenu from '@/components/NavMenu'
-import { List } from '@phosphor-icons/react'
 
 const PAGES = [
   {
