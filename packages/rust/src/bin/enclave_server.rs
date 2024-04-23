@@ -62,10 +62,10 @@ struct JsonRequest {
 #[derive(Debug, Deserialize, Serialize)]
 struct CrispConfig {
     round_id: u32,
+    poll_length: u32,
     chain_id: u32,
     voting_address: String,
     ciphernode_count: u32,
-    voter_count: u32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -95,6 +95,12 @@ struct CRPRequest {
 struct TimestampRequest {
     round_id: u32,
     timestamp: i64,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct PollLengthRequest {
+    round_id: u32,
+    poll_length: u32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -148,8 +154,28 @@ struct SKSShareResponse {
 // }
 
 #[derive(Debug, Deserialize, Serialize)]
+struct StateLite {
+    id: u32,
+    status: String,
+    poll_length: u32,
+    voting_address: String,
+    chain_id: u32,
+    ciphernode_count: u32,
+    pk_share_count: u32,
+    sks_share_count: u32,
+    vote_count: u32,
+    crp: Vec<u8>,
+    pk: Vec<u8>,
+    start_time: i64,
+    ciphernode_total:  u32,
+    emojis: [String; 2],
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct Round {
     id: u32,
+    status: String,
+    poll_length: u32,
     voting_address: String,
     chain_id: u32,
     ciphernode_count: u32,
@@ -173,123 +199,18 @@ struct Ciphernode {
 
 fn generate_emoji() -> (String, String) {
     let emojis = [
-        "🍇",
-        "🍈",
-        "🍉",
-        "🍊",
-        "🍋",
-        "🍌",
-        "🍍",
-        "🥭",
-        "🍎",
-        "🍏",
-        "🍐",
-        "🍑",
-        "🍒",
-        "🍓",
-        "🫐",
-        "🥝",
-        "🍅",
-        "🫒",
-        "🥥",
-        "🥑",
-        "🍆",
-        "🥔",
-        "🥕",
-        "🌽",
-        "🌶️",
-        "🫑",
-        "🥒",
-        "🥬",
-        "🥦",
-        "🧄",
-        "🧅",
-        "🍄",
-        "🥜",
-        "🫘",
-        "🌰",
-        "🍞",
-        "🥐",
-        "🥖",
-        "🫓",
-        "🥨",
-        "🥯",
-        "🥞",
-        "🧇",
-        "🧀",
-        "🍖",
-        "🍗",
-        "🥩",
-        "🥓",
-        "🍔",
-        "🍟",
-        "🍕",
-        "🌭",
-        "🥪",
-        "🌮",
-        "🌯",
-        "🫔",
-        "🥙",
-        "🧆",
-        "🥚",
-        "🍳",
-        "🥘",
-        "🍲",
-        "🫕",
-        "🥣",
-        "🥗",
-        "🍿",
-        "🧈",
-        "🧂",
-        "🥫",
-        "🍱",
-        "🍘",
-        "🍙",
-        "🍚",
-        "🍛",
-        "🍜",
-        "🍝",
-        "🍠",
-        "🍢",
-        "🍣",
-        "🍤",
-        "🍥",
-        "🥮",
-        "🍡",
-        "🥟",
-        "🥠",
-        "🥡",
-        "🦀",
-        "🦞",
-        "🦐",
-        "🦑",
-        "🦪",
-        "🍦",
-        "🍧",
-        "🍨",
-        "🍩",
-        "🍪",
-        "🎂",
-        "🍰",
-        "🧁",
-        "🥧",
-        "🍫",
-        "🍬",
-        "🍭",
-        "🍮",
-        "🍯",
-        "🍼",
-        "🥛",
-        "☕",
-        "🍵",
-        "🍾",
-        "🍷",
-        "🍸",
-        "🍹",
-        "🍺",
-        "🍻",
-        "🥂",
-        "🥃",
+        "🍇","🍈","🍉","🍊","🍋","🍌","🍍","🥭","🍎","🍏",
+        "🍐","🍑","🍒","🍓","🫐","🥝","🍅","🫒","🥥","🥑",
+        "🍆","🥔","🥕","🌽","🌶️","🫑","🥒","🥬","🥦","🧄",
+        "🧅","🍄","🥜","🫘","🌰","🍞","🥐","🥖","🫓","🥨",
+        "🥯","🥞","🧇","🧀","🍖","🍗","🥩","🥓","🍔","🍟",
+        "🍕","🌭","🥪","🌮","🌯","🫔","🥙","🧆","🥚","🍳",
+        "🥘","🍲","🫕","🥣","🥗","🍿","🧈","🧂","🥫","🍱",
+        "🍘","🍙","🍚","🍛","🍜","🍝","🍠","🍢","🍣","🍤",
+        "🍥","🥮","🍡","🥟","🥠","🥡","🦀","🦞","🦐","🦑",
+        "🦪","🍦","🍧","🍨","🍩","🍪","🎂","🍰","🧁","🥧",
+        "🍫","🍬","🍭","🍮","🍯","🍼","🥛","☕","🍵","🍾",
+        "🍷","🍸","🍹","🍺","🍻","🥂","🥃",
     ];
     let index1 = rand::thread_rng().gen_range(0..emojis.len());
     let index2 = rand::thread_rng().gen_range(0..emojis.len());
@@ -383,6 +304,21 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
     Ok(test)
 }
 
+fn get_poll_length_by_round(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: PollLengthRequest = serde_json::from_str(&payload).unwrap();
+    println!("Request poll length for round {:?}", incoming.round_id);
+
+    let (state, db, key) = get_state(incoming.round_id);
+    incoming.poll_length = state.poll_length;
+    let out = serde_json::to_string(&incoming).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
 fn get_emojis_by_round(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
@@ -407,6 +343,37 @@ fn get_round_state(req: &mut Request) -> IronResult<Response> {
 
     let (state, db, key) = get_state(incoming.round_id);
     let out = serde_json::to_string(&state).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
+fn get_round_state_lite(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
+    println!("Request state for round {:?}", incoming.round_id);
+
+    let (state, db, key) = get_state(incoming.round_id);
+    let state_lite = StateLite {
+        id: state.id,
+        status: state.status,
+        poll_length: state.poll_length,
+        voting_address: state.voting_address,
+        chain_id: state.chain_id,
+        ciphernode_count: state.ciphernode_count,
+        pk_share_count: state.pk_share_count,
+        sks_share_count: state.sks_share_count,
+        vote_count: state.vote_count,
+        crp: state.crp,
+        pk: state.pk,
+        start_time: state.start_time,
+        ciphernode_total:  state.ciphernode_total,
+        emojis: state.emojis,
+    };
+
+    let out = serde_json::to_string(&state_lite).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok, out)))
@@ -570,6 +537,8 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
 
     let state = Round {
         id: round_int,
+        status: "Active".to_string(),
+        poll_length: incoming.poll_length,
         voting_address: incoming.voting_address,
         chain_id: incoming.chain_id,
         ciphernode_count: 0,
@@ -741,27 +710,16 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
     let incoming: SKSSharePoll = serde_json::from_str(&payload).unwrap();
     //const length: usize = incoming.cyphernode_count;
 
-    let pathdb = env::current_dir().unwrap();
-    let mut pathdbst = pathdb.display().to_string();
-    pathdbst.push_str("/database");
-    let db = sled::open(pathdbst.clone()).unwrap();
-
-    let mut round_key = incoming.round_id.to_string();
-    round_key.push_str("-storage");
-    println!("Database key is {:?}", round_key);
-
-    let state_out = db.get(round_key.clone()).unwrap().unwrap();
-    let state_out_str = str::from_utf8(&state_out).unwrap();
-    let state_out_struct: Round = serde_json::from_str(&state_out_str).unwrap();
+    let (mut state, db, key) = get_state(incoming.round_id);
 
     let mut shares = Vec::with_capacity(incoming.ciphernode_count as usize);
 
     // toso get share threshold from client config
-    if(state_out_struct.sks_share_count == state_out_struct.ciphernode_total) {
+    if(state.sks_share_count == state.ciphernode_total) {
         println!("All sks shares received... sending to cipher nodes");
-        for i in 1..state_out_struct.ciphernode_total + 1 {
+        for i in 1..state.ciphernode_total + 1 {
             println!("reading share {:?}", i);
-            shares.push(state_out_struct.ciphernodes[i as usize].sks_share.clone());
+            shares.push(state.ciphernodes[i as usize].sks_share.clone());
         }
         let response = SKSShareResponse { 
             response: "final".to_string(),
@@ -788,7 +746,7 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
 }
 
 #[tokio::main]
-async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
+async fn register_ciphernode(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
 
     // read the POST body
@@ -800,16 +758,7 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     println!("ID: {:?}", incoming.id);
     println!("Round ID: {:?}", incoming.round_id);
 
-    let pathdb = env::current_dir().unwrap();
-    let mut pathdbst = pathdb.display().to_string();
-    pathdbst.push_str("/database");
-    let db = sled::open(pathdbst.clone()).unwrap();
-    let mut round_key = incoming.round_id.to_string();
-    round_key.push_str("-storage");
-    println!("Database key is {:?}", round_key);
-    let state_out = db.get(round_key.clone()).unwrap().unwrap();
-    let state_out_str = str::from_utf8(&state_out).unwrap();
-    let mut state: Round = serde_json::from_str(&state_out_str).unwrap();
+    let (mut state, db, key) = get_state(incoming.round_id);
 
     state.pk_share_count = state.pk_share_count + 1;
     state.ciphernode_count = state.ciphernode_count + 1;
@@ -821,7 +770,7 @@ async fn register_keyshare(req: &mut Request) -> IronResult<Response> {
     state.ciphernodes.push(cnode);
     let state_str = serde_json::to_string(&state).unwrap();
     let state_bytes = state_str.into_bytes();
-    db.insert(round_key, state_bytes).unwrap();
+    db.insert(key, state_bytes).unwrap();
 
     println!("pk share store for node id {:?}", incoming.id);
     println!("ciphernode count {:?}", state.ciphernode_count);
@@ -856,7 +805,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.get("/", handler, "index");
     router.get("/get_rounds", get_rounds, "get_rounds");
     router.post("/get_pk_share_count", get_pk_share_count, "get_pk_share_count");
-    router.post("/register_keyshare", register_keyshare, "register_keyshare");
+    router.post("/register_ciphernode", register_ciphernode, "register_ciphernode");
     router.post("/init_crisp_round", init_crisp_round, "init_crisp_round");
     router.post("/get_pk_by_round", get_pk_by_round, "get_pk_by_round");
     router.post("/register_sks_share", register_sks_share, "register_sks_share");
@@ -866,6 +815,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/get_vote_count_by_round", get_vote_count_by_round, "get_vote_count_by_round");
     router.post("/get_start_time_by_round", get_start_time_by_round, "get_start_time_by_round");
     router.post("/get_emojis_by_round", get_emojis_by_round, "get_emojis_by_round");
+    router.post("/get_poll_length_by_round", get_poll_length_by_round, "get_poll_length_by_round");
+    router.post("/get_round_state_lite", get_round_state_lite, "get_round_state_lite");
 
     Iron::new(router).http("127.0.0.1:4000").unwrap();
 

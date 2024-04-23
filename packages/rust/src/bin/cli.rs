@@ -68,10 +68,10 @@ struct JsonRequest {
 #[derive(Debug, Deserialize, Serialize)]
 struct CrispConfig {
     round_id: u32,
+    poll_length: u32,
     chain_id: u32,
     voting_address: String,
     ciphernode_count: u32,
-    voter_count: u32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -141,10 +141,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             file.read_to_string(&mut data).unwrap();
             let config: CrispConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
             println!("round id: {:?}", config.round_id); // get new round id from current id in server
+            println!("poll length {:?}", config.poll_length);
             println!("chain id: {:?}", config.chain_id);
             println!("voting contract: {:?}", config.voting_address);
             println!("ciphernode count: {:?}", config.ciphernode_count);
-            println!("voter count: {:?}", config.voter_count);
 
             println!("Calling contract to initialize onchain proposal...");
 	        let three_seconds = time::Duration::from_millis(1000);
@@ -216,7 +216,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             // The authority of our URL will be the hostname of the httpbin remote
             let authority = url.authority().unwrap().clone();
             let round_id = count.round_count + 1;
-            let response = CrispConfig { round_id: round_id, chain_id: 5, voting_address: config.voting_address, ciphernode_count: config.ciphernode_count, voter_count: config.voter_count };
+            let response = CrispConfig { 
+                round_id: round_id,
+                poll_length: config.poll_length,
+                chain_id: config.chain_id,
+                voting_address: config.voting_address,
+                ciphernode_count: config.ciphernode_count
+            };
             //let response = JsonRequest { response: "Test".to_string(), pk_share: 0, id: 0, round_id: 0 };
             let out = serde_json::to_string(&response).unwrap();
             let req = Request::post("http://127.0.0.1/")

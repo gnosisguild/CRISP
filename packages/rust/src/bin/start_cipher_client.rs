@@ -1,6 +1,7 @@
 mod util;
 
 use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path, process};
+use chrono::{DateTime, TimeZone, Utc};
 use console::style;
 use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
@@ -39,6 +40,11 @@ struct JsonRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+struct GetRoundRequest {
+    round_id: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct PKShareRequest {
     response: String,
     pk_share: Vec<u8>,
@@ -57,10 +63,10 @@ struct SKSShareRequest {
 #[derive(Debug, Deserialize, Serialize)]
 struct CrispConfig {
     round_id: u32,
+    poll_length: u32,
     chain_id: u32,
     voting_address: String,
     ciphernode_count: u32,
-    voter_count: u32,
     // todo start_block: u32,
 }
 
@@ -116,8 +122,10 @@ struct VoteCountRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Round {
+struct StateLite {
     id: u32,
+    status: String,
+    poll_length: u32,
     voting_address: String,
     chain_id: u32,
     ciphernode_count: u32,
@@ -128,42 +136,36 @@ struct Round {
     pk: Vec<u8>,
     start_time: i64,
     ciphernode_total:  u32,
-    ciphernodes: Vec<Ciphernode>,
+    emojis: [String; 2],
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct Ciphernode {
-    id: u32,
-    pk_share: Vec<u8>,
-    sks_share: Vec<u8>,
-}
+// #[derive(Debug, Deserialize, Serialize)]
+// struct Round {
+//     id: u32,
+//     voting_address: String,
+//     chain_id: u32,
+//     ciphernode_count: u32,
+//     pk_share_count: u32,
+//     sks_share_count: u32,
+//     vote_count: u32,
+//     crp: Vec<u8>,
+//     pk: Vec<u8>,
+//     start_time: i64,
+//     ciphernode_total:  u32,
+//     emojis: [String; 2],
+//     ciphernodes: Vec<Ciphernode>,
+// }
 
-// async fn get_server_conn(url: &str) -> Result<()> {
-//     let _url = url.parse::<hyper::Uri>();
-//     // Get the host and the port
-//     let host = _url.host().expect("uri has no host");
-//     let port = _url.port_u16().unwrap_or(3000);
-//     let address = format!("{}:{}", host, port);
-//     // Open a TCP connection to the remote host
-//     let stream = TcpStream::connect(address).await?;
-//     // Use an adapter to access something implementing `tokio::io` traits as if they implement
-//     // `hyper::rt` IO traits.
-//     let io = TokioIo::new(stream);
-//     // Create the Hyper client
-//     let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
-//     // Spawn a task to poll the connection, driving the HTTP state
-//     tokio::task::spawn(async move {
-//         if let Err(err) = conn.await {
-//             println!("Connection failed: {:?}", err);
-//         }
-//     });
-//     // The authority of our URL will be the hostname of the httpbin remote
-//     let authority = url_get_rounds.authority().unwrap().clone();
+// #[derive(Debug, Deserialize, Serialize)]
+// struct Ciphernode {
+//     id: u32,
+//     pk_share: Vec<u8>,
+//     sks_share: Vec<u8>,
 // }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("generating validator keyshare");
+    println!("Initializing parameters.");
 
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;
@@ -222,76 +224,55 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Check to see if the server reported a new round
         // TODO: also check timestamp to be sure round isnt over, or already registered
         if(count.round_count > internal_round_count.round_count) {
-            // TODO: Get round config from enclave server
+            let init_time = Utc::now();
+            let internal_time = init_time.timestamp();
 
             println!("Getting Ciphernode ID."); // This is the current pk share count for now.
             // Client Code get the number of pk_shares on the server.
             // Currently the number of shares becomes the cipher client ID for the round.
-            let url_get_shareid = "http://127.0.0.1/get_pk_share_count".parse::<hyper::Uri>()?;
-            let host_get_shareid = url_get_shareid.host().expect("uri has no host");
-            let port_get_shareid = url_get_shareid.port_u16().unwrap_or(4000);
-            let address_get_shareid = format!("{}:{}", host_get_shareid, port_get_shareid);
-            let stream_get_shareid = TcpStream::connect(address_get_shareid).await?;
-            let io_get_shareid = TokioIo::new(stream_get_shareid);
-            let (mut sender_get_shareid, conn_get_shareid) = hyper::client::conn::http1::handshake(io_get_shareid).await?;
+            let url_get_state = "http://127.0.0.1/get_round_state_lite".parse::<hyper::Uri>()?;
+            let host_get_state = url_get_state.host().expect("uri has no host");
+            let port_get_state = url_get_state.port_u16().unwrap_or(4000);
+            let address_get_state = format!("{}:{}", host_get_state, port_get_state);
+            let stream_get_state = TcpStream::connect(address_get_state).await?;
+            let io_get_state = TokioIo::new(stream_get_state);
+            let (mut sender_get_state, conn_get_state) = hyper::client::conn::http1::handshake(io_get_state).await?;
             tokio::task::spawn(async move {
-                if let Err(err) = conn_get_shareid.await {
+                if let Err(err) = conn_get_state.await {
                     println!("Connection failed: {:?}", err);
                 }
             });
-            let authority_get_shareid = url_get_shareid.authority().unwrap().clone();
+            let authority_get_state = url_get_state.authority().unwrap().clone();
 
-            let response_get_shareid = PKShareCount { round_id: count.round_count, share_id: 0 };
-            let out_get_shareid = serde_json::to_string(&response_get_shareid).unwrap();
-            let req_get_shareid = Request::post("http://127.0.0.1/")
-                .uri(url_get_shareid.clone())
-                .header(hyper::header::HOST, authority_get_shareid.as_str())
-                .body(out_get_shareid)?;
+            let response_get_state = GetRoundRequest { round_id: count.round_count };
+            let out_get_state = serde_json::to_string(&response_get_state).unwrap();
+            let req_get_state = Request::post("http://127.0.0.1/")
+                .uri(url_get_state.clone())
+                .header(hyper::header::HOST, authority_get_state.as_str())
+                .body(out_get_state)?;
 
-            let mut res_get_shareid = sender_get_shareid.send_request(req_get_shareid).await?;
+            let mut res_get_state = sender_get_state.send_request(req_get_state).await?;
 
-            println!("Response status: {}", res_get_shareid.status());
+            println!("Response status: {}", res_get_state.status());
 
-            let body_bytes = res_get_shareid.collect().await?.to_bytes();
+            let body_bytes = res_get_state.collect().await?.to_bytes();
             let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-            let share_count: PKShareCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
-            println!("database round count {:?}", share_count.round_id);
-            println!("database pk share id {:?}", share_count.share_id);
+            let state: StateLite = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+            //let share_count: PKShareCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+            println!("database round count {:?}", state.id);
+            println!("database pk share id {:?}", state.pk_share_count);
+            // TODO: store this to come back after crash with same id
+            let node_id = state.pk_share_count;
+
+            // TODO: if(state.poll_length + state.start_time > internal_time) { skip; }
+            // TODO: if(state.ciphernode_count == state.ciphernode_total) { skip; } 
+            // TODO: create storage for pk and allow for re-entering a round if client crashes
 
             // --------------------------------------
             println!("Generating share and serializing.");
-            println!("Getting CRP from server.");
-            // Client Code Get Server Round CRP
-            let url_get_crp = "http://127.0.0.1/get_crp_by_round".parse::<hyper::Uri>()?;
-            let host_get_crp = url_get_crp.host().expect("uri has no host");
-            let port_get_crp = url_get_crp.port_u16().unwrap_or(4000);
-            let address_get_crp = format!("{}:{}", host_get_crp, port_get_crp);
-            let stream_get_crp = TcpStream::connect(address_get_crp).await?;
-            let io_get_crp = TokioIo::new(stream_get_crp);
-            let (mut sender_get_crp, conn_get_crp) = hyper::client::conn::http1::handshake(io_get_crp).await?;
-            tokio::task::spawn(async move {
-                if let Err(err) = conn_get_crp.await {
-                    println!("Connection failed: {:?}", err);
-                }
-            });
-            let authority_get_crp = url_get_crp.authority().unwrap().clone();
-
-            let response_get_crp = CRPRequest { round_id: count.round_count, crp_bytes: vec![0] };
-            let out_get_crp = serde_json::to_string(&response_get_crp).unwrap();
-            let req_get_crp = Request::post("http://127.0.0.1/")
-                .uri(url_get_crp.clone())
-                .header(hyper::header::HOST, authority_get_crp.as_str())
-                .body(out_get_crp)?;
-
-            let mut res_get_crp = sender_get_crp.send_request(req_get_crp).await?;
-            println!("Response status: {}", res_get_crp.status());
-
-            let body_bytes_crp = res_get_crp.collect().await?.to_bytes();
-            let body_str_crp = String::from_utf8(body_bytes_crp.to_vec()).unwrap();
-            let server_crp: CRPRequest = serde_json::from_str(&body_str_crp).expect("JSON was not well-formatted");
 
             // deserialize crp_bytes
-            let crp = CommonRandomPoly::deserialize(&server_crp.crp_bytes, &params).unwrap();
+            let crp = CommonRandomPoly::deserialize(&state.crp, &params).unwrap();
             let sk_share_1 = SecretKey::random(&params, &mut OsRng); // TODO Store secret key
             let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
             // serialize pk_share
@@ -299,7 +280,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
             // --------------------------------------
             // Client Code Register PK Share on Enclave server
-            let url_register_keyshare = "http://127.0.0.1/register_keyshare".parse::<hyper::Uri>()?;
+            let url_register_keyshare = "http://127.0.0.1/register_ciphernode".parse::<hyper::Uri>()?;
             let host_key = url_register_keyshare.host().expect("uri has no host");
             let port_key = url_register_keyshare.port_u16().unwrap_or(4000);
             let address_key = format!("{}:{}", host_key, port_key);
@@ -313,7 +294,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             });
             let authority_key = url_register_keyshare.authority().unwrap().clone();
 
-            let response_key = PKShareRequest { response: "Test".to_string(), pk_share: pk_share_bytes, id: share_count.share_id, round_id: count.round_count };
+            let response_key = PKShareRequest {
+                response: "Test".to_string(),
+                pk_share: pk_share_bytes,
+                id: node_id,
+                round_id: state.id
+            };
             let out_key = serde_json::to_string(&response_key).unwrap();
             let req_key = Request::post("http://127.0.0.1/")
                 .uri(url_register_keyshare.clone())
@@ -366,11 +352,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let events = contract.events().from_block(5560945);//.to_block(5560955);
 
             //todo get voters per round and cyphernodes
-            let mut num_voters = 2;
-            let mut num_parties = 2;
-            let mut votes_encrypted = Vec::with_capacity(num_voters);
+            //let mut num_voters = 2;
+            let mut num_parties = state.ciphernode_total;
+            let mut votes_encrypted = Vec::with_capacity(1000); // todo: store votes 
             let mut counter = 0;
 
+            //TODO: scan blocks since round start block to get any votes missed if crashed
             let mut stream = events.stream().await.unwrap().with_meta().take(10);
             // For each voting round this node is participating in, check the contracts for vote events.
             // When voting is finalized, begin group decrypt process
@@ -400,12 +387,45 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                 // TODO: replace with timestamp check
                 if counter == 2 {
-                    print!("all votes collected... performing fhe computation");
+                    print!("poll time ended... performing fhe computation");
+
+                    let url_get_voters = "http://127.0.0.1/get_vote_count_by_round".parse::<hyper::Uri>()?;
+                    let host_get_voters = url_get_voters.host().expect("uri has no host");
+                    let port_get_voters = url_get_voters.port_u16().unwrap_or(4000);
+                    let address_get_voters = format!("{}:{}", host_get_voters, port_get_voters);
+                    let stream_get_voters = TcpStream::connect(address_get_voters).await?;
+                    let io_get_voters = TokioIo::new(stream_get_voters);
+                    let (mut sender_get_voters, conn_get_voters) = hyper::client::conn::http1::handshake(io_get_voters).await?;
+                    tokio::task::spawn(async move {
+                        if let Err(err) = conn_get_voters.await {
+                            println!("Connection failed: {:?}", err);
+                        }
+                    });
+                    let authority_get_voters = url_get_voters.authority().unwrap().clone();
+
+                    let response_get_voters = VoteCountRequest { round_id: state.id, vote_count: 0 };
+                    let out_get_voters = serde_json::to_string(&response_get_voters).unwrap();
+                    let req_get_voters = Request::post("http://127.0.0.1/")
+                        .uri(url_get_voters.clone())
+                        .header(hyper::header::HOST, authority_get_voters.as_str())
+                        .body(out_get_voters)?;
+
+                    let mut res_get_voters = sender_get_voters.send_request(req_get_voters).await?;
+                    println!("Response status: {}", res_get_voters.status());
+
+                    let body_bytes_get_voters = res_get_voters.collect().await?.to_bytes();
+                    let body_str_get_voters = String::from_utf8(body_bytes_get_voters.to_vec()).unwrap();
+                    let num_voters: VoteCountRequest = serde_json::from_str(&body_str_get_voters).expect("JSON was not well-formatted");
+                    println!("all votes collected? {:?}", num_voters.vote_count == votes_encrypted.len() as u32);
+
                     let tally = timeit!("Vote tallying", {
                         let mut sum = Ciphertext::zero(&params);
-                        for ct in &votes_encrypted {
-                            sum += ct;
+                        for i in 0..num_voters.vote_count {
+                            sum += &votes_encrypted[i as usize];
                         }
+                        // for ct in &votes_encrypted {
+                        //     sum += ct;
+                        // }
                         Arc::new(sum)
                     });
                     println!("voter: {:?}", event.voter);
@@ -414,7 +434,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     // perform a collective decryption. If instead the result of the computation
                     // should be kept private, the parties could collectively perform a
                     // keyswitch to a different public key.
-                    let mut decryption_shares = Vec::with_capacity(num_parties);
+                    let mut decryption_shares = Vec::with_capacity(state.ciphernode_total as usize);
                     let mut _i = 0;
                     let sh = DecryptionShare::new(&sk_share_1, &tally, &mut thread_rng()).unwrap();
                     let sks_bytes = sh.to_bytes();
@@ -434,7 +454,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         }
                     });
                     let authority_sks = url_register_sks.authority().unwrap().clone();
-                    let response_sks = SKSShareRequest { response: "Register_SKS_Share".to_string(), sks_share: sks_bytes, id: share_count.share_id, round_id: count.round_count };
+                    let response_sks = SKSShareRequest {
+                        response: "Register_SKS_Share".to_string(),
+                        sks_share: sks_bytes,
+                        id: node_id,
+                        round_id: state.id
+                    };
                     let out_sks = serde_json::to_string(&response_sks).unwrap();
                     let req_sks = Request::post("http://127.0.0.1/")
                         .uri(url_register_sks.clone())
@@ -490,8 +515,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         if(shares.response == "final") {
                             // do decrypt
                             println!("collected all of the decrypt shares!");
-                            for i in 0..num_parties {
-                                decryption_shares.push(DecryptionShare::deserialize(&shares.sks_shares[i], &params, tally.clone()));
+                            for i in 0..state.ciphernode_total {
+                                decryption_shares.push(DecryptionShare::deserialize(&shares.sks_shares[i as usize], &params, tally.clone()));
                             }
 
                             // Again, an aggregating party aggregates the decryption shares to produce the
@@ -504,7 +529,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             let tally_result = tally_vec[0];
 
                             // Show vote result
-                            println!("Vote result = {} / {}", tally_result, num_voters);
+                            println!("Vote result = {} / {}", tally_result, num_voters.vote_count);
                             break;
                         }
 
