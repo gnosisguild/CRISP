@@ -148,6 +148,23 @@ struct SKSShareResponse {
     sks_shares: Vec<Vec<u8>>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct ReportTallyRequest {
+    round_id: u32,
+    option_1: u32,
+    option_2: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct WebResultRequest {
+    round_id: u32,
+    option_1_tally: u32,
+    option_2_tally: u32,
+    option_1_emoji: String,
+    option_2_emoji: String,
+    end_time: i64
+}
+
 // fn register_cyphernode(req: &mut Request) -> IronResult<Response> {
     // register ip address or some way to contact nodes when a computation request comes in
 
@@ -187,6 +204,8 @@ struct Round {
     start_time: i64,
     ciphernode_total:  u32,
     emojis: [String; 2],
+    votes_option_1: u32,
+    votes_option_2: u32,
     ciphernodes: Vec<Ciphernode>,
 }
 
@@ -302,6 +321,53 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
     let test = contract.vote_encrypted(enc_vote).send().await?.clone();
     println!("{:?}", test);
     Ok(test)
+}
+
+fn report_tally(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: ReportTallyRequest = serde_json::from_str(&payload).unwrap();
+    println!("Request report tally for round {:?}", incoming.round_id);
+
+    let (mut state, db, key) = get_state(incoming.round_id);
+    if(state.votes_option_1 == 0 && state.votes_option_2 == 0) {
+        state.votes_option_1 = incoming.option_1;
+        state.votes_option_2 = incoming.option_2;
+
+        let state_str = serde_json::to_string(&state).unwrap();
+        let state_bytes = state_str.into_bytes();
+        db.insert(key, state_bytes).unwrap();
+    }
+    let response = JsonResponse { response: "Tally Reported".to_string() };
+    let out = serde_json::to_string(&response).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
+fn get_web_result(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
+    println!("Request emojis for round {:?}", incoming.round_id);
+
+    let (state, db, key) = get_state(incoming.round_id);
+    
+    let response = WebResultRequest {
+        round_id: incoming.round_id,
+        option_1_tally: state.votes_option_1,
+        option_2_tally: state.votes_option_2,
+        option_1_emoji: state.emojis[0].clone(),
+        option_2_emoji: state.emojis[1].clone(),
+        end_time: state.start_time + state.poll_length as i64
+    };
+
+    let out = serde_json::to_string(&response).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
 }
 
 fn get_poll_length_by_round(req: &mut Request) -> IronResult<Response> {
@@ -550,6 +616,8 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
         start_time: timestamp,
         ciphernode_total: incoming.ciphernode_count,
         emojis: [emoji1, emoji2],
+        votes_option_1: 0,
+        votes_option_2: 0,
         ciphernodes: vec![
             Ciphernode {
                 id: 0,
@@ -726,6 +794,10 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
             round_id: incoming.round_id,
             sks_shares: shares,
         };
+        state.status = "Finalized".to_string();
+        let state_str = serde_json::to_string(&state).unwrap();
+        let state_bytes = state_str.into_bytes();
+        db.insert(key, state_bytes).unwrap();
         let out = serde_json::to_string(&response).unwrap();
         println!("get rounds hit");
 
@@ -817,6 +889,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/get_emojis_by_round", get_emojis_by_round, "get_emojis_by_round");
     router.post("/get_poll_length_by_round", get_poll_length_by_round, "get_poll_length_by_round");
     router.post("/get_round_state_lite", get_round_state_lite, "get_round_state_lite");
+    router.post("/report_tally", report_tally, "report_tally");
+    router.post("/get_web_result", get_web_result, "get_web_result");
 
     Iron::new(router).http("127.0.0.1:4000").unwrap();
 

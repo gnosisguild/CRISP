@@ -122,6 +122,13 @@ struct VoteCountRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+struct ReportTallyRequest {
+    round_id: u32,
+    option_1: u32,
+    option_2: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct StateLite {
     id: u32,
     status: String,
@@ -224,9 +231,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // Check to see if the server reported a new round
         // TODO: also check timestamp to be sure round isnt over, or already registered
         if(count.round_count > internal_round_count.round_count) {
-            let init_time = Utc::now();
-            let internal_time = init_time.timestamp();
-
             println!("Getting Ciphernode ID."); // This is the current pk share count for now.
             // Client Code get the number of pk_shares on the server.
             // Currently the number of shares becomes the cipher client ID for the round.
@@ -386,7 +390,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 counter += 1;
 
                 // TODO: replace with timestamp check
-                if counter == 2 {
+                let now = Utc::now();
+                let internal_time = now.timestamp();
+                if (state.start_time + state.poll_length as i64) < internal_time {
                     print!("poll time ended... performing fhe computation");
 
                     let url_get_voters = "http://127.0.0.1/get_vote_count_by_round".parse::<hyper::Uri>()?;
@@ -420,7 +426,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                     let tally = timeit!("Vote tallying", {
                         let mut sum = Ciphertext::zero(&params);
-                        for i in 0..num_voters.vote_count {
+                        for i in 0..(num_voters.vote_count - 1) {
+                            println!("index {:?}", i);
                             sum += &votes_encrypted[i as usize];
                         }
                         // for ct in &votes_encrypted {
@@ -530,6 +537,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                             // Show vote result
                             println!("Vote result = {} / {}", tally_result, num_voters.vote_count);
+
+                            // report result to server
+                            let option_1_total = tally_result;
+                            let option_2_total = num_voters.vote_count - tally_result as u32;
+                            println!("option 1 total {:?}", option_1_total);
+                            println!("option 2 total {:?}", option_2_total);
+
+                            let url_report = "http://127.0.0.1/report_tally".parse::<hyper::Uri>()?;
+                            let host_report = url_report.host().expect("uri has no host");
+                            let port_report = url_report.port_u16().unwrap_or(4000);
+                            let address_report = format!("{}:{}", host_report, port_report);
+                            let stream_report = TcpStream::connect(address_report).await?;
+                            let io_report = TokioIo::new(stream_report);
+                            let (mut sender_report, conn_report) = hyper::client::conn::http1::handshake(io_report).await?;
+                            tokio::task::spawn(async move {
+                                if let Err(err) = conn_report.await {
+                                    println!("Connection failed: {:?}", err);
+                                }
+                            });
+                            let authority_report = url_report.authority().unwrap().clone();
+                            let response_report = ReportTallyRequest {
+                                   round_id: state.id,
+                                   option_1: option_1_total as u32,
+                                   option_2: option_2_total as u32
+                            };
+                            let out_report = serde_json::to_string(&response_report).unwrap();
+                            let req_report = Request::post("http://127.0.0.1/")
+                                .uri(url_report.clone())
+                                .header(hyper::header::HOST, authority_report.as_str())
+                                .body(out_report)?;
+
+                            let mut res_report = sender_report.send_request(req_report).await?;
+                            println!("Response status: {}", res_report.status());
+                            println!("Tally reported to enclave server");
                             break;
                         }
 
