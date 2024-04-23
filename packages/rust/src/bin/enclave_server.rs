@@ -171,6 +171,22 @@ struct WebResultRequest {
 // }
 
 #[derive(Debug, Deserialize, Serialize)]
+struct StateWeb {
+    id: u32,
+    status: String,
+    poll_length: u32,
+    voting_address: String,
+    chain_id: u32,
+    ciphernode_count: u32,
+    pk_share_count: u32,
+    sks_share_count: u32,
+    vote_count: u32,
+    start_time: i64,
+    ciphernode_total:  u32,
+    emojis: [String; 2],
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct StateLite {
     id: u32,
     status: String,
@@ -409,6 +425,35 @@ fn get_round_state(req: &mut Request) -> IronResult<Response> {
 
     let (state, db, key) = get_state(incoming.round_id);
     let out = serde_json::to_string(&state).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
+fn get_round_state_web(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
+    println!("Request state for round {:?}", incoming.round_id);
+
+    let (state, db, key) = get_state(incoming.round_id);
+    let state_lite = StateWeb {
+        id: state.id,
+        status: state.status,
+        poll_length: state.poll_length,
+        voting_address: state.voting_address,
+        chain_id: state.chain_id,
+        ciphernode_count: state.ciphernode_count,
+        pk_share_count: state.pk_share_count,
+        sks_share_count: state.sks_share_count,
+        vote_count: state.vote_count,
+        start_time: state.start_time,
+        ciphernode_total:  state.ciphernode_total,
+        emojis: state.emojis,
+    };
+
+    let out = serde_json::to_string(&state_lite).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok, out)))
@@ -891,6 +936,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/get_round_state_lite", get_round_state_lite, "get_round_state_lite");
     router.post("/report_tally", report_tally, "report_tally");
     router.post("/get_web_result", get_web_result, "get_web_result");
+    router.post("/get_round_state_web", get_web_result, "get_round_state_web");
 
     Iron::new(router).http("127.0.0.1:4000").unwrap();
 
