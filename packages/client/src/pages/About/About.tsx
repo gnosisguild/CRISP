@@ -1,5 +1,5 @@
 import React from 'react'
-import CircleIcon from '@/assets/icons/caretCircle.svg'
+// import CircleIcon from '@/assets/icons/caretCircle.svg'
 import CardContent from '@/components/Cards/CardContent'
 import CircularTiles from '@/components/CircularTiles'
 import { Link } from 'react-router-dom'
@@ -23,10 +23,10 @@ const About: React.FC = () => {
                 ensures that the integrity of each vote is maintained without compromising the voter's privacy, making it a powerful tool
                 for governance and decision-making applications.
               </p>
-              <div className='flex cursor-pointer items-center space-x-2'>
+              {/* <div className='flex cursor-pointer items-center space-x-2'>
                 <p className='text-lime-400 underline'>See what&apos;s happening under the hood</p>
                 <img src={CircleIcon} className='h-[18] w-[18]' />
-              </div>
+              </div> */}
             </div>
           </div>
           <div className='space-y-4'>
@@ -38,10 +38,10 @@ const About: React.FC = () => {
               organizations to participate in governance and other sensitive processes with assurance, promoting fairness, transparency, and
               trust in digital systems.
             </p>
-            <div className='flex cursor-pointer items-center space-x-2'>
+            {/* <div className='flex cursor-pointer items-center space-x-2'>
               <p className='text-lime-400 underline'>See what&apos;s happening under the hood</p>
               <img src={CircleIcon} className='h-[18] w-[18] ' />
-            </div>
+            </div> */}
           </div>
         </CardContent>
         <Link to='/whitepaper' className='inline-flex'>

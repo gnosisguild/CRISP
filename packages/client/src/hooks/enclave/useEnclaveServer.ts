@@ -1,35 +1,39 @@
 import { handleGenericError } from '@/utils/handle-generic-error'
-import { BroadcastVoteRequest, BroadcastVoteResponse, RoundCount, VoteCount, VotingRound, VotingTime } from '@/model/vote.model'
+import { BroadcastVoteRequest, BroadcastVoteResponse, RoundCount, VoteStateLite } from '@/model/vote.model'
 import { useApi } from '../generic/useFetchApi'
+import { PollRequestResult } from '@/model/poll.model'
+import { fixPollResult } from '@/utils/methods'
 
 const ENCLAVE_API = import.meta.env.VITE_ENCLAVE_API
 
 if (!ENCLAVE_API) handleGenericError('useEnclaveServer', { name: 'ENCLAVE_API', message: 'Missing env VITE_ENCLAVE_API' })
 
 const EnclaveEndpoints = {
-  GetVoteCountByRound: `${ENCLAVE_API}/get_vote_count_by_round`,
-  GetPkByRound: `${ENCLAVE_API}/get_pk_by_round`,
   GetRound: `${ENCLAVE_API}/get_rounds`,
-  GetStartTimeByRound: `${ENCLAVE_API}/get_start_time_by_round`,
+  GetRoundStateLite: `${ENCLAVE_API}/get_round_state_lite`,
+  GetWebResult: `${ENCLAVE_API}/get_web_result`,
   BroadcastVote: `${ENCLAVE_API}/broadcast_enc_vote`,
 } as const
 
 export const useEnclaveServer = () => {
-  const { GetVoteCountByRound, GetPkByRound, GetRound, BroadcastVote, GetStartTimeByRound } = EnclaveEndpoints
+  const { GetRound, BroadcastVote, GetRoundStateLite, GetWebResult } = EnclaveEndpoints
   const { fetchData, isLoading } = useApi()
-
-  const getVoteCountByRound = (round: VoteCount) => fetchData<VoteCount, VoteCount>(GetVoteCountByRound, 'post', round)
-  const getPkByRound = (round: VotingRound) => fetchData<VotingRound, VotingRound>(GetPkByRound, 'post', round)
   const getRound = () => fetchData<RoundCount>(GetRound)
-  const getStartTimeByRound = (votingStart: VotingTime) => fetchData<VotingTime, VotingTime>(GetStartTimeByRound, 'post', votingStart)
+  const getRoundStateLite = (round_id: number) => fetchData<VoteStateLite, { round_id: number }>(GetRoundStateLite, 'post', { round_id })
   const broadcastVote = (vote: BroadcastVoteRequest) => fetchData<BroadcastVoteResponse, BroadcastVoteRequest>(BroadcastVote, 'post', vote)
+  const getWebResult = async (round_id: number) => {
+    const result = await fetchData<PollRequestResult, { round_id: number }>(GetWebResult, 'post', { round_id })
+    if (result) {
+      return fixPollResult(result)
+    }
+    return
+  }
 
   return {
     isLoading,
-    getPkByRound,
+    getWebResult,
     getRound,
-    getVoteCountByRound,
-    getStartTimeByRound,
+    getRoundStateLite,
     broadcastVote,
   }
 }

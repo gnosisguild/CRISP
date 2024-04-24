@@ -10,11 +10,6 @@ export interface VotingRound {
   round_id: number
   pk_bytes: number[]
 }
-export interface VoteCount {
-  round_id: number
-  vote_count: number
-}
-
 export interface RoundCount {
   round_count: number
 }
@@ -29,7 +24,19 @@ export interface BroadcastVoteResponse {
   tx_hash: string
 }
 
-export interface VotingTime {
-  round_id: number
-  timestamp: number
+export interface VoteStateLite {
+  id: number
+  status: string
+  poll_length: number
+  voting_address: string
+  chain_id: number
+  ciphernode_count: number
+  pk_share_count: number
+  sks_share_count: number
+  vote_count: number
+  crp: number[]
+  pk: number[]
+  start_time: number
+  ciphernode_total: number
+  emojis: [string, string]
 }

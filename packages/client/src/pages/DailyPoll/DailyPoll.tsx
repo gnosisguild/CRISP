@@ -7,8 +7,7 @@ import { useNotificationAlertContext } from '@/context/NotificationAlert'
 
 const DailyPoll: React.FC = () => {
   const { showToast } = useNotificationAlertContext()
-  const { encryptVote, broadcastVote, getStartTimeByRound, votingRound, roundEndDate } = useVoteManagementContext()
-
+  const { encryptVote, broadcastVote, getRoundStateLite, votingRound, roundEndDate } = useVoteManagementContext()
   const [voteCompleted, setVotedCompleted] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
 
@@ -21,13 +20,13 @@ const DailyPoll: React.FC = () => {
           round_id: votingRound.round_id,
           enc_vote_bytes: Array.from(voteEncrypted),
         })
+        await getRoundStateLite(votingRound.round_id)
         if (broadcastVoteResponse) {
           showToast({
             type: 'success',
             message: 'Successfully voted',
             linkUrl: `https://sepolia.etherscan.io/tx/${broadcastVoteResponse?.tx_hash}`,
           })
-          await getStartTimeByRound({ round_id: votingRound.round_id, timestamp: 0 })
           setVotedCompleted(true)
           return
         }

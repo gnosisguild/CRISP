@@ -1,5 +1,4 @@
-export const markdown = 
-   `
+export const markdown = `
    # Enclave: Encrypted Execution Environments (E3)
    ## White Paper
    Authors: Auryn Macmillan, Nathan Ginnever, Marvin Lin
@@ -67,7 +66,7 @@ export const markdown =
    #### Phases
    Enclave leverages a multiphase process to facilitate the interaction between its various Actors, ultimately producing publicly verifiable outputs with strong economic guarantees around data privacy. Figure 1 shows a visual description of these interactions.
    
-   ![CRISP Diagram](/crisp-diagram.webp)
+   ![CRISP Diagram](/#/crisp-diagram.webp)
    
    ### Figure 1
    1. **Request & Bond**

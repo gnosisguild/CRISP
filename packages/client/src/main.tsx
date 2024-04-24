@@ -7,7 +7,7 @@ import { VoteManagementProvider } from '@/context/voteManagement/index.ts'
 import { NotificationAlertProvider } from './context/NotificationAlert/NotificationAlert.context.tsx'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
+  <React.Fragment>
     <HashRouter>
       <VoteManagementProvider>
         <NotificationAlertProvider>
@@ -15,5 +15,5 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
         </NotificationAlertProvider>
       </VoteManagementProvider>
     </HashRouter>
-  </React.StrictMode>,
+  </React.Fragment>,
 )

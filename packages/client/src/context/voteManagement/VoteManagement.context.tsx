@@ -4,9 +4,11 @@ import { useWebAssemblyHook } from '@/hooks/wasm/useWebAssembly'
 import { useEffect, useState } from 'react'
 import { SocialAuth } from '@/model/twitter.model'
 import useLocalStorage from '@/hooks/generic/useLocalStorage'
-import { VotingRound, VotingTime } from '@/model/vote.model'
+import { VoteStateLite, VotingRound } from '@/model/vote.model'
 import { useEnclaveServer } from '@/hooks/enclave/useEnclaveServer'
-import { convertTimestampToDate } from '@/utils/methods'
+import { convertPollData, convertTimestampToDate } from '@/utils/methods'
+import { Poll, PollResult } from '@/model/poll.model'
+import { generatePoll } from '@/utils/generate-random-poll'
 
 const [useVoteManagementContext, VoteManagementContextProvider] = createGenericContext<VoteManagementContextType>()
 
@@ -16,9 +18,12 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
    **/
   const [socialAuth, setSocialAuth] = useLocalStorage<SocialAuth | null>('socialAuth', null)
   const [user, setUser] = useState<SocialAuth | null>(socialAuth)
+  const [roundState, setRoundState] = useState<VoteStateLite | null>(null)
   const [votingRound, setVotingRound] = useState<VotingRound | null>(null)
   const [roundEndDate, setRoundEndDate] = useState<Date | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [pollOptions, setPollOptions] = useState<Poll[]>([])
+  const [pastPolls, setPastPolls] = useState<PollResult[]>([])
 
   /**
    * Voting Management Methods
@@ -26,8 +31,8 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   const { isLoading: wasmLoading, wasmInstance, encryptInstance, initWebAssembly, encryptVote } = useWebAssemblyHook()
   const {
     isLoading: enclaveLoading,
-    getPkByRound: getPkByRoundRequest,
-    getStartTimeByRound: getStartTimeByRoundRequest,
+    getRoundStateLite: getRoundStateLiteRequest,
+    getWebResult,
     getRound,
     broadcastVote,
   } = useEnclaveServer()
@@ -36,7 +41,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
     await initWebAssembly()
     const round = await getRound()
     if (round) {
-      await getPkByRound({ round_id: round.round_count, pk_bytes: [0] })
+      await getRoundStateLite(round.round_count)
     }
   }
 
@@ -45,17 +50,31 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
     setSocialAuth(null)
   }
 
-  const getPkByRound = async (votingRound: VotingRound) => {
-    const round = await getPkByRoundRequest(votingRound)
-    setVotingRound(round ?? null)
-    return round
+  const getRoundStateLite = async (roundCount: number) => {
+    const roundState = await getRoundStateLiteRequest(roundCount)
+    if (roundState) {
+      setRoundState(roundState)
+      setVotingRound({ round_id: roundState.id, pk_bytes: roundState.pk })
+      setPollOptions(generatePoll({ round_id: roundState.id, emojis: roundState.emojis }))
+      setRoundEndDate(convertTimestampToDate(roundState.start_time, roundState.poll_length))
+    }
   }
 
-  const getStartTimeByRound = async (votingStart: VotingTime) => {
-    const time = await getStartTimeByRoundRequest(votingStart)
-    if (time) {
-      const endDate = convertTimestampToDate(time?.timestamp)
-      setRoundEndDate(endDate)
+  const getPastPolls = async (roundCount: number) => {
+    let results: PollResult[] = []
+    try {
+      for (let i = 0; i < roundCount; i++) {
+        const result = await getWebResult(i + 1)
+        if (result) {
+          const convertedPoll = convertPollData(result)
+          results.push(convertedPoll)
+        }
+        await new Promise((resolve) => setTimeout(resolve, 500))
+      }
+      setPastPolls(results)
+      console.log('All results:', results)
+    } catch (error) {
+      console.error('Error:', error)
     }
   }
 
@@ -75,14 +94,20 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         user,
         votingRound,
         roundEndDate,
+        pollOptions,
+        roundState,
+        pastPolls,
+        getWebResult,
+        setPastPolls,
+        getPastPolls,
+        getRoundStateLite,
+        setPollOptions,
         initialLoad,
         broadcastVote,
         setVotingRound,
-        getPkByRound,
         setUser,
         initWebAssembly,
         encryptVote,
-        getStartTimeByRound,
         logout,
       }}
     >

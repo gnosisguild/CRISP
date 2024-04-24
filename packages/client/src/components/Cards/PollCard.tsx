@@ -3,15 +3,16 @@ import { useNavigate } from 'react-router-dom'
 import { PollOption } from '@/model/poll.model'
 import VotesBadge from '@/components/VotesBadge'
 import PollCardResult from '@/components/Cards/PollCardResult'
-import { markWinner } from '@/utils/methods'
+import { formatDate, markWinner } from '@/utils/methods'
 
 interface PollCardProps {
+  roundId: number
   pollOptions: PollOption[]
   totalVotes: number
   date: string
 }
 
-const PollCard: React.FC<PollCardProps> = ({ pollOptions, totalVotes, date }) => {
+const PollCard: React.FC<PollCardProps> = ({ roundId, pollOptions, totalVotes, date }) => {
   const navigate = useNavigate()
   const [results, setResults] = useState<PollOption[]>(pollOptions)
 
@@ -21,7 +22,7 @@ const PollCard: React.FC<PollCardProps> = ({ pollOptions, totalVotes, date }) =>
   }, [pollOptions])
 
   const handleNavigation = () => {
-    navigate('/result')
+    navigate(`/result/${roundId}`)
   }
 
   return (
@@ -30,7 +31,7 @@ const PollCard: React.FC<PollCardProps> = ({ pollOptions, totalVotes, date }) =>
       onClick={handleNavigation}
     >
       <div className='external-icon absolute right-4 top-4' />
-      <div className='text-xs font-bold text-slate-600'>{date}</div>
+      <div className='text-xs font-bold text-slate-600'>{formatDate(date)}</div>
       <div className='flex space-x-8 '>
         <PollCardResult results={results} totalVotes={totalVotes} />
       </div>

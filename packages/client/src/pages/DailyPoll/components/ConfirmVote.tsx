@@ -1,14 +1,12 @@
-import React, { useState } from 'react'
+import React from 'react'
 import CountdownTimer from '@/components/CountdownTime'
 import CardContent from '@/components/Cards/CardContent'
-import CircleIcon from '@/assets/icons/caretCircle.svg'
-import CodeTextDisplay from '@/components/CodeTextDisplay'
+import { Link } from 'react-router-dom'
 
 type ConfirmVoteProps = {
   endTime: Date
 }
 const ConfirmVote: React.FC<ConfirmVoteProps> = ({ endTime }) => {
-  const [showCode, setShowCode] = useState<boolean>(false)
   return (
     <div className='my-28 flex w-screen flex-col items-center justify-center space-y-12'>
       <div className='space-y-2 text-center'>
@@ -17,7 +15,7 @@ const ConfirmVote: React.FC<ConfirmVoteProps> = ({ endTime }) => {
       </div>
       <div className='flex flex-col justify-center space-y-6'>
         <CountdownTimer endTime={endTime} />
-        <button className='button-outlined button-max w-[140]'>notify me</button>
+        {/* <button className='button-outlined button-max w-[140]'>notify me</button> */}
       </div>
       <CardContent>
         <div className='space-y-4'>
@@ -30,11 +28,6 @@ const ConfirmVote: React.FC<ConfirmVoteProps> = ({ endTime }) => {
               confidentiality. The protocol's advanced cryptographic techniques guarantee that your vote contributes to the final outcome
               without any risk of privacy breaches or undue influence.
             </p>
-            <div className='flex cursor-pointer items-center space-x-2' onClick={() => setShowCode(!showCode)}>
-              <p className='text-lime-400 underline'>See what&apos;s happening under the hood</p>
-              <img src={CircleIcon} className={`h-[18] w-[18] ${showCode ? '-rotate-90 transition-transform duration-200' : ''}`} />
-            </div>
-            {showCode && <CodeTextDisplay />}
           </div>
         </div>
         <div className='space-y-4'>
@@ -48,8 +41,12 @@ const ConfirmVote: React.FC<ConfirmVoteProps> = ({ endTime }) => {
           </p>
         </div>
         <div className='flex items-center justify-between border-t-2 border-slate-600/20 pt-11'>
-          <p className='text-xl'>Learn more about CRISP</p>
-          <button className='button-primary button-max'>learn more</button>
+          <Link to={'/whitepaper'}>
+            <p className='text-xl'>Learn more about CRISP</p>
+          </Link>
+          <Link to={'/about'}>
+            <button className='button-primary button-max'>learn more</button>
+          </Link>
         </div>
       </CardContent>
     </div>

@@ -1,19 +1,13 @@
-import { EMOJI_LIST } from '@/mocks/polls'
-import { Poll } from '@/model/poll.model'
+import { Poll, PollEmoji } from '@/model/poll.model'
 
-export const generateRandomPoll = (): Poll[] => {
-  let index1 = Math.floor(Math.random() * EMOJI_LIST.length)
-  let index2 = Math.floor(Math.random() * EMOJI_LIST.length)
-  while (index1 === index2) {
-    index2 = Math.floor(Math.random() * EMOJI_LIST.length)
-  }
-
+export const generatePoll = (poll: PollEmoji): Poll[] => {
+  const { emojis } = poll
   return [
     {
       value: 0,
-      label: EMOJI_LIST[index1],
+      label: emojis[0],
       checked: false,
     },
-    { value: 1, label: EMOJI_LIST[index2], checked: false },
+    { value: 1, label: emojis[1], checked: false },
   ]
 }

@@ -29,6 +29,7 @@ export const useWebAssemblyHook = () => {
       setIsLoading(true)
       return encryptInstance.encrypt_vote(voteId, publicKey)
     } catch (err) {
+      console.log('err', err)
       handleGenericError('encryptVote', err as Error)
     }
   }
