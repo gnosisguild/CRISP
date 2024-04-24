@@ -4,6 +4,7 @@ import Markdown from 'react-markdown'
 import { markdown } from '@/utils/whitepaper'
 import { Components } from 'react-markdown'
 import CircularTiles from '../../components/CircularTiles'
+import CrispDiagram from '../../assets/crisp-diagram.webp'
 
 const WhitePaper = () => {
   const [scrolledBelowContents, setScrolledBelow] = useState(false)
@@ -46,7 +47,7 @@ const WhitePaper = () => {
         </a>
       ),
       img: ({ node, ...props }) => (
-        <img src={props.src} className='h-auto w-full rounded-2xl border-2 border-slate-300'>
+        <img src={CrispDiagram} className='h-auto w-full rounded-2xl border-2 border-slate-300'>
           {props.children}
         </img>
       ),
