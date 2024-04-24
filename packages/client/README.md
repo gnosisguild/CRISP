@@ -21,7 +21,10 @@ CRISP/packages
 ```
 
 ## Architecture
-<img width="607" alt="image" src="https://github.com/gnosisguild/CRISP/assets/19823989/c8881fe2-1e66-4d99-9347-24e4edc91516">
+<p align="center">
+<img width="607" alt="image" src="https://github.com/gnosisguild/CRISP/assets/19823989/c8881fe2-1e66-4d99-9347-24e4edc91516">Ï
+</p>
+
 
 ## Installation
 
