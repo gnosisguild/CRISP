@@ -46,7 +46,7 @@ const WhitePaper = () => {
         </a>
       ),
       img: ({ node, ...props }) => (
-        <img src={props.src} className='h-auto w-full rounded-2xl border-2 border-slate-300'>
+        <img src={`/CRISP/${props.src}`} className='h-auto w-full rounded-2xl border-2 border-slate-300'>
           {props.children}
         </img>
       ),
