@@ -16,6 +16,7 @@ export type VoteManagementContextType = {
   pastPolls: PollResult[]
   setPollOptions: React.Dispatch<React.SetStateAction<Poll[]>>
   initialLoad: () => Promise<void>
+  existNewRound: () => Promise<void>
   getPastPolls: (roundCount: number) => Promise<void>
   setVotingRound: React.Dispatch<React.SetStateAction<VotingRound | null>>
   setUser: (value: SocialAuth | null) => void

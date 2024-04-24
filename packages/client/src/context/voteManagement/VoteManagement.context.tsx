@@ -9,6 +9,7 @@ import { useEnclaveServer } from '@/hooks/enclave/useEnclaveServer'
 import { convertPollData, convertTimestampToDate } from '@/utils/methods'
 import { Poll, PollResult } from '@/model/poll.model'
 import { generatePoll } from '@/utils/generate-random-poll'
+import { handleGenericError } from '@/utils/handle-generic-error'
 
 const [useVoteManagementContext, VoteManagementContextProvider] = createGenericContext<VoteManagementContextType>()
 
@@ -45,6 +46,13 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
     }
   }
 
+  const existNewRound = async () => {
+    const round = await getRound()
+    if (round && votingRound && round.round_count > votingRound.round_id) {
+      await getRoundStateLite(round.round_count)
+    }
+  }
+
   const logout = () => {
     setUser(null)
     setSocialAuth(null)
@@ -72,9 +80,8 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         await new Promise((resolve) => setTimeout(resolve, 500))
       }
       setPastPolls(results)
-      console.log('All results:', results)
     } catch (error) {
-      console.error('Error:', error)
+      handleGenericError('getPastPolls', error as Error)
     }
   }
 
@@ -97,6 +104,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         pollOptions,
         roundState,
         pastPolls,
+        existNewRound,
         getWebResult,
         setPastPolls,
         getPastPolls,

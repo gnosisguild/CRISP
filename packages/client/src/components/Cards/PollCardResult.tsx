@@ -30,7 +30,7 @@ const PollCardResult: React.FC<PollCardResultProps> = ({ isResult, results, tota
               <h3
                 className={`text-center ${isResult ? 'text-h1' : 'text-h3'}  font-bold ${poll.checked ? 'text-lime-400' : 'text-slate-600/50'}`}
               >
-                {calculatePercentage(poll.votes)}%
+                {totalVotes ? calculatePercentage(poll.votes) : 0}%
               </h3>
               <p className={`text-center ${isResult ? 'text-2xl font-semibold' : 'text-xs font-bold'}  text-slate-600/50`}>
                 {poll.votes} votes

@@ -1,4 +1,4 @@
-import React, { Fragment, useState } from 'react'
+import React, { Fragment, useEffect, useState } from 'react'
 import DailyPollSection from '@/pages/Landing/components/DailyPoll'
 import ConfirmVote from '@/pages/DailyPoll/components/ConfirmVote'
 import { Poll } from '@/model/poll.model'
@@ -7,14 +7,22 @@ import { useNotificationAlertContext } from '@/context/NotificationAlert'
 
 const DailyPoll: React.FC = () => {
   const { showToast } = useNotificationAlertContext()
-  const { encryptVote, broadcastVote, getRoundStateLite, votingRound, roundEndDate } = useVoteManagementContext()
+  const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, votingRound, roundEndDate } = useVoteManagementContext()
   const [voteCompleted, setVotedCompleted] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
+
+  useEffect(() => {
+    const checkRound = async () => {
+      await existNewRound()
+    }
+    checkRound()
+  }, [])
 
   const handleVoted = async (vote: Poll | null) => {
     if (vote && votingRound) {
       setLoading(true)
       const voteEncrypted = await encryptVote(BigInt(vote.value), new Uint8Array(votingRound.pk_bytes))
+
       if (voteEncrypted) {
         const broadcastVoteResponse = await broadcastVote({
           round_id: votingRound.round_id,
@@ -31,8 +39,8 @@ const DailyPoll: React.FC = () => {
           return
         }
         showToast({ type: 'danger', message: 'Error broadcasting the vote' })
-        setLoading(false)
       }
+      setLoading(false)
     }
   }
 

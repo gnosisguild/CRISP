@@ -6,6 +6,7 @@ import CircularTiles from '@/components/CircularTiles'
 import RegisterModal from '@/pages/Register/Register'
 import { useVoteManagementContext } from '@/context/voteManagement'
 import LoadingAnimation from '@/components/LoadingAnimation'
+import { hasPollEnded } from '@/utils/methods'
 
 type DailyPollSectionProps = {
   onVoted?: (vote: Poll) => void
@@ -14,6 +15,7 @@ type DailyPollSectionProps = {
 
 const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading }) => {
   const { user, pollOptions, setPollOptions, roundState } = useVoteManagementContext()
+  const isEnded = roundState ? hasPollEnded(roundState?.poll_length, roundState?.start_time) : false
   const status = roundState?.status
   const [pollSelected, setPollSelected] = useState<Poll | null>(null)
   const [noPollSelected, setNoPollSelected] = useState<boolean>(true)
@@ -41,7 +43,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
     }
   }
 
-  const statusClass = status === 'Active' ? 'lime' : 'red'
+  const statusClass = !isEnded ? 'lime' : 'red'
 
   return (
     <>
@@ -61,7 +63,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
                 className={`flex items-center space-x-2 rounded-lg border-2 border-${statusClass}-600/80 bg-${statusClass}-400 px-2 py-1 text-center font-bold uppercase leading-none text-white`}
               >
                 <div className='h-1.5 w-1.5 animate-pulse rounded-full bg-white'></div>
-                <div>{status === 'Active' ? 'Live' : 'Ended'}</div>
+                <div>{!isEnded ? 'Live' : 'Ended'}</div>
               </div>
               <div className='rounded-lg border-2 border-slate-600/20 bg-white px-2 py-1.5 text-center font-bold uppercase leading-none text-slate-800/50'>
                 {roundState.vote_count} votes
@@ -82,7 +84,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
             {noPollSelected && <div className='text-center text-sm leading-none text-slate-500'>Select your favorite</div>}
             <button
               className={`button-outlined button-max ${noPollSelected ? 'button-disabled' : ''}`}
-              disabled={noPollSelected || loading || status !== 'Active'}
+              disabled={noPollSelected || loading || status !== 'Active' || isEnded}
               onClick={castVote}
             >
               cast vote

@@ -2,7 +2,10 @@ import { useState } from 'react'
 import * as WasmInstance from 'libs/wasm/pkg/crisp_web'
 import { handleGenericError } from '@/utils/handle-generic-error'
 
+import { useNotificationAlertContext } from '@/context/NotificationAlert'
+
 export const useWebAssemblyHook = () => {
+  const { showToast } = useNotificationAlertContext()
   const [wasmInstance, setWasmInstance] = useState<WasmInstance.InitOutput | null>(null)
   const [encryptInstance, setEncryptInstance] = useState<WasmInstance.Encrypt | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
@@ -29,8 +32,11 @@ export const useWebAssemblyHook = () => {
       setIsLoading(true)
       return encryptInstance.encrypt_vote(voteId, publicKey)
     } catch (err) {
-      console.log('err', err)
-      handleGenericError('encryptVote', err as Error)
+      showToast({
+        type: 'danger',
+        message: err as string,
+      })
+      handleGenericError('encryptVote', { message: err } as Error)
     }
   }
 

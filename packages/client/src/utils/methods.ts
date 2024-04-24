@@ -13,6 +13,11 @@ export const convertTimestampToDate = (timestamp: number, secondsToAdd: number =
   date.setSeconds(date.getMinutes() + secondsToAdd)
   return date
 }
+export const hasPollEnded = (pollLength: number, startTime: number): boolean => {
+  const endTime = (startTime + pollLength) * 1000
+  const currentTime = Date.now()
+  return currentTime >= endTime
+}
 
 export const formatDate = (isoDateString: string): string => {
   const date = new Date(isoDateString)

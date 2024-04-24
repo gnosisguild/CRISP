@@ -36,20 +36,20 @@ const ToastAlert: React.FC<ToastAlertProps> = ({ message, type, linkUrl, onClose
   return (
     <div className='toast-alert fixed bottom-8 left-8 z-[9999] transform transition-transform'>
       <div
-        className={`shadow-toast flex h-[46px] w-[366px] items-center rounded-[16px] border-2 ${currentAlertStyle.container} bg-white px-6`}
+        className={`shadow-toast w-min-[366px] flex h-[46px] items-center rounded-[16px] border-2 ${currentAlertStyle.container} bg-white px-6`}
       >
         <div className='flex w-full items-center justify-between'>
           {linkUrl && (
             <a
               href={linkUrl}
               target='_blank'
-              className={`flex items-center text-base font-extrabold uppercase leading-6 ${currentAlertStyle.text}`}
+              className={`mr-6 flex items-center text-base font-extrabold uppercase leading-6 ${currentAlertStyle.text}`}
             >
               <Link size={16} weight='bold' className={`mr-2 ${currentAlertStyle.button}`} />
               {message}
             </a>
           )}
-          {!linkUrl && <p className={`text-base font-extrabold uppercase leading-6 ${currentAlertStyle.text}`}>{message}</p>}
+          {!linkUrl && <p className={`mr-3 text-base font-extrabold uppercase leading-6 ${currentAlertStyle.text}`}>{message}</p>}
 
           <button onClick={onClose}>
             <X weight='bold' size={16} className={currentAlertStyle.button} />

@@ -9,11 +9,11 @@ import { NotificationAlertProvider } from './context/NotificationAlert/Notificat
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.Fragment>
     <HashRouter>
-      <VoteManagementProvider>
-        <NotificationAlertProvider>
+      <NotificationAlertProvider>
+        <VoteManagementProvider>
           <App />
-        </NotificationAlertProvider>
-      </VoteManagementProvider>
+        </VoteManagementProvider>
+      </NotificationAlertProvider>
     </HashRouter>
   </React.Fragment>,
 )
