@@ -25,10 +25,10 @@ use walkdir::WalkDir;
 
 use ethers::{
     prelude::{abigen, Abigen},
-    providers::{Http, Provider},
+    providers::{Http, Provider, StreamExt, Middleware},
     middleware::SignerMiddleware,
     signers::{LocalWallet, Signer, Wallet},
-    types::{Address, U256, Bytes, TxHash},
+    types::{Address, U256, Bytes, TxHash, U64},
     core::k256,
     utils,
 };
@@ -51,10 +51,10 @@ impl Database {
 }
 
 static GLOBAL_DB: Lazy<Db> = Lazy::new(|| {
-        let pathdb = env::current_dir().unwrap();
-        let mut pathdbst = pathdb.display().to_string();
-        pathdbst.push_str("/database");
-        sled::open(pathdbst.clone()).unwrap()
+    let pathdb = env::current_dir().unwrap();
+    let mut pathdbst = pathdb.display().to_string();
+    pathdbst.push_str("/database/enclave_server");
+    sled::open(pathdbst.clone()).unwrap()
 });
 
 //static open_db: Database = Database::new();
@@ -230,6 +230,7 @@ struct StateLite {
     crp: Vec<u8>,
     pk: Vec<u8>,
     start_time: i64,
+    block_start: U64,
     ciphernode_total:  u32,
     emojis: [String; 2],
 }
@@ -248,6 +249,7 @@ struct Round {
     crp: Vec<u8>,
     pk: Vec<u8>,
     start_time: i64,
+    block_start: U64,
     ciphernode_total:  u32,
     emojis: [String; 2],
     votes_option_1: u32,
@@ -506,6 +508,7 @@ fn get_round_state_lite(req: &mut Request) -> IronResult<Response> {
         crp: state.crp,
         pk: state.pk,
         start_time: state.start_time,
+        block_start: state.block_start,
         ciphernode_total:  state.ciphernode_total,
         emojis: state.emojis,
     };
@@ -613,8 +616,17 @@ fn get_rounds(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((content_type, status::Ok, out)))
 }
 
-fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
+#[tokio::main]
+async fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     println!("generating round crp");
+
+    let infura_key = "INFURAKEY";
+    let infura_val = env::var(infura_key).unwrap();
+    let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
+    RPC_URL.push_str(&infura_val);
+
+    let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
+    let block_number: U64 = provider.get_block_number().await.unwrap();    
 
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;
@@ -676,6 +688,7 @@ fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
         crp: crp_bytes,
         pk: vec![0],
         start_time: timestamp,
+        block_start: block_number,
         ciphernode_total: incoming.ciphernode_count,
         emojis: [emoji1, emoji2],
         votes_option_1: 0,

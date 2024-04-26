@@ -1,6 +1,7 @@
 mod util;
 
-use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path, process};
+use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path, process, str};
+use std::sync::mpsc::{self, TryRecvError};
 use chrono::{DateTime, TimeZone, Utc};
 use console::style;
 use fhe::{
@@ -9,7 +10,7 @@ use fhe::{
 };
 use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize as FheSerialize, DeserializeParametrized};
 //use fhe_math::rq::{Poly};
-use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
+use rand::{Rng, distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use util::timeit::{timeit, timeit_n};
 use serde::{Deserialize, Serialize};
@@ -20,6 +21,7 @@ use hyper_util::rt::TokioIo;
 use tokio::net::TcpStream;
 use http_body_util::BodyExt;
 use tokio::io::{AsyncWriteExt as _, self};
+use tokio::runtime::Runtime;
 
 use std::{thread, time};
 
@@ -28,11 +30,14 @@ use ethers::{
     providers::{Http, Provider, StreamExt, Middleware},
     middleware::SignerMiddleware,
     signers::{LocalWallet, Signer, Wallet},
-    types::{Address, U256, Bytes, U64},
+    types::{Address, U256, Bytes, U64, Filter, H256},
     core::k256,
     utils,
     contract::abigen,
 };
+
+use sled::Db;
+use once_cell::sync::Lazy;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct JsonRequest {
@@ -142,8 +147,21 @@ struct StateLite {
     crp: Vec<u8>,
     pk: Vec<u8>,
     start_time: i64,
+    block_start: U64,
     ciphernode_total:  u32,
     emojis: [String; 2],
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct CiphernodeDB {
+    id: u32,
+    round_storage: Vec<RoundData>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct RoundData {
+    round_id: u32,
+    encrypted_votes: Vec<Vec<u8>>,
 }
 
 // #[derive(Debug, Deserialize, Serialize)]
@@ -169,6 +187,18 @@ struct StateLite {
 //     pk_share: Vec<u8>,
 //     sks_share: Vec<u8>,
 // }
+
+static ID: Lazy<i64> = Lazy::new(|| {
+    rand::thread_rng().gen_range(0..1000)
+});
+
+static GLOBAL_DB: Lazy<Db> = Lazy::new(|| {
+    let pathdb = env::current_dir().unwrap();
+    let mut pathdbst = pathdb.display().to_string();
+    pathdbst.push_str("/database/ciphernode-");
+    pathdbst.push_str(&ID.to_string());
+    sled::open(pathdbst.clone()).unwrap()
+});
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -261,6 +291,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
             let body_bytes = res_get_state.collect().await?.to_bytes();
             let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+            // static state: Lazy<StateLite> = Lazy::new(|| {
+            //     serde_json::from_str(&body_str).expect("JSON was not well-formatted")
+            // });
             let state: StateLite = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
             //let share_count: PKShareCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
             println!("database round count {:?}", state.id);
@@ -321,75 +354,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             }
 
             internal_round_count.round_count += 1;
-            //process::exit(1);
-
-            //TODO: put blockchain polling in a seperate thread so cipher nodes can act on more than one round at a time
-            // ------------------------------------
-            println!("polling smart contract...");
-            // chain state
-            // todo, move into loop and boot up for different chains if needed.
-            let infura_key = "INFURAKEY";
-            let infura_val = env::var(infura_key).unwrap();
-            let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
-            RPC_URL.push_str(&infura_val);
-            let provider = Provider::<Http>::try_from(RPC_URL.clone())?;
-            let block_number: U64 = provider.get_block_number().await?;
-            println!("Current block height is {:?}", block_number);
-            abigen!(
-                IVOTE,
-                r#"[
-                    function tester() external view returns (string)
-                    function id() external view returns (uint256)
-                    function voteEncrypted(bytes memory encVote) public
-                    event Voted(address indexed voter, bytes vote)
-                ]"#,
-            );
-            let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
-            let contract_address = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B".parse::<Address>().unwrap();
-            let eth_key = "PRIVATEKEY";
-            let eth_val = env::var(eth_key).unwrap();
-            let wallet: LocalWallet = eth_val
-                .parse::<LocalWallet>().unwrap()
-                .with_chain_id(11155111 as u64);
-            let client = Arc::new(provider);
-            let contract = IVOTE::new(contract_address, Arc::new(client.clone()));
-            let events = contract.events().from_block(5560945);//.to_block(5560955);
 
             //todo get voters per round and cyphernodes
             //let mut num_voters = 2;
             let mut num_parties = state.ciphernode_total;
-            let mut votes_encrypted = Vec::with_capacity(1000); // todo: store votes 
+            //let mut votes_encrypted = Vec::with_capacity(1000); // todo: store votes 
             let mut counter = 0;
 
-            //TODO: scan blocks since round start block to get any votes missed if crashed
-            let mut stream = events.stream().await.unwrap().with_meta().take(10);
             // For each voting round this node is participating in, check the contracts for vote events.
             // When voting is finalized, begin group decrypt process
-            while let Some(Ok((event, meta))) = stream.next().await {
-                println!("New vote event received");
-                println!("voter: {:?}", event.voter);
-                println!(
-                    r#"
-                       address: {:?}, 
-                       block_number: {:?}, 
-                       block_hash: {:?}, 
-                       transaction_hash: {:?}, 
-                       transaction_index: {:?}, 
-                       log_index: {:?}
-                    "#,
-                    meta.address,
-                    meta.block_number,
-                    meta.block_hash,
-                    meta.transaction_hash,
-                    meta.transaction_index,
-                    meta.log_index
-                );
 
-                let deserialized_vote = Ciphertext::from_bytes(&event.vote, &params).unwrap();
-                votes_encrypted.push(deserialized_vote);
-                counter += 1;
+            // let (tx, rx) = mpsc::channel::<()>();
+            // let rt = Runtime::new().unwrap();
+            // //thread::spawn(move || {
+            //     rt.spawn(async move { poll_contract(state.id, node_id, rx).await });
+            // //});
 
-                // TODO: replace with timestamp check
+            // TODO: move to thread so main loop can continue to look for more work
+            loop {
+                println!("Looping to check for poll end.");
                 let now = Utc::now();
                 let internal_time = now.timestamp();
                 if (state.start_time + state.poll_length as i64) < internal_time {
@@ -422,20 +405,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     let body_bytes_get_voters = res_get_voters.collect().await?.to_bytes();
                     let body_str_get_voters = String::from_utf8(body_bytes_get_voters.to_vec()).unwrap();
                     let num_voters: VoteCountRequest = serde_json::from_str(&body_str_get_voters).expect("JSON was not well-formatted");
-                    println!("all votes collected? {:?}", num_voters.vote_count == votes_encrypted.len() as u32);
+
+
+                    // get votes from db for round 
+                    // let mut key = state.id.to_string();
+                    // key.push_str("-");
+                    // key.push_str(&node_id.to_string());
+                    // key.push_str("-ciphernode-storage");
+                    // let votes_db = GLOBAL_DB.get(key).unwrap().unwrap();
+                    // let votes_out_str = str::from_utf8(&votes_db).unwrap();
+                    // let votes_out_struct: RoundData = serde_json::from_str(&votes_out_str).unwrap();
+
+                    let mut votes_collected = get_votes_contract(state.id, state.block_start, state.voting_address, state.chain_id).await;
+
+                    println!("number of votes from filter {:?}", votes_collected.len());
+                    println!("all votes collected? {:?}", num_voters.vote_count == votes_collected.len() as u32);
 
                     let tally = timeit!("Vote tallying", {
                         let mut sum = Ciphertext::zero(&params);
-                        for i in 0..(num_voters.vote_count - 1) {
+                        for i in 0..(votes_collected.len()) {
                             println!("index {:?}", i);
-                            sum += &votes_encrypted[i as usize];
+                            let deserialized_vote = Ciphertext::from_bytes(&votes_collected[i as usize], &params).unwrap();
+                            sum += &deserialized_vote;
                         }
                         // for ct in &votes_encrypted {
                         //     sum += ct;
                         // }
                         Arc::new(sum)
                     });
-                    println!("voter: {:?}", event.voter);
 
                     // The result of a vote is typically public, so in this scenario the parties can
                     // perform a collective decryption. If instead the result of the computation
@@ -571,6 +568,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             let mut res_report = sender_report.send_request(req_report).await?;
                             println!("Response status: {}", res_report.status());
                             println!("Tally reported to enclave server");
+                            //let _ = tx.send(());
                             break;
                         }
 
@@ -579,6 +577,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     }
                     break;
                 }
+                let polling_end_round = time::Duration::from_millis(6000);
+                thread::sleep(polling_end_round);           
             }
         }
 
@@ -587,4 +587,160 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         thread::sleep(polling_wait);
     }
     Ok(())
+}
+
+async fn get_votes_contract(round_id: u32, block_start: U64, address: String, chain_id: u32) -> Vec<Vec<u8>> {
+    println!("Filtering contract for votes");
+    // chain state
+    let infura_key = "INFURAKEY";
+    let infura_val = env::var(infura_key).unwrap();
+    let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
+    RPC_URL.push_str(&infura_val);
+    let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
+    //let block_number: U64 = provider.get_block_number().await.unwrap();
+    //println!("Current block height is {:?}", block_number);
+    abigen!(
+        IVOTE,
+        r#"[
+            function tester() external view returns (string)
+            function id() external view returns (uint256)
+            function voteEncrypted(bytes memory encVote) public
+            event Voted(address indexed voter, bytes vote)
+        ]"#,
+    );
+    let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
+    let contract_address = address.parse::<Address>().unwrap();
+    let eth_key = "PRIVATEKEY";
+    let eth_val = env::var(eth_key).unwrap();
+    let wallet: LocalWallet = eth_val
+        .parse::<LocalWallet>().unwrap()
+        .with_chain_id(chain_id as u64);
+    let client = Arc::new(provider);
+    let contract = IVOTE::new(contract_address, Arc::new(client.clone()));
+
+    // let event = contract.event::<ValueChanged>()?;
+
+    // let watcher = event.watcher().from_block(5).to_block(10);
+
+    let events = contract.events().from_block(block_start).query().await.unwrap();
+    //println!("{:?}", events);
+
+    // let filter = Filter::new()
+    //     .address(contract_address)
+    //     .event("Voted(address,bytes)")
+    //     .from_block(block_start);
+    // let logs = client.get_logs(&filter).await.unwrap();
+    let mut votes_encrypted = Vec::with_capacity(events.len());
+    for event in events.iter() {
+        votes_encrypted.push(event.vote.to_vec());
+    }
+    votes_encrypted
+}
+
+async fn poll_contract(round_id: u32, cnode_id: u32, rx: std::sync::mpsc::Receiver<()>) {
+    println!("Polling contract for votes");
+    // chain state
+    let infura_key = "INFURAKEY";
+    let infura_val = env::var(infura_key).unwrap();
+    let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
+    RPC_URL.push_str(&infura_val);
+    let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
+    let block_number: U64 = provider.get_block_number().await.unwrap();
+    println!("Current block height is {:?}", block_number);
+    abigen!(
+        IVOTE,
+        r#"[
+            function tester() external view returns (string)
+            function id() external view returns (uint256)
+            function voteEncrypted(bytes memory encVote) public
+            event Voted(address indexed voter, bytes vote)
+        ]"#,
+    );
+    let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
+    let contract_address = "0x51Ec8aB3e53146134052444693Ab3Ec53663a12B".parse::<Address>().unwrap();
+    let eth_key = "PRIVATEKEY";
+    let eth_val = env::var(eth_key).unwrap();
+    let wallet: LocalWallet = eth_val
+        .parse::<LocalWallet>().unwrap()
+        .with_chain_id(11155111 as u64);
+    let client = Arc::new(provider);
+    let contract = IVOTE::new(contract_address, Arc::new(client.clone()));
+    let events = contract.events().from_block(5560945);//.to_block(5560955);
+
+    // let token_topics = [
+    //     H256::from(USDC_ADDRESS.parse::<H160>()?),
+    //     H256::from(USDT_ADDRESS.parse::<H160>()?),
+    //     H256::from(DAI_ADDRESS.parse::<H160>()?),
+    // ];
+    let filter = Filter::new()
+        .address(contract_address)
+        .event("Voted(address,bytes)")
+        // .topic1(H256::from("address indexed voter".parse::<H160>().unwrap()))
+        // .topic2(token_topics.to_vec())
+        .from_block(5777125);
+    let logs = client.get_logs(&filter).await.unwrap();
+    for log in logs.iter() {
+        let token0 = log.topics.clone();
+        //let token1 = Address::from(log.topics[2]);
+        //let fee_tier = U256::from_big_endian(&log.topics[3].as_bytes()[29..32]);
+        //let tick_spacing = U256::from_big_endian(&log.data[29..32]);
+        //let pool = Address::from(&log.data[44..64].try_into()?);
+        println!("{:?}", log.data);
+    }
+
+    //TODO: scan blocks since round start block to get any votes missed if crashed
+    // let mut stream = events.stream().await.unwrap().with_meta().take(10);
+
+    // while let Some(Ok((event, meta))) = stream.next().await {
+    //     println!("New vote event received");
+    //     println!("voter: {:?}", event.voter);
+    //     println!(
+    //         r#"
+    //            address: {:?}, 
+    //            block_number: {:?}, 
+    //            block_hash: {:?}, 
+    //            transaction_hash: {:?}, 
+    //            transaction_index: {:?}, 
+    //            log_index: {:?}
+    //         "#,
+    //         meta.address,
+    //         meta.block_number,
+    //         meta.block_hash,
+    //         meta.transaction_hash,
+    //         meta.transaction_index,
+    //         meta.log_index
+    //     );
+
+    //     let mut key = round_id.to_string();
+    //     key.push_str("-");
+    //     key.push_str(&cnode_id.to_string());
+    //     key.push_str("-ciphernode-storage");
+    //     let votes = GLOBAL_DB.get(key.clone()).unwrap();
+    //     if(votes == None) {
+    //         println!("initializing first vote in db");
+    //         let data = RoundData {
+    //             round_id: round_id,
+    //             encrypted_votes: vec![event.vote.to_vec()],
+    //         };
+    //         let data_str = serde_json::to_string(&data).unwrap();
+    //         let data_bytes = data_str.into_bytes();
+    //         GLOBAL_DB.insert(key, data_bytes).unwrap();
+    //     } else {
+    //         let votes_str = votes.unwrap();
+    //         let votes_out_str = str::from_utf8(&votes_str).unwrap();
+    //         let mut votes_out_struct: RoundData = serde_json::from_str(&votes_out_str).unwrap();
+    //         votes_out_struct.encrypted_votes.push(event.vote.to_vec());
+    //         let votes_in_str = serde_json::to_string(&votes_out_struct).unwrap();
+    //         let votes_in_bytes = votes_in_str.into_bytes();
+    //         GLOBAL_DB.insert(key, votes_in_bytes);
+    //     }
+    //     match rx.try_recv() {
+    //         Ok(_) | Err(TryRecvError::Disconnected) => {
+    //             println!("Terminating.");
+    //             break;
+    //         }
+    //         Err(TryRecvError::Empty) => {}
+    //     }
+    //     // votes_encrypted.push(deserialized_vote);
+    // }
 }
