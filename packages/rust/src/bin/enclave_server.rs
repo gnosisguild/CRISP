@@ -195,11 +195,6 @@ struct WebResultRequest {
     end_time: i64
 }
 
-// fn register_cyphernode(req: &mut Request) -> IronResult<Response> {
-    // register ip address or some way to contact nodes when a computation request comes in
-
-// }
-
 #[derive(Debug, Deserialize, Serialize)]
 struct StateWeb {
     id: u32,
@@ -302,13 +297,9 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     let mut incoming: EncryptedVote = serde_json::from_str(&payload).unwrap();
 
     let (mut state, key) = get_state(incoming.round_id);
-    state.vote_count = state.vote_count + 1;
-    let state_str = serde_json::to_string(&state).unwrap();
-    let state_bytes = state_str.into_bytes();
-    GLOBAL_DB.insert(key, state_bytes).unwrap();
 
     let sol_vote = Bytes::from(incoming.enc_vote_bytes);
-    let tx_hash = call_contract(sol_vote, state.voting_address).await.unwrap();
+    let tx_hash = call_contract(sol_vote, state.voting_address.clone()).await.unwrap();
     let mut converter = "0x".to_string();
     for i in 0..32 {
         if(tx_hash[i] <= 16) {
@@ -318,6 +309,11 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
             converter.push_str(&format!("{:x}", tx_hash[i]));
         }
     }
+
+    state.vote_count = state.vote_count + 1;
+    let state_str = serde_json::to_string(&state).unwrap();
+    let state_bytes = state_str.into_bytes();
+    GLOBAL_DB.insert(key, state_bytes).unwrap();
 
     let response = JsonResponseTxHash { response: "tx_sent".to_string(), tx_hash: converter };
     let out = serde_json::to_string(&response).unwrap();
@@ -366,6 +362,11 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
     println!("{:?}", test);
     Ok(test)
 }
+
+// fn register_cyphernode(req: &mut Request) -> IronResult<Response> {
+    // register ip address or some way to contact nodes when a computation request comes in
+
+// }
 
 fn report_tally(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
@@ -935,14 +936,6 @@ async fn register_ciphernode(req: &mut Request) -> IronResult<Response> {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    // // use this to reset db
-    // let pathdb = env::current_dir().unwrap();
-    // let mut pathdbst = pathdb.display().to_string();
-    // pathdbst.push_str("/database");
-    // let db = sled::open(pathdbst.clone()).unwrap();
-    // let key = "round_count";
-    // db.remove(key).unwrap();
-
     // Server Code
     let mut router = Router::new();
     router.get("/", handler, "index");
