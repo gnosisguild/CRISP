@@ -160,7 +160,7 @@ struct RoundData {
 struct CiphernodeConfig {
     ids: Vec<u32>,
     enclave_address: String,
-    enclave_port: u32,
+    enclave_port: u16,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -260,7 +260,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         url_get_rounds_str.push_str("/get_rounds");
         let url_get_rounds = url_get_rounds_str.parse::<hyper::Uri>()?;
         let host = url_get_rounds.host().expect("uri has no host");
-        let port = url_get_rounds.port_u16().unwrap_or(4000);
+        let port = url_get_rounds.port_u16().unwrap_or(config.enclave_port);
         let address = format!("{}:{}", host, port);
         let stream = TcpStream::connect(address).await?;
         let io = TokioIo::new(stream);
@@ -274,7 +274,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         let response = JsonRequest { response: "get_rounds".to_string() };
         let out = serde_json::to_string(&response).unwrap();
-        let req = Request::get("http://127.0.0.1/")
+        let req = Request::get(config.enclave_address.clone())
             .uri(url_get_rounds.clone())
             .header(hyper::header::HOST, authority.as_str())
             .body(out)?;
@@ -294,9 +294,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("Getting Ciphernode ID."); // This is the current pk share count for now.
             // Client Code get the number of pk_shares on the server.
             // Currently the number of shares becomes the cipher client ID for the round.
-            let url_get_state = "http://127.0.0.1/get_round_state_lite".parse::<hyper::Uri>()?;
+            let mut url_get_state_str = config.enclave_address.clone();
+            url_get_state_str.push_str("/get_round_state_lite");
+            let url_get_state = url_get_state_str.parse::<hyper::Uri>()?;
             let host_get_state = url_get_state.host().expect("uri has no host");
-            let port_get_state = url_get_state.port_u16().unwrap_or(4000);
+            let port_get_state = url_get_state.port_u16().unwrap_or(config.enclave_port);
             let address_get_state = format!("{}:{}", host_get_state, port_get_state);
             let stream_get_state = TcpStream::connect(address_get_state).await?;
             let io_get_state = TokioIo::new(stream_get_state);
@@ -310,7 +312,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
             let response_get_state = GetRoundRequest { round_id: count.round_count };
             let out_get_state = serde_json::to_string(&response_get_state).unwrap();
-            let req_get_state = Request::post("http://127.0.0.1/")
+            let req_get_state = Request::post(config.enclave_address.clone())
                 .uri(url_get_state.clone())
                 .header(hyper::header::HOST, authority_get_state.as_str())
                 .body(out_get_state)?;
@@ -343,9 +345,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
             // --------------------------------------
             // Client Code Register PK Share on Enclave server
-            let url_register_keyshare = "http://127.0.0.1/register_ciphernode".parse::<hyper::Uri>()?;
+            let mut url_register_keyshare_str = config.enclave_address.clone();
+            url_register_keyshare_str.push_str("/register_ciphernode");
+            let url_register_keyshare = url_register_keyshare_str.parse::<hyper::Uri>()?;
             let host_key = url_register_keyshare.host().expect("uri has no host");
-            let port_key = url_register_keyshare.port_u16().unwrap_or(4000);
+            let port_key = url_register_keyshare.port_u16().unwrap_or(config.enclave_port);
             let address_key = format!("{}:{}", host_key, port_key);
             let stream_key = TcpStream::connect(address_key).await?;
             let io_key = TokioIo::new(stream_key);
@@ -364,7 +368,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 round_id: state.id
             };
             let out_key = serde_json::to_string(&response_key).unwrap();
-            let req_key = Request::post("http://127.0.0.1/")
+            let req_key = Request::post(config.enclave_address.clone())
                 .uri(url_register_keyshare.clone())
                 .header(hyper::header::HOST, authority_key.as_str())
                 .body(out_key)?;
@@ -400,9 +404,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 if (state.start_time + state.poll_length as i64) < internal_time {
                     print!("poll time ended... performing fhe computation");
 
-                    let url_get_voters = "http://127.0.0.1/get_vote_count_by_round".parse::<hyper::Uri>()?;
+                    let mut url_get_voters_str = config.enclave_address.clone();
+                    url_get_voters_str.push_str("/get_vote_count_by_round");
+                    let url_get_voters = url_get_voters_str.parse::<hyper::Uri>()?;
                     let host_get_voters = url_get_voters.host().expect("uri has no host");
-                    let port_get_voters = url_get_voters.port_u16().unwrap_or(4000);
+                    let port_get_voters = url_get_voters.port_u16().unwrap_or(config.enclave_port);
                     let address_get_voters = format!("{}:{}", host_get_voters, port_get_voters);
                     let stream_get_voters = TcpStream::connect(address_get_voters).await?;
                     let io_get_voters = TokioIo::new(stream_get_voters);
@@ -416,7 +422,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                     let response_get_voters = VoteCountRequest { round_id: state.id, vote_count: 0 };
                     let out_get_voters = serde_json::to_string(&response_get_voters).unwrap();
-                    let req_get_voters = Request::post("http://127.0.0.1/")
+                    let req_get_voters = Request::post(config.enclave_address.clone())
                         .uri(url_get_voters.clone())
                         .header(hyper::header::HOST, authority_get_voters.as_str())
                         .body(out_get_voters)?;
@@ -443,9 +449,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                     if votes_collected.len() == 0 {
                         println!("Vote result = {} / {}", 0, num_voters.vote_count);
-                        let url_report = "http://127.0.0.1/report_tally".parse::<hyper::Uri>()?;
+
+                        let mut url_report_str = config.enclave_address.clone();
+                        url_report_str.push_str("/report_tally");
+                        let url_report = url_report_str.parse::<hyper::Uri>()?;
                         let host_report = url_report.host().expect("uri has no host");
-                        let port_report = url_report.port_u16().unwrap_or(4000);
+                        let port_report = url_report.port_u16().unwrap_or(config.enclave_port);
                         let address_report = format!("{}:{}", host_report, port_report);
                         let stream_report = TcpStream::connect(address_report).await?;
                         let io_report = TokioIo::new(stream_report);
@@ -462,7 +471,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                option_2: 0
                         };
                         let out_report = serde_json::to_string(&response_report).unwrap();
-                        let req_report = Request::post("http://127.0.0.1/")
+                        let req_report = Request::post(config.enclave_address.to_string())
                             .uri(url_report.clone())
                             .header(hyper::header::HOST, authority_report.as_str())
                             .body(out_report)?;
@@ -492,9 +501,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                     // ------------------------------------
                     // Client Code register sks share with chrys server
-                    let url_register_sks = "http://127.0.0.1/register_sks_share".parse::<hyper::Uri>()?;
+                    let mut url_register_sks_str = config.enclave_address.clone();
+                    url_register_sks_str.push_str("/register_sks_share");
+                    let url_register_sks = url_register_sks_str.parse::<hyper::Uri>()?;
                     let host_sks = url_register_sks.host().expect("uri has no host");
-                    let port_sks = url_register_sks.port_u16().unwrap_or(4000);
+                    let port_sks = url_register_sks.port_u16().unwrap_or(config.enclave_port);
                     let address_sks = format!("{}:{}", host_sks, port_sks);
                     let stream_sks = TcpStream::connect(address_sks).await?;
                     let io_sks = TokioIo::new(stream_sks);
@@ -512,7 +523,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         round_id: state.id
                     };
                     let out_sks = serde_json::to_string(&response_sks).unwrap();
-                    let req_sks = Request::post("http://127.0.0.1/")
+                    let req_sks = Request::post(config.enclave_address.to_string())
                         .uri(url_register_sks.clone())
                         .header(hyper::header::HOST, authority_sks.as_str())
                         .body(out_sks)?;
@@ -531,9 +542,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     // poll the chrys server to get all sks shares.
                     loop {
                         // Client Code Get all sks shares
-                        let url_register_get_sks = "http://127.0.0.1/get_sks_shares".parse::<hyper::Uri>()?;
+                        let mut url_register_get_sks_str = config.enclave_address.clone();
+                        url_register_get_sks_str.push_str("/get_sks_shares");
+                        let url_register_get_sks = url_register_get_sks_str.parse::<hyper::Uri>()?;
                         let host_get_sks = url_register_get_sks.host().expect("uri has no host");
-                        let port_get_sks = url_register_get_sks.port_u16().unwrap_or(4000);
+                        let port_get_sks = url_register_get_sks.port_u16().unwrap_or(config.enclave_port);
                         let address_get_sks = format!("{}:{}", host_get_sks, port_get_sks);
                         let stream_get_sks = TcpStream::connect(address_get_sks).await?;
                         let io_get_sks = TokioIo::new(stream_get_sks);
@@ -546,7 +559,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                         let authority_get_sks = url_register_get_sks.authority().unwrap().clone();
                         let response_get_sks = SKSSharePoll { response: "Get_All_SKS_Shares".to_string(), round_id: count.round_count, ciphernode_count: num_parties as u32};
                         let out_get_sks = serde_json::to_string(&response_get_sks).unwrap();
-                        let req_get_sks = Request::post("http://127.0.0.1/")
+                        let req_get_sks = Request::post(config.enclave_address.to_string())
                             .uri(url_register_get_sks.clone())
                             .header(hyper::header::HOST, authority_get_sks.as_str())
                             .body(out_get_sks)?;
@@ -588,9 +601,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             println!("option 1 total {:?}", option_1_total);
                             println!("option 2 total {:?}", option_2_total);
 
-                            let url_report = "http://127.0.0.1/report_tally".parse::<hyper::Uri>()?;
+                            let mut url_report_str = config.enclave_address.clone();
+                            url_report_str.push_str("/report_tally");
+                            let url_report = url_report_str.parse::<hyper::Uri>()?;
                             let host_report = url_report.host().expect("uri has no host");
-                            let port_report = url_report.port_u16().unwrap_or(4000);
+                            let port_report = url_report.port_u16().unwrap_or(config.enclave_port);
                             let address_report = format!("{}:{}", host_report, port_report);
                             let stream_report = TcpStream::connect(address_report).await?;
                             let io_report = TokioIo::new(stream_report);
@@ -607,7 +622,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                                    option_2: option_2_total as u32
                             };
                             let out_report = serde_json::to_string(&response_report).unwrap();
-                            let req_report = Request::post("http://127.0.0.1/")
+                            let req_report = Request::post(config.enclave_address.to_string())
                                 .uri(url_report.clone())
                                 .header(hyper::header::HOST, authority_report.as_str())
                                 .body(out_report)?;
