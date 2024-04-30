@@ -12,7 +12,7 @@
 // use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter};
 // use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng};
 
-// fn main() -> Result<(), Box<dyn Error>> {
+fn main() -> Result<(), ()> {
 
-//     Ok(())
-// }
+    Ok(())
+}

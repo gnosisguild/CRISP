@@ -259,6 +259,12 @@ struct Ciphernode {
     sks_share: Vec<u8>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct GetCiphernode {
+    round_id: u32,
+    ciphernode_id: u32,
+}
+
 fn generate_emoji() -> (String, String) {
     let emojis = [
         "🍇","🍈","🍉","🍊","🍋","🍌","🍍","🥭","🍎","🍏",
@@ -367,6 +373,48 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
     // register ip address or some way to contact nodes when a computation request comes in
 
 // }
+
+fn get_node_by_round(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: GetCiphernode = serde_json::from_str(&payload).unwrap();
+    println!("Request node data for round {:?}", incoming.round_id);
+
+    let (state, key) = get_state(incoming.round_id);
+    let mut cnode = Ciphernode {
+        id: 0,
+        pk_share: vec![0],
+        sks_share: vec![0],
+    };
+
+    for i in 0..state.ciphernodes.len() {
+        if(state.ciphernodes[i as usize].id == incoming.ciphernode_id){
+            cnode.id = state.ciphernodes[i as usize].id;
+            cnode.pk_share = state.ciphernodes[i as usize].pk_share.clone();
+            cnode.sks_share = state.ciphernodes[i as usize].sks_share.clone();
+        };
+    };
+
+    if(cnode.id != 0){
+        let out = serde_json::to_string(&cnode).unwrap();
+
+        let content_type = "application/json".parse::<Mime>().unwrap();
+        Ok(Response::with((content_type, status::Ok, out)))
+    } else {
+        let response = JsonResponse { response: "Ciphernode Not Registered".to_string() };
+        let out = serde_json::to_string(&response).unwrap();
+
+        let content_type = "application/json".parse::<Mime>().unwrap();
+        Ok(Response::with((content_type, status::Ok, out)))
+    }
+
+    // let response = JsonResponse { response: "Ciphernode Not Registered".to_string() };
+    // let out = serde_json::to_string(&response).unwrap();
+
+    // let content_type = "application/json".parse::<Mime>().unwrap();
+    // Ok(Response::with((content_type, status::Ok, out)))
+}
 
 fn report_tally(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
@@ -956,8 +1004,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/report_tally", report_tally, "report_tally");
     router.post("/get_web_result", get_web_result, "get_web_result");
     router.post("/get_round_state_web", get_web_result, "get_round_state_web");
+    router.post("/get_node_by_round", get_node_by_round, "get_node_by_round");
 
-    Iron::new(router).http("localhost:4000").unwrap();
+    Iron::new(router).http("0.0.0.0:4000").unwrap();
 
     Ok(())
 }

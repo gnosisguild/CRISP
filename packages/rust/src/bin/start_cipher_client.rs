@@ -161,10 +161,16 @@ struct CiphernodeConfig {
     ids: Vec<u32>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct GetCiphernode {
+    round_id: u32,
+    ciphernode_id: u32,
+}
+
 type Client = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
 
 static ID: Lazy<i64> = Lazy::new(|| {
-    rand::thread_rng().gen_range(0..1000)
+    rand::thread_rng().gen_range(0..100000)
 });
 
 static GLOBAL_DB: Lazy<()> = Lazy::new(|| {
@@ -190,7 +196,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let path = env::current_dir().unwrap();
     let mut pathst = path.display().to_string();
     pathst.push_str("/example_ciphernode_config.json");
-    let mut file = File::open(pathst).unwrap();
+    let mut file = File::open(pathst.clone()).unwrap();
     let mut data = String::new();
     file.read_to_string(&mut data).unwrap();
 
@@ -198,12 +204,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let cnode_selector = args[1].parse::<usize>().unwrap();;
     println!("{:?}", cnode_selector);
 
-    let config: CiphernodeConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
+    let mut config: CiphernodeConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
+    let mut node_id: u32;
     if((config.ids.len() - 1) < cnode_selector) {
         println!("generating new ciphernode...");
+        node_id = rand::thread_rng().gen_range(0..100000);
+        config.ids.push(node_id);
+
+        let configfile = serde_json::to_string(&config).unwrap();
+        fs::write(pathst.clone(), configfile).unwrap();
     } else if(config.ids[cnode_selector] == 0) {
-        println!("generating initial ciphernode id");
+        println!("generating initial ciphernode id...");
+        node_id = rand::thread_rng().gen_range(0..100000);
+        config.ids[cnode_selector as usize] = node_id;
+        
+        let configfile = serde_json::to_string(&config).unwrap();
+        fs::write(pathst.clone(), configfile).unwrap();
+    } else {
+        node_id = config.ids[cnode_selector];
     };
+
+    // check to see if this node is registered with the server
+
 
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;
