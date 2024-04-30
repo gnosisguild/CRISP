@@ -2,6 +2,8 @@ mod util;
 
 use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path, process, str};
 use std::sync::mpsc::{self, TryRecvError};
+use std::fs::File;
+use std::io::Read;
 use chrono::{DateTime, TimeZone, Utc};
 use console::style;
 use fhe::{
@@ -154,6 +156,11 @@ struct RoundData {
     encrypted_votes: Vec<Vec<u8>>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct CiphernodeConfig {
+    ids: Vec<u32>,
+}
+
 type Client = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
 
 static ID: Lazy<i64> = Lazy::new(|| {
@@ -172,13 +179,31 @@ static GLOBAL_DB: Lazy<()> = Lazy::new(|| {
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     println!("Initializing parameters.");
 
-    let mut pathdb = env::current_dir().unwrap().display().to_string();
-    pathdb.push_str("/database");
-    let paths = fs::read_dir(pathdb).unwrap();
+    // let mut pathdb = env::current_dir().unwrap().display().to_string();
+    // pathdb.push_str("/database");
+    // let paths = fs::read_dir(pathdb).unwrap();
 
-    for path in paths {
-        println!("Name: {}", path.unwrap().path().display())
-    }
+    // for path in paths {
+    //     println!("Name: {}", path.unwrap().path().display())
+    // }
+
+    let path = env::current_dir().unwrap();
+    let mut pathst = path.display().to_string();
+    pathst.push_str("/example_ciphernode_config.json");
+    let mut file = File::open(pathst).unwrap();
+    let mut data = String::new();
+    file.read_to_string(&mut data).unwrap();
+
+    let args: Vec<String> = env::args().collect();
+    let cnode_selector = args[1].parse::<usize>().unwrap();;
+    println!("{:?}", cnode_selector);
+
+    let config: CiphernodeConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
+    if((config.ids.len() - 1) < cnode_selector) {
+        println!("generating new ciphernode...");
+    } else if(config.ids[cnode_selector] == 0) {
+        println!("generating initial ciphernode id");
+    };
 
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;
