@@ -1,1 +1,5 @@
-{"ids":[22,15838]}
+{
+"ids":[22,15838],
+"enclave_address": "http://127.0.0.1",
+"enclave_port": 4000
+}

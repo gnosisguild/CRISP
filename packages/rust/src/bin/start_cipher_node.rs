@@ -159,6 +159,8 @@ struct RoundData {
 #[derive(Debug, Deserialize, Serialize)]
 struct CiphernodeConfig {
     ids: Vec<u32>,
+    enclave_address: String,
+    enclave_port: u32,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -201,7 +203,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     file.read_to_string(&mut data).unwrap();
 
     let args: Vec<String> = env::args().collect();
-    let cnode_selector = args[1].parse::<usize>().unwrap();;
+    let mut cnode_selector = 0;
+    if args.len() != 1 {
+        cnode_selector = args[1].parse::<usize>().unwrap();
+    };
     println!("{:?}", cnode_selector);
 
     let mut config: CiphernodeConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
@@ -251,7 +256,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!("Polling CRISP server...");
 
         // Client Code Get Rounds
-        let url_get_rounds = "http://127.0.0.1/get_rounds".parse::<hyper::Uri>()?;
+        let mut url_get_rounds_str = config.enclave_address.clone();
+        url_get_rounds_str.push_str("/get_rounds");
+        let url_get_rounds = url_get_rounds_str.parse::<hyper::Uri>()?;
         let host = url_get_rounds.host().expect("uri has no host");
         let port = url_get_rounds.port_u16().unwrap_or(4000);
         let address = format!("{}:{}", host, port);
