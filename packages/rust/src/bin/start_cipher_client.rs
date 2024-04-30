@@ -434,6 +434,38 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     let mut votes_collected = get_votes_contract(state.id, state.block_start, state.voting_address, state.chain_id).await;
                     println!("all votes collected? {:?}", num_voters.vote_count == votes_collected.len() as u32);
 
+                    if votes_collected.len() == 0 {
+                        println!("Vote result = {} / {}", 0, num_voters.vote_count);
+                        let url_report = "http://127.0.0.1/report_tally".parse::<hyper::Uri>()?;
+                        let host_report = url_report.host().expect("uri has no host");
+                        let port_report = url_report.port_u16().unwrap_or(4000);
+                        let address_report = format!("{}:{}", host_report, port_report);
+                        let stream_report = TcpStream::connect(address_report).await?;
+                        let io_report = TokioIo::new(stream_report);
+                        let (mut sender_report, conn_report) = hyper::client::conn::http1::handshake(io_report).await?;
+                        tokio::task::spawn(async move {
+                            if let Err(err) = conn_report.await {
+                                println!("Connection failed: {:?}", err);
+                            }
+                        });
+                        let authority_report = url_report.authority().unwrap().clone();
+                        let response_report = ReportTallyRequest {
+                               round_id: state.id,
+                               option_1: 0,
+                               option_2: 0
+                        };
+                        let out_report = serde_json::to_string(&response_report).unwrap();
+                        let req_report = Request::post("http://127.0.0.1/")
+                            .uri(url_report.clone())
+                            .header(hyper::header::HOST, authority_report.as_str())
+                            .body(out_report)?;
+
+                        let mut res_report = sender_report.send_request(req_report).await?;
+                        println!("Tally Reported Response status: {}", res_report.status());
+                        break;
+                    }
+
+
                     let tally = timeit!("Vote tallying", {
                         let mut sum = Ciphertext::zero(&params);
                         for i in 0..(votes_collected.len()) {
