@@ -964,7 +964,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/get_web_result", get_web_result, "get_web_result");
     router.post("/get_round_state_web", get_web_result, "get_round_state_web");
 
-    Iron::new(router).http("127.0.0.1:4000").unwrap();
+    Iron::new(router).http("localhost:4000").unwrap();
 
     Ok(())
 }
