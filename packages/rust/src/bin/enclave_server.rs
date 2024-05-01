@@ -842,6 +842,11 @@ fn handler(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((content_type, status::Ok, out)))
 }
 
+fn health_handler(req: &mut Request) -> IronResult<Response> {
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok)))
+}
+
 // polling endpoint for sks shares
 
 fn register_sks_share(req: &mut Request) -> IronResult<Response> {
@@ -987,6 +992,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Server Code
     let mut router = Router::new();
     router.get("/", handler, "index");
+    router.get("/health", health_handler, "health");
     router.get("/get_rounds", get_rounds, "get_rounds");
     router.post("/get_pk_share_count", get_pk_share_count, "get_pk_share_count");
     router.post("/register_ciphernode", register_ciphernode, "register_ciphernode");
