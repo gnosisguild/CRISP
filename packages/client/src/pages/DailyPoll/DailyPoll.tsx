@@ -43,7 +43,6 @@ const DailyPoll: React.FC = () => {
       setLoading(false)
     }
   }
-
   return (
     <Fragment>
       {!voteCompleted && <DailyPollSection onVoted={handleVoted} loading={loading} />}
