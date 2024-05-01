@@ -72,13 +72,13 @@ Navigate to the `enclave_server` directory and run the server with:
 cargo run --bin enclave_server
 ```
 
-### Setting Up Cipher Clients
+### Setting Up Cipher Nodes
 
 Open 4 separate terminal windows for the various components.
 
-1. In two terminals, start the cipher clients by running:
+1. In two terminals, start the cipher nodes by running:
    ```sh
-   cargo run --bin start_cipher_client
+   cargo run --bin start_cipher_node
    ```
    Wait for the `enclave_server` to be up and running before executing this command in each terminal.
 
@@ -97,7 +97,7 @@ Once the CLI client is running, you can interact with the CRISP voting protocol 
 
 Ensure all components are running and communicating with each other properly before initializing a new round.
 
-Remember to provide exact paths if the `enclave_server`, `start_cipher_client`, and `cli` binaries are located in specific directories. If any specific configuration is needed in the environment files, make sure to outline what changes need to be made and where the files are located. It's also crucial to include any ports that need to be open or additional services that are required for the application to run correctly.
+Remember to provide exact paths if the `enclave_server`, `start_cipher_node`, and `cli` binaries are located in specific directories. If any specific configuration is needed in the environment files, make sure to outline what changes need to be made and where the files are located. It's also crucial to include any ports that need to be open or additional services that are required for the application to run correctly.
 
 ## Contributing
 
