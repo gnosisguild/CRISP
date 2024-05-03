@@ -18,8 +18,14 @@ use util::timeit::{timeit, timeit_n};
 use serde::{Deserialize, Serialize};
 use http_body_util::Empty;
 use hyper::Request;
+
+use hyper_tls::HttpsConnector;
 //use hyper::body::Bytes;
+//use hyper::Client as HClient;
 use hyper_util::rt::TokioIo;
+use hyper_util::{client::legacy::Client as HyperClient, rt::TokioExecutor};
+use bytes::Bytes;
+
 use tokio::net::TcpStream;
 use http_body_util::BodyExt;
 use tokio::io::{AsyncWriteExt as _, self};
@@ -32,7 +38,8 @@ use ethers::{
     providers::{Http, Provider, StreamExt, Middleware},
     middleware::SignerMiddleware,
     signers::{LocalWallet, Signer, Wallet},
-    types::{Address, U256, Bytes, U64, Filter, H256},
+    //types::{Address, U256, Bytes as EtherBytes, U64, Filter, H256},
+    types::{Address, U256, U64, Filter, H256},
     core::k256,
     utils,
     contract::abigen,
@@ -93,11 +100,11 @@ struct CRPRequest {
     crp_bytes: Vec<u8>,
 }
 
-#[derive(Debug, Clone, EthEvent)]
-pub struct Voted {
-    pub voter: Address,
-    pub vote: Bytes,
-}
+// #[derive(Debug, Clone, EthEvent)]
+// pub struct Voted {
+//     pub voter: Address,
+//     pub vote: EtherBytes,
+// }
 
 #[derive(Debug, Deserialize, Serialize)]
 struct SKSShareResponse {
@@ -255,38 +262,74 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     loop {
         println!("Polling CRISP server...");
 
-        // Client Code Get Rounds
-        let mut url_get_rounds_str = config.enclave_address.clone();
-        url_get_rounds_str.push_str("/get_rounds");
-        let url_get_rounds = url_get_rounds_str.parse::<hyper::Uri>()?;
-        let host = url_get_rounds.host().expect("uri has no host");
-        let port = url_get_rounds.port_u16().unwrap_or(config.enclave_port);
-        let address = format!("{}:{}", host, port);
-        let stream = TcpStream::connect(address).await?;
-        let io = TokioIo::new(stream);
-        let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
-        tokio::task::spawn(async move {
-            if let Err(err) = conn.await {
-                println!("Connection failed: {:?}", err);
-            }
-        });
-        let authority = url_get_rounds.authority().unwrap().clone();
+        let https = HttpsConnector::new();
+        //let client = HyperClient::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https);
+        let client = HyperClient::builder(hyper_util::rt::TokioExecutor::new()).build(HttpsConnector::new());
+
+        // let res = client.get("https://enclave.gnosisguild.org/get_rounds".parse()?).await?;
+        // println!("{:?}", res.status());
+        // assert_eq!(res.status(), 200);        
 
         let response = JsonRequest { response: "get_rounds".to_string() };
         let out = serde_json::to_string(&response).unwrap();
-        let req = Request::get(config.enclave_address.clone())
-            .uri(url_get_rounds.clone())
-            .header(hyper::header::HOST, authority.as_str())
+        //let mut client = HClient::new();
+
+        // let res = client.post("https://enclave.gnosisguild.org/health")
+        //         .body(out)
+        //         .send();
+        // match res {
+        //     Ok(res) => println!("Response: {}", res.status),
+        //     Err(e) => println!("Err: {:?}", e)
+        // }
+
+        let mut url_get_rounds = config.enclave_address.clone();
+        url_get_rounds.push_str("/get_rounds");
+        let req = Request::builder()
+            .uri(url_get_rounds)
             .body(out)?;
 
-        let mut res = sender.send_request(req).await?;
-        println!("Get Rounds Response status: {}", res.status());
+        let resp = client.request(req).await?;
 
-        let body_bytes = res.collect().await?.to_bytes();
+        eprintln!("{:?} {:?}", resp.version(), resp.status());
+        eprintln!("{:#?}", resp.headers());
+        let body_bytes = resp.collect().await?.to_bytes();
         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
         let count: RoundCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
         println!("Server Round Count: {:?}", count.round_count);
         println!("Internal Round Count: {:?}", internal_round_count.round_count);
+
+        // Client Code Get Rounds
+        // let mut url_get_rounds_str = config.enclave_address.clone();
+        // url_get_rounds_str.push_str("/get_rounds");
+        // let url_get_rounds = url_get_rounds_str.parse::<hyper::Uri>()?;
+        // let host = url_get_rounds.host().expect("uri has no host");
+        // let port = url_get_rounds.port_u16().unwrap_or(config.enclave_port);
+        // let address = format!("{}:{}", host, port);
+        // let stream = TcpStream::connect(address).await?;
+        // let io = TokioIo::new(stream);
+        // let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
+        // tokio::task::spawn(async move {
+        //     if let Err(err) = conn.await {
+        //         println!("Connection failed: {:?}", err);
+        //     }
+        // });
+        // let authority = url_get_rounds.authority().unwrap().clone();
+
+        // let response = JsonRequest { response: "get_rounds".to_string() };
+        // let out = serde_json::to_string(&response).unwrap();
+        // let req = Request::get(config.enclave_address.clone())
+        //     .uri(url_get_rounds.clone())
+        //     .header(hyper::header::HOST, authority.as_str())
+        //     .body(out)?;
+
+        // let mut res = sender.send_request(req).await?;
+        // println!("Get Rounds Response status: {}", res.status());
+
+        // let body_bytes = res.collect().await?.to_bytes();
+        // let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+        // let count: RoundCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+        // println!("Server Round Count: {:?}", count.round_count);
+        // println!("Internal Round Count: {:?}", internal_round_count.round_count);
 
         // Check to see if the server reported a new round
         // TODO: also check timestamp to be sure round isnt over, or already registered
@@ -294,34 +337,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("Getting Ciphernode ID."); // This is the current pk share count for now.
             // Client Code get the number of pk_shares on the server.
             // Currently the number of shares becomes the cipher client ID for the round.
-            let mut url_get_state_str = config.enclave_address.clone();
-            url_get_state_str.push_str("/get_round_state_lite");
-            let url_get_state = url_get_state_str.parse::<hyper::Uri>()?;
-            let host_get_state = url_get_state.host().expect("uri has no host");
-            let port_get_state = url_get_state.port_u16().unwrap_or(config.enclave_port);
-            let address_get_state = format!("{}:{}", host_get_state, port_get_state);
-            let stream_get_state = TcpStream::connect(address_get_state).await?;
-            let io_get_state = TokioIo::new(stream_get_state);
-            let (mut sender_get_state, conn_get_state) = hyper::client::conn::http1::handshake(io_get_state).await?;
-            tokio::task::spawn(async move {
-                if let Err(err) = conn_get_state.await {
-                    println!("Connection failed: {:?}", err);
-                }
-            });
-            let authority_get_state = url_get_state.authority().unwrap().clone();
+            // let mut url_get_state_str = config.enclave_address.clone();
+            // url_get_state_str.push_str("/get_round_state_lite");
+            // let url_get_state = url_get_state_str.parse::<hyper::Uri>()?;
+            // let host_get_state = url_get_state.host().expect("uri has no host");
+            // let port_get_state = url_get_state.port_u16().unwrap_or(config.enclave_port);
+            // let address_get_state = format!("{}:{}", host_get_state, port_get_state);
+            // let stream_get_state = TcpStream::connect(address_get_state).await?;
+            // let io_get_state = TokioIo::new(stream_get_state);
+            // let (mut sender_get_state, conn_get_state) = hyper::client::conn::http1::handshake(io_get_state).await?;
+            // tokio::task::spawn(async move {
+            //     if let Err(err) = conn_get_state.await {
+            //         println!("Connection failed: {:?}", err);
+            //     }
+            // });
+            // let authority_get_state = url_get_state.authority().unwrap().clone();
+
+            // let response_get_state = GetRoundRequest { round_id: count.round_count };
+            // let out_get_state = serde_json::to_string(&response_get_state).unwrap();
+            // let req_get_state = Request::post(config.enclave_address.clone())
+            //     .uri(url_get_state.clone())
+            //     .header(hyper::header::HOST, authority_get_state.as_str())
+            //     .body(out_get_state)?;
+
+            // let mut res_get_state = sender_get_state.send_request(req_get_state).await?;
+
+            // println!("Get Round State Response status: {}", res_get_state.status());
+
+            // let body_bytes = res_get_state.collect().await?.to_bytes();
+            // let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+
+            // let state: StateLite = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
 
             let response_get_state = GetRoundRequest { round_id: count.round_count };
-            let out_get_state = serde_json::to_string(&response_get_state).unwrap();
-            let req_get_state = Request::post(config.enclave_address.clone())
-                .uri(url_get_state.clone())
-                .header(hyper::header::HOST, authority_get_state.as_str())
-                .body(out_get_state)?;
+            let out = serde_json::to_string(&response_get_state).unwrap();
+            let mut url_get_state = config.enclave_address.clone();
+            url_get_state.push_str("/get_round_state_lite");
+            let req = Request::builder()
+                .uri(url_get_state)
+                .body(out)?;
 
-            let mut res_get_state = sender_get_state.send_request(req_get_state).await?;
-
-            println!("Get Round State Response status: {}", res_get_state.status());
-
-            let body_bytes = res_get_state.collect().await?.to_bytes();
+            let resp = client.request(req).await?;
+            let body_bytes = resp.collect().await?.to_bytes();
             let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
 
             let state: StateLite = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
