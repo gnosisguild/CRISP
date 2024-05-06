@@ -836,13 +836,9 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
 }
 
 fn handler(req: &mut Request) -> IronResult<Response> {
-    let eth_key = "PRIVATEKEY";
-    let eth_val = env::var(eth_key).unwrap();
-    println!("private key {:?}", eth_val);
-
-    let infura_key = "INFURAKEY";
-    let infura_val = env::var(infura_key).unwrap();
-    println!("infura key {:?}", infura_val);
+    for (key, value) in env::vars() {
+        println!("{key}: {value}");
+    }
     let response = JsonResponse { response: pick_response() };
     let out = serde_json::to_string(&response).unwrap();
 
