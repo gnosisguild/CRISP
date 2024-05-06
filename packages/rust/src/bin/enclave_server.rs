@@ -17,9 +17,12 @@ use serde::{Deserialize, Serialize};
 use iron::prelude::*;
 use iron::status;
 use iron::mime::Mime;
+use iron::Chain;
 use router::Router;
 use std::io::Read;
 use std::fs::File;
+
+use iron_cors::CorsMiddleware;
 
 use walkdir::WalkDir;
 
@@ -1010,7 +1013,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/get_round_state_web", get_web_result, "get_round_state_web");
     router.post("/get_node_by_round", get_node_by_round, "get_node_by_round");
 
-    Iron::new(router).http("0.0.0.0:4000").unwrap();
+    let cors_middleware = CorsMiddleware::with_allow_any();
+    println!("Allowed origin hosts: *");
+
+    let mut chain = Chain::new(router);
+    chain.link_around(cors_middleware);
+    Iron::new(chain).http("0.0.0.0:4000").unwrap();
 
     Ok(())
 }
