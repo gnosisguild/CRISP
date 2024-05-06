@@ -834,7 +834,6 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
 }
 
 fn handler(req: &mut Request) -> IronResult<Response> {
-    println!(env!("PRIVATEKEY"));
     let response = JsonResponse { response: pick_response() };
     let out = serde_json::to_string(&response).unwrap();
 
