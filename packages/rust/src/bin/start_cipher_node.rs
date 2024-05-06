@@ -18,6 +18,9 @@ use util::timeit::{timeit, timeit_n};
 use serde::{Deserialize, Serialize};
 use http_body_util::Empty;
 use hyper::Request;
+use hyper::header::HeaderName;
+use hyper::Method;
+use hyper::body::Body;
 
 use hyper_tls::HttpsConnector;
 //use hyper::body::Bytes;
@@ -261,17 +264,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     loop {
         println!("Polling CRISP server...");
-
         let https = HttpsConnector::new();
-        //let client = HyperClient::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https);
-        let client = HyperClient::builder(hyper_util::rt::TokioExecutor::new()).build(HttpsConnector::new());
+        let client_get = HyperClient::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https.clone());
+        let client = HyperClient::builder(TokioExecutor::new()).build::<_, String>(https);
+        //let client = HyperClient::builder(TokioExecutor::new()).build(HttpsConnector::new());
 
         // let res = client.get("https://enclave.gnosisguild.org/get_rounds".parse()?).await?;
         // println!("{:?}", res.status());
-        // assert_eq!(res.status(), 200);        
+        // assert_eq!(res.status(), 200);      
 
         let response = JsonRequest { response: "get_rounds".to_string() };
         let out = serde_json::to_string(&response).unwrap();
+        //let client = HyperClient::builder(TokioExecutor::new()).build::<_, String>(https);
         //let mut client = HClient::new();
 
         // let res = client.post("https://enclave.gnosisguild.org/health")
@@ -282,21 +286,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         //     Err(e) => println!("Err: {:?}", e)
         // }
 
-        let mut url_get_rounds = config.enclave_address.clone();
-        url_get_rounds.push_str("/get_rounds");
-        let req = Request::builder()
-            .uri(url_get_rounds)
-            .body(out)?;
+        let mut url_get_rounds_str = config.enclave_address.clone();
+        url_get_rounds_str.push_str("/get_rounds");
+        let url_get_rounds = url_get_rounds_str.parse::<hyper::Uri>()?;
+        let authority = url_get_rounds.authority().unwrap().clone();
 
-        let resp = client.request(req).await?;
+        pub const CONNECTION: HeaderName = HeaderName::from_static("connection");
+        //let hdr = HeaderName::from_static("connection: close");
+        //let hdr: &'static str = "Connection: close";
+        let req = Request::builder()
+            .method(Method::GET)
+            .uri(url_get_rounds_str)
+            //.header("content-type", "application/json")
+            //.header(CONNECTION, "close")
+            .body(Empty::<Bytes>::new())?;
+
+        let resp = client_get.request(req).await?;
 
         eprintln!("{:?} {:?}", resp.version(), resp.status());
         eprintln!("{:#?}", resp.headers());
         let body_bytes = resp.collect().await?.to_bytes();
         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+        println!("{:?}", body_str);
+        println!("----------------");
         let count: RoundCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
         println!("Server Round Count: {:?}", count.round_count);
         println!("Internal Round Count: {:?}", internal_round_count.round_count);
+        //drop(client);
 
         // Client Code Get Rounds
         // let mut url_get_rounds_str = config.enclave_address.clone();
@@ -374,10 +390,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let mut url_get_state = config.enclave_address.clone();
             url_get_state.push_str("/get_round_state_lite");
             let req = Request::builder()
+                .method(Method::POST)
                 .uri(url_get_state)
                 .body(out)?;
 
             let resp = client.request(req).await?;
+            println!("Get Round State Response status: {}", resp.status());
             let body_bytes = resp.collect().await?.to_bytes();
             let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
 
@@ -402,21 +420,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
             // --------------------------------------
             // Client Code Register PK Share on Enclave server
-            let mut url_register_keyshare_str = config.enclave_address.clone();
-            url_register_keyshare_str.push_str("/register_ciphernode");
-            let url_register_keyshare = url_register_keyshare_str.parse::<hyper::Uri>()?;
-            let host_key = url_register_keyshare.host().expect("uri has no host");
-            let port_key = url_register_keyshare.port_u16().unwrap_or(config.enclave_port);
-            let address_key = format!("{}:{}", host_key, port_key);
-            let stream_key = TcpStream::connect(address_key).await?;
-            let io_key = TokioIo::new(stream_key);
-            let (mut sender_key, conn_key) = hyper::client::conn::http1::handshake(io_key).await?;
-            tokio::task::spawn(async move {
-                if let Err(err) = conn_key.await {
-                    println!("Connection failed: {:?}", err);
-                }
-            });
-            let authority_key = url_register_keyshare.authority().unwrap().clone();
+            // let mut url_register_keyshare_str = config.enclave_address.clone();
+            // url_register_keyshare_str.push_str("/register_ciphernode");
+            // let url_register_keyshare = url_register_keyshare_str.parse::<hyper::Uri>()?;
+            // let host_key = url_register_keyshare.host().expect("uri has no host");
+            // let port_key = url_register_keyshare.port_u16().unwrap_or(config.enclave_port);
+            // let address_key = format!("{}:{}", host_key, port_key);
+            // let stream_key = TcpStream::connect(address_key).await?;
+            // let io_key = TokioIo::new(stream_key);
+            // let (mut sender_key, conn_key) = hyper::client::conn::http1::handshake(io_key).await?;
+            // tokio::task::spawn(async move {
+            //     if let Err(err) = conn_key.await {
+            //         println!("Connection failed: {:?}", err);
+            //     }
+            // });
+            // let authority_key = url_register_keyshare.authority().unwrap().clone();
+
+            // let response_key = PKShareRequest {
+            //     response: "Test".to_string(),
+            //     pk_share: pk_share_bytes,
+            //     id: node_id,
+            //     round_id: state.id
+            // };
+            // let out_key = serde_json::to_string(&response_key).unwrap();
+            // let req_key = Request::post(config.enclave_address.clone())
+            //     .uri(url_register_keyshare.clone())
+            //     .header(hyper::header::HOST, authority_key.as_str())
+            //     .body(out_key)?;
+
+            // let mut res_key = sender_key.send_request(req_key).await?;
 
             let response_key = PKShareRequest {
                 response: "Test".to_string(),
@@ -424,16 +456,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 id: node_id,
                 round_id: state.id
             };
-            let out_key = serde_json::to_string(&response_key).unwrap();
-            let req_key = Request::post(config.enclave_address.clone())
-                .uri(url_register_keyshare.clone())
-                .header(hyper::header::HOST, authority_key.as_str())
-                .body(out_key)?;
+            let out = serde_json::to_string(&response_key).unwrap();
+            let mut url_register_keyshare = config.enclave_address.clone();
+            url_register_keyshare.push_str("/register_ciphernode");
+            let req = Request::builder()
+                .method(Method::POST)
+                .uri(url_register_keyshare)
+                .body(out)?;
 
-            let mut res_key = sender_key.send_request(req_key).await?;
-            println!("Register Node Response status: {}", res_key.status());
+            let mut resp = client.request(req).await?;
+            println!("Register Node Response status: {}", resp.status());
             // Stream the body, writing each frame to stdout as it arrives
-            while let Some(next) = res_key.frame().await {
+            while let Some(next) = resp.frame().await {
                 let frame = next?;
                 if let Some(chunk) = frame.data_ref() {
                     io::stdout().write_all(chunk).await?;
@@ -461,33 +495,44 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 if (state.start_time + state.poll_length as i64) < internal_time {
                     print!("poll time ended... performing fhe computation");
 
-                    let mut url_get_voters_str = config.enclave_address.clone();
-                    url_get_voters_str.push_str("/get_vote_count_by_round");
-                    let url_get_voters = url_get_voters_str.parse::<hyper::Uri>()?;
-                    let host_get_voters = url_get_voters.host().expect("uri has no host");
-                    let port_get_voters = url_get_voters.port_u16().unwrap_or(config.enclave_port);
-                    let address_get_voters = format!("{}:{}", host_get_voters, port_get_voters);
-                    let stream_get_voters = TcpStream::connect(address_get_voters).await?;
-                    let io_get_voters = TokioIo::new(stream_get_voters);
-                    let (mut sender_get_voters, conn_get_voters) = hyper::client::conn::http1::handshake(io_get_voters).await?;
-                    tokio::task::spawn(async move {
-                        if let Err(err) = conn_get_voters.await {
-                            println!("Connection failed: {:?}", err);
-                        }
-                    });
-                    let authority_get_voters = url_get_voters.authority().unwrap().clone();
+                    // let mut url_get_voters_str = config.enclave_address.clone();
+                    // url_get_voters_str.push_str("/get_vote_count_by_round");
+                    // let url_get_voters = url_get_voters_str.parse::<hyper::Uri>()?;
+                    // let host_get_voters = url_get_voters.host().expect("uri has no host");
+                    // let port_get_voters = url_get_voters.port_u16().unwrap_or(config.enclave_port);
+                    // let address_get_voters = format!("{}:{}", host_get_voters, port_get_voters);
+                    // let stream_get_voters = TcpStream::connect(address_get_voters).await?;
+                    // let io_get_voters = TokioIo::new(stream_get_voters);
+                    // let (mut sender_get_voters, conn_get_voters) = hyper::client::conn::http1::handshake(io_get_voters).await?;
+                    // tokio::task::spawn(async move {
+                    //     if let Err(err) = conn_get_voters.await {
+                    //         println!("Connection failed: {:?}", err);
+                    //     }
+                    // });
+                    // let authority_get_voters = url_get_voters.authority().unwrap().clone();
+
+                    // let response_get_voters = VoteCountRequest { round_id: state.id, vote_count: 0 };
+                    // let out_get_voters = serde_json::to_string(&response_get_voters).unwrap();
+                    // let req_get_voters = Request::post(config.enclave_address.clone())
+                    //     .uri(url_get_voters.clone())
+                    //     .header(hyper::header::HOST, authority_get_voters.as_str())
+                    //     .body(out_get_voters)?;
+
+                    // let mut res_get_voters = sender_get_voters.send_request(req_get_voters).await?;
 
                     let response_get_voters = VoteCountRequest { round_id: state.id, vote_count: 0 };
-                    let out_get_voters = serde_json::to_string(&response_get_voters).unwrap();
-                    let req_get_voters = Request::post(config.enclave_address.clone())
-                        .uri(url_get_voters.clone())
-                        .header(hyper::header::HOST, authority_get_voters.as_str())
-                        .body(out_get_voters)?;
+                    let out = serde_json::to_string(&response_get_voters).unwrap();
+                    let mut url_get_voters = config.enclave_address.clone();
+                    url_get_voters.push_str("/get_vote_count_by_round");
+                    let req = Request::builder()
+                        .method(Method::POST)
+                        .uri(url_get_voters)
+                        .body(out)?;
 
-                    let mut res_get_voters = sender_get_voters.send_request(req_get_voters).await?;
-                    println!("Get Vote Count Response status: {}", res_get_voters.status());
+                    let mut resp = client.request(req).await?;
+                    println!("Get Vote Count Response status: {}", resp.status());
 
-                    let body_bytes_get_voters = res_get_voters.collect().await?.to_bytes();
+                    let body_bytes_get_voters = resp.collect().await?.to_bytes();
                     let body_str_get_voters = String::from_utf8(body_bytes_get_voters.to_vec()).unwrap();
                     let num_voters: VoteCountRequest = serde_json::from_str(&body_str_get_voters).expect("JSON was not well-formatted");
 
@@ -507,34 +552,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     if votes_collected.len() == 0 {
                         println!("Vote result = {} / {}", 0, num_voters.vote_count);
 
-                        let mut url_report_str = config.enclave_address.clone();
-                        url_report_str.push_str("/report_tally");
-                        let url_report = url_report_str.parse::<hyper::Uri>()?;
-                        let host_report = url_report.host().expect("uri has no host");
-                        let port_report = url_report.port_u16().unwrap_or(config.enclave_port);
-                        let address_report = format!("{}:{}", host_report, port_report);
-                        let stream_report = TcpStream::connect(address_report).await?;
-                        let io_report = TokioIo::new(stream_report);
-                        let (mut sender_report, conn_report) = hyper::client::conn::http1::handshake(io_report).await?;
-                        tokio::task::spawn(async move {
-                            if let Err(err) = conn_report.await {
-                                println!("Connection failed: {:?}", err);
-                            }
-                        });
-                        let authority_report = url_report.authority().unwrap().clone();
+                        // let mut url_report_str = config.enclave_address.clone();
+                        // url_report_str.push_str("/report_tally");
+                        // let url_report = url_report_str.parse::<hyper::Uri>()?;
+                        // let host_report = url_report.host().expect("uri has no host");
+                        // let port_report = url_report.port_u16().unwrap_or(config.enclave_port);
+                        // let address_report = format!("{}:{}", host_report, port_report);
+                        // let stream_report = TcpStream::connect(address_report).await?;
+                        // let io_report = TokioIo::new(stream_report);
+                        // let (mut sender_report, conn_report) = hyper::client::conn::http1::handshake(io_report).await?;
+                        // tokio::task::spawn(async move {
+                        //     if let Err(err) = conn_report.await {
+                        //         println!("Connection failed: {:?}", err);
+                        //     }
+                        // });
+                        // let authority_report = url_report.authority().unwrap().clone();
+                        // let response_report = ReportTallyRequest {
+                        //        round_id: state.id,
+                        //        option_1: 0,
+                        //        option_2: 0
+                        // };
+                        // let out_report = serde_json::to_string(&response_report).unwrap();
+                        // let req_report = Request::post(config.enclave_address.to_string())
+                        //     .uri(url_report.clone())
+                        //     .header(hyper::header::HOST, authority_report.as_str())
+                        //     .body(out_report)?;
+
+                        // let mut res_report = sender_report.send_request(req_report).await?;
                         let response_report = ReportTallyRequest {
                                round_id: state.id,
                                option_1: 0,
                                option_2: 0
                         };
-                        let out_report = serde_json::to_string(&response_report).unwrap();
-                        let req_report = Request::post(config.enclave_address.to_string())
-                            .uri(url_report.clone())
-                            .header(hyper::header::HOST, authority_report.as_str())
-                            .body(out_report)?;
+                        let out = serde_json::to_string(&response_report).unwrap();
+                        let mut url_report = config.enclave_address.clone();
+                        url_report.push_str("/report_tally");
+                        let req = Request::builder()
+                            .method(Method::POST)
+                            .uri(url_report)
+                            .body(out)?;
 
-                        let mut res_report = sender_report.send_request(req_report).await?;
-                        println!("Tally Reported Response status: {}", res_report.status());
+                        let mut resp = client.request(req).await?;
+                        println!("Tally Reported Response status: {}", resp.status());
                         break;
                     }
 
@@ -558,38 +617,54 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                     // ------------------------------------
                     // Client Code register sks share with chrys server
-                    let mut url_register_sks_str = config.enclave_address.clone();
-                    url_register_sks_str.push_str("/register_sks_share");
-                    let url_register_sks = url_register_sks_str.parse::<hyper::Uri>()?;
-                    let host_sks = url_register_sks.host().expect("uri has no host");
-                    let port_sks = url_register_sks.port_u16().unwrap_or(config.enclave_port);
-                    let address_sks = format!("{}:{}", host_sks, port_sks);
-                    let stream_sks = TcpStream::connect(address_sks).await?;
-                    let io_sks = TokioIo::new(stream_sks);
-                    let (mut sender_sks, conn_sks) = hyper::client::conn::http1::handshake(io_sks).await?;
-                    tokio::task::spawn(async move {
-                        if let Err(err) = conn_sks.await {
-                            println!("Connection failed: {:?}", err);
-                        }
-                    });
-                    let authority_sks = url_register_sks.authority().unwrap().clone();
+                    // let mut url_register_sks_str = config.enclave_address.clone();
+                    // url_register_sks_str.push_str("/register_sks_share");
+                    // let url_register_sks = url_register_sks_str.parse::<hyper::Uri>()?;
+                    // let host_sks = url_register_sks.host().expect("uri has no host");
+                    // let port_sks = url_register_sks.port_u16().unwrap_or(config.enclave_port);
+                    // let address_sks = format!("{}:{}", host_sks, port_sks);
+                    // let stream_sks = TcpStream::connect(address_sks).await?;
+                    // let io_sks = TokioIo::new(stream_sks);
+                    // let (mut sender_sks, conn_sks) = hyper::client::conn::http1::handshake(io_sks).await?;
+                    // tokio::task::spawn(async move {
+                    //     if let Err(err) = conn_sks.await {
+                    //         println!("Connection failed: {:?}", err);
+                    //     }
+                    // });
+                    // let authority_sks = url_register_sks.authority().unwrap().clone();
+                    // let response_sks = SKSShareRequest {
+                    //     response: "Register_SKS_Share".to_string(),
+                    //     sks_share: sks_bytes,
+                    //     id: node_id,
+                    //     round_id: state.id
+                    // };
+                    // let out_sks = serde_json::to_string(&response_sks).unwrap();
+                    // let req_sks = Request::post(config.enclave_address.to_string())
+                    //     .uri(url_register_sks.clone())
+                    //     .header(hyper::header::HOST, authority_sks.as_str())
+                    //     .body(out_sks)?;
+
+                    // let mut res_sks = sender_sks.send_request(req_sks).await?;
+
                     let response_sks = SKSShareRequest {
                         response: "Register_SKS_Share".to_string(),
                         sks_share: sks_bytes,
                         id: node_id,
                         round_id: state.id
                     };
-                    let out_sks = serde_json::to_string(&response_sks).unwrap();
-                    let req_sks = Request::post(config.enclave_address.to_string())
-                        .uri(url_register_sks.clone())
-                        .header(hyper::header::HOST, authority_sks.as_str())
-                        .body(out_sks)?;
+                    let out = serde_json::to_string(&response_sks).unwrap();
+                    let mut url_register_sks = config.enclave_address.clone();
+                    url_register_sks.push_str("/register_sks_share");
+                    let req = Request::builder()
+                        .method(Method::POST)
+                        .uri(url_register_sks)
+                        .body(out)?;
 
-                    let mut res_sks = sender_sks.send_request(req_sks).await?;
-                    println!("Register SKS Response status: {}", res_sks.status());
+                    let mut resp = client.request(req).await?;
+                    println!("Register SKS Response status: {}", resp.status());
 
                     // Stream the body, writing each frame to stdout as it arrives
-                    while let Some(next) = res_key.frame().await {
+                    while let Some(next) = resp.frame().await {
                         let frame = next?;
                         if let Some(chunk) = frame.data_ref() {
                             io::stdout().write_all(chunk).await?;
@@ -599,37 +674,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     // poll the chrys server to get all sks shares.
                     loop {
                         // Client Code Get all sks shares
-                        let mut url_register_get_sks_str = config.enclave_address.clone();
-                        url_register_get_sks_str.push_str("/get_sks_shares");
-                        let url_register_get_sks = url_register_get_sks_str.parse::<hyper::Uri>()?;
-                        let host_get_sks = url_register_get_sks.host().expect("uri has no host");
-                        let port_get_sks = url_register_get_sks.port_u16().unwrap_or(config.enclave_port);
-                        let address_get_sks = format!("{}:{}", host_get_sks, port_get_sks);
-                        let stream_get_sks = TcpStream::connect(address_get_sks).await?;
-                        let io_get_sks = TokioIo::new(stream_get_sks);
-                        let (mut sender_get_sks, conn_get_sks) = hyper::client::conn::http1::handshake(io_get_sks).await?;
-                        tokio::task::spawn(async move {
-                            if let Err(err) = conn_get_sks.await {
-                                println!("Connection failed: {:?}", err);
-                            }
-                        });
-                        let authority_get_sks = url_register_get_sks.authority().unwrap().clone();
-                        let response_get_sks = SKSSharePoll { response: "Get_All_SKS_Shares".to_string(), round_id: count.round_count, ciphernode_count: num_parties as u32};
-                        let out_get_sks = serde_json::to_string(&response_get_sks).unwrap();
-                        let req_get_sks = Request::post(config.enclave_address.to_string())
-                            .uri(url_register_get_sks.clone())
-                            .header(hyper::header::HOST, authority_get_sks.as_str())
-                            .body(out_get_sks)?;
+                        // let mut url_register_get_sks_str = config.enclave_address.clone();
+                        // url_register_get_sks_str.push_str("/get_sks_shares");
+                        // let url_register_get_sks = url_register_get_sks_str.parse::<hyper::Uri>()?;
+                        // let host_get_sks = url_register_get_sks.host().expect("uri has no host");
+                        // let port_get_sks = url_register_get_sks.port_u16().unwrap_or(config.enclave_port);
+                        // let address_get_sks = format!("{}:{}", host_get_sks, port_get_sks);
+                        // let stream_get_sks = TcpStream::connect(address_get_sks).await?;
+                        // let io_get_sks = TokioIo::new(stream_get_sks);
+                        // let (mut sender_get_sks, conn_get_sks) = hyper::client::conn::http1::handshake(io_get_sks).await?;
+                        // tokio::task::spawn(async move {
+                        //     if let Err(err) = conn_get_sks.await {
+                        //         println!("Connection failed: {:?}", err);
+                        //     }
+                        // });
+                        // let authority_get_sks = url_register_get_sks.authority().unwrap().clone();
+                        // let response_get_sks = SKSSharePoll { response: "Get_All_SKS_Shares".to_string(), round_id: count.round_count, ciphernode_count: num_parties as u32};
+                        // let out_get_sks = serde_json::to_string(&response_get_sks).unwrap();
+                        // let req_get_sks = Request::post(config.enclave_address.to_string())
+                        //     .uri(url_register_get_sks.clone())
+                        //     .header(hyper::header::HOST, authority_get_sks.as_str())
+                        //     .body(out_get_sks)?;
 
-                        let mut res_get_sks = sender_get_sks.send_request(req_get_sks).await?;
-                        println!("Get All SKS Response status: {}", res_get_sks.status());
+                        // let mut res_get_sks = sender_get_sks.send_request(req_get_sks).await?;
+                        let response_get_sks = SKSSharePoll { 
+                            response: "Get_All_SKS_Shares".to_string(),
+                            round_id: count.round_count,
+                            ciphernode_count: num_parties as u32
+                        };
+                        let out = serde_json::to_string(&response_get_sks).unwrap();
+                        let mut url_register_get_sks = config.enclave_address.clone();
+                        url_register_get_sks.push_str("/get_sks_shares");
+                        let req = Request::builder()
+                            .method(Method::POST)
+                            .uri(url_register_get_sks)
+                            .body(out)?;
 
-                        if(res_get_sks.status().to_string() == "500 Internal Server Error") {
+                        let mut resp = client.request(req).await?;
+                        println!("Get All SKS Response status: {}", resp.status());
+
+                        if(resp.status().to_string() == "500 Internal Server Error") {
                             println!("enclave resource failed, trying to poll for sks shares again...");
                             continue;
                         }
 
-                        let body_bytes = res_get_sks.collect().await?.to_bytes();
+                        let body_bytes = resp.collect().await?.to_bytes();
                         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
                         let shares: SKSShareResponse = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
 
@@ -658,34 +747,48 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                             println!("option 1 total {:?}", option_1_total);
                             println!("option 2 total {:?}", option_2_total);
 
-                            let mut url_report_str = config.enclave_address.clone();
-                            url_report_str.push_str("/report_tally");
-                            let url_report = url_report_str.parse::<hyper::Uri>()?;
-                            let host_report = url_report.host().expect("uri has no host");
-                            let port_report = url_report.port_u16().unwrap_or(config.enclave_port);
-                            let address_report = format!("{}:{}", host_report, port_report);
-                            let stream_report = TcpStream::connect(address_report).await?;
-                            let io_report = TokioIo::new(stream_report);
-                            let (mut sender_report, conn_report) = hyper::client::conn::http1::handshake(io_report).await?;
-                            tokio::task::spawn(async move {
-                                if let Err(err) = conn_report.await {
-                                    println!("Connection failed: {:?}", err);
-                                }
-                            });
-                            let authority_report = url_report.authority().unwrap().clone();
+                            // let mut url_report_str = config.enclave_address.clone();
+                            // url_report_str.push_str("/report_tally");
+                            // let url_report = url_report_str.parse::<hyper::Uri>()?;
+                            // let host_report = url_report.host().expect("uri has no host");
+                            // let port_report = url_report.port_u16().unwrap_or(config.enclave_port);
+                            // let address_report = format!("{}:{}", host_report, port_report);
+                            // let stream_report = TcpStream::connect(address_report).await?;
+                            // let io_report = TokioIo::new(stream_report);
+                            // let (mut sender_report, conn_report) = hyper::client::conn::http1::handshake(io_report).await?;
+                            // tokio::task::spawn(async move {
+                            //     if let Err(err) = conn_report.await {
+                            //         println!("Connection failed: {:?}", err);
+                            //     }
+                            // });
+                            // let authority_report = url_report.authority().unwrap().clone();
+                            // let response_report = ReportTallyRequest {
+                            //        round_id: state.id,
+                            //        option_1: option_1_total as u32,
+                            //        option_2: option_2_total as u32
+                            // };
+                            // let out_report = serde_json::to_string(&response_report).unwrap();
+                            // let req_report = Request::post(config.enclave_address.to_string())
+                            //     .uri(url_report.clone())
+                            //     .header(hyper::header::HOST, authority_report.as_str())
+                            //     .body(out_report)?;
+
+                            // let mut res_report = sender_report.send_request(req_report).await?;
                             let response_report = ReportTallyRequest {
                                    round_id: state.id,
                                    option_1: option_1_total as u32,
                                    option_2: option_2_total as u32
                             };
-                            let out_report = serde_json::to_string(&response_report).unwrap();
-                            let req_report = Request::post(config.enclave_address.to_string())
-                                .uri(url_report.clone())
-                                .header(hyper::header::HOST, authority_report.as_str())
-                                .body(out_report)?;
+                            let out = serde_json::to_string(&response_report).unwrap();
+                            let mut url_report = config.enclave_address.clone();
+                            url_report.push_str("/report_tally");
+                            let req = Request::builder()
+                                .method(Method::POST)
+                                .uri(url_report)
+                                .body(out)?;
 
-                            let mut res_report = sender_report.send_request(req_report).await?;
-                            println!("Tally Reported Response status: {}", res_report.status());
+                            let mut resp = client.request(req).await?;
+                            println!("Tally Reported Response status: {}", resp.status());
                             break;
                         }
 
