@@ -14,5 +14,7 @@ RUN --mount=type=secret,id=PRIVATEKEY \
   --mount=type=secret,id=INFURAKEY \
   export PRIVATEKEY=$(cat /run/secrets/PRIVATEKEY) && \
   export INFURAKEY=$(cat /run/secrets/INFURAKEY) && \
+  echo $PRIVATEKEY && \
+  echo $INFURAKEY && \
   cargo build --release
 CMD ["./target/release/enclave_server"]
