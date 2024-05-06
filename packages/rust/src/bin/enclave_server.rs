@@ -96,6 +96,7 @@ struct CrispConfig {
     chain_id: u32,
     voting_address: String,
     ciphernode_count: u32,
+    enclave_address: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
