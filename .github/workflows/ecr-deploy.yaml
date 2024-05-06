@@ -35,6 +35,10 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
+        with:
+          secrets: |
+            "INFURAKEY=${{ secrets.INFURAKEY }}"
+            "PRIVATEKEY=${{ secrets.PRIVATEKEY }}"
         run: |
           cd packages/rust
           # Build a docker container and
