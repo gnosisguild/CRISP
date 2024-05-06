@@ -47,7 +47,7 @@ jobs:
         uses: awslabs/amazon-app-runner-deploy@main
         with:
           service: enclave
-          image: ${{ steps.build-image.outputs.image }}
+          image: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
           access-role-arn: ${{ secrets.AWS_ROLE_ARN }}
           region: ${{ env.AWS_REGION }}
           cpu: 1
