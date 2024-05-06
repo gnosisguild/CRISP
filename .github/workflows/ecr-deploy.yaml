@@ -31,6 +31,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@62f4f872db3836360b72999f4b87f1ff13310f3a
 
       - name: Build and push to ECR
+        id: build-image
         uses: docker/build-push-action@v4
         with:
           context: ./packages/rust
@@ -40,3 +41,19 @@ jobs:
           secrets: |
             "INFURAKEY=${{ secrets.INFURAKEY }}"
             "PRIVATEKEY=${{ secrets.PRIVATEKEY }}"
+
+      - name: Deploy to App Runner Image
+        id: deploy-apprunner
+        uses: awslabs/amazon-app-runner-deploy@main
+        with:
+          service: enclave
+          image: ${{ steps.build-image.outputs.image }}
+          access-role-arn: ${{ secrets.AWS_ROLE_ARN }}
+          region: ${{ env.AWS_REGION }}
+          cpu: 1
+          memory: 4
+          port: 4000
+          wait-for-service-stability-seconds: 1200
+
+      - name: App Runner URL
+        run: echo "App runner URL ${{ steps.deploy-apprunner.outputs.service-url }}"
