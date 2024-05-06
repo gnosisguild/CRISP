@@ -33,8 +33,7 @@ jobs:
       - name: Build and push to ECR
         uses: docker/build-push-action@v4
         with:
-          context: .
-          file: ./packages/rust/Dockerfile
+          context: ./packages/rust
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
           provenance: false
