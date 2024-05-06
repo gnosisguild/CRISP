@@ -333,8 +333,7 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
 async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<dyn std::error::Error + Send + Sync>> {
     println!("calling voting contract");
 
-    let infura_key = "INFURAKEY";
-    let infura_val = env::var(infura_key).unwrap();
+    let infura_val = env!("INFURAKEY");
     let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
     RPC_URL.push_str(&infura_val);
 
@@ -353,8 +352,7 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
     //const RPC_URL: &str = "https://eth.llamarpc.com";
     let VOTE_ADDRESS: &str = &address;
 
-    let eth_key = "PRIVATEKEY";
-    let eth_val = env::var(eth_key).unwrap();
+    let eth_val = env!("PRIVATEKEY");
     let wallet: LocalWallet = eth_val
         .parse::<LocalWallet>().unwrap()
         .with_chain_id(11155111 as u64);
@@ -836,9 +834,7 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
 }
 
 fn handler(req: &mut Request) -> IronResult<Response> {
-    for (key, value) in env::vars() {
-        println!("{key}: {value}");
-    }
+    println!(env!("PRIVATEKEY"));
     let response = JsonResponse { response: pick_response() };
     let out = serde_json::to_string(&response).unwrap();
 
