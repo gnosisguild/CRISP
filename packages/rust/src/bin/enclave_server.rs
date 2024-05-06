@@ -668,8 +668,7 @@ fn get_rounds(req: &mut Request) -> IronResult<Response> {
 async fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     println!("generating round crp");
 
-    let infura_key = "INFURAKEY";
-    let infura_val = env::var(infura_key).unwrap();
+    let infura_val = env!("INFURAKEY");
     let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
     RPC_URL.push_str(&infura_val);
 
