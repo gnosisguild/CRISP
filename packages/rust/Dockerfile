@@ -11,8 +11,8 @@ COPY --from=planner /app/recipe.json .
 RUN cargo chef cook --release
 COPY . .
 RUN --mount=type=secret,id=PRIVATEKEY \
-  cat /run/secrets/PRIVATEKEY
+  export PRIVATEKEY=$(cat /run/secrets/PRIVATEKEY)
 RUN --mount=type=secret,id=INFURAKEY \
-  cat /run/secrets/INFURAKEY
+  export INFURAKEY=$(cat /run/secrets/INFURAKEY)
 RUN cargo build --release
 CMD ["./target/release/enclave_server"]
