@@ -18,7 +18,7 @@ const HistoricPoll: React.FC = () => {
   }, [pastPolls, votingRound])
 
   return (
-    <div className='relative flex w-full flex-1 items-center justify-center px-6 py-12'>
+    <div className='relative mt-8 flex w-full flex-1 items-center justify-center px-6 py-12 md:mt-0'>
       <div className='absolute bottom-0 right-0 grid w-full grid-cols-2 gap-2 max-md:opacity-50 md:w-[70vh]'>
         <CircularTiles count={4} />
       </div>
