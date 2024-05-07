@@ -10,7 +10,7 @@ const DailyPoll: React.FC = () => {
   const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, votingRound, roundEndDate } = useVoteManagementContext()
   const [voteCompleted, setVotedCompleted] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
-  console.log('')
+
   useEffect(() => {
     const checkRound = async () => {
       await existNewRound()

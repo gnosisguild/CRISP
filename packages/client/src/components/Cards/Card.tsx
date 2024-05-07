@@ -23,9 +23,9 @@ const Card: React.FC<CardProps> = ({ children, isDetails, checked, onChecked }) 
   return (
     <div
       className={`
-        h-full
+        h-full w-full
         cursor-pointer
-        ${isDetails ? ' p-4' : 'h-auto min-h-[288px] p-20'}
+        ${isDetails ? ' p-4' : 'min-h-[144px] p-10 md:min-h-[288px] md:p-20'}
         rounded-[24px] bg-white text-black
         ${!isDetails && 'shadow-md'}
         transform 

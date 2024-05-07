@@ -47,15 +47,15 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
 
   return (
     <>
-      <div className='relative flex min-h-screen w-screen flex-col items-center justify-center px-6 py-28'>
-        <div className='absolute bottom-0 right-0 grid w-[70vh] grid-cols-2 gap-2'>
+      <div className='relative flex w-full flex-1 items-center justify-center px-6 py-12'>
+        <div className='absolute bottom-0 right-0 grid w-full grid-cols-2 gap-2 max-md:opacity-50 md:w-[70vh]'>
           <CircularTiles count={4} />
         </div>
 
-        <div className='relative mx-auto flex w-full max-w-screen-md flex-col items-center justify-center space-y-12'>
+        <div className='relative mx-auto flex w-full max-w-screen-md flex-col items-center justify-center space-y-8'>
           <div className='space-y-2'>
             <p className='text-center text-sm font-extrabold uppercase text-slate-400'>Daily Poll</p>
-            <h3 className='font-bold leading-none text-slate-600'>Choose your favorite</h3>
+            <h3 className='md:text-h3 text-center font-bold leading-none text-slate-600'>Choose your favorite</h3>
           </div>
           {roundState && (
             <div className='flex items-center justify-center space-x-2'>
@@ -75,7 +75,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
             {pollOptions.map((poll) => (
               <div key={poll.label} className='col-span-2 md:col-span-1'>
                 <Card checked={poll.checked} onChecked={() => handleChecked(poll.value)}>
-                  <p className='inline-block text-8xl leading-none'>{poll.label}</p>
+                  <p className='inline-block text-6xl leading-none md:text-8xl'>{poll.label}</p>
                 </Card>
               </div>
             ))}

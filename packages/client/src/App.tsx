@@ -27,17 +27,21 @@ const App: React.FC = () => {
 
   return (
     <Fragment>
-      <Navbar />
-      <Routes>
-        <Route path='/' element={<Landing />} />
-        <Route path='/about' element={<About />} />
-        <Route path='/whitepaper' element={<WhitePaper />} />
-        <Route path='/daily' element={<DailyPoll />} />
-        <Route path='/historic' element={<HistoricPoll />} />
-        <Route path='/result/:roundId' element={<PollResult />} />
-        <Route path='*' element={<Navigate to='/' replace />} />
-      </Routes>
-      <Footer />
+      <div className='flex min-h-screen flex-col'>
+        <Navbar />
+        <div className='flex flex-1 flex-col'>
+          <Routes>
+            <Route path='/' element={<Landing />} />
+            <Route path='/about' element={<About />} />
+            <Route path='/whitepaper' element={<WhitePaper />} />
+            <Route path='/daily' element={<DailyPoll />} />
+            <Route path='/historic' element={<HistoricPoll />} />
+            <Route path='/result/:roundId' element={<PollResult />} />
+            <Route path='*' element={<Navigate to='/' replace />} />
+          </Routes>
+        </div>
+        <Footer />
+      </div>
     </Fragment>
   )
 }

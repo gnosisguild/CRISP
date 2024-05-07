@@ -3,6 +3,20 @@
 @tailwind utilities;
 @tailwind components;
 
+body,
+html {
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+footer {
+  margin-top: auto;
+}
+
 @layer components {
   .toast-alert {
     @apply translate-x-[-10rem] opacity-0; /* Start off-screen to the left */

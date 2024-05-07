@@ -6,8 +6,8 @@ import { Link } from 'react-router-dom'
 
 const About: React.FC = () => {
   return (
-    <div className='relative flex w-screen flex-col items-center justify-center px-6 py-28'>
-      <div className='absolute bottom-0 right-0 grid w-[70vh] grid-cols-2 gap-2'>
+    <div className='relative flex w-full flex-1 items-center justify-center px-6 py-28'>
+      <div className='absolute bottom-0 right-0 grid w-full grid-cols-2 gap-2 max-md:opacity-50 md:w-[70vh]'>
         <CircularTiles count={4} />
       </div>
       <div className='relative space-y-12'>

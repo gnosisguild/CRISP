@@ -6,34 +6,36 @@ import { Keyhole, ListMagnifyingGlass, ShieldCheck } from '@phosphor-icons/react
 
 const HeroSection: React.FC = () => {
   return (
-    <div className='relative flex min-h-screen w-screen items-center justify-center px-6'>
-      <div className='absolute bottom-0 right-0 grid w-[100vw] grid-cols-2 gap-2 max-md:opacity-50 md:w-[70vh]'>
+    <div className='relative flex w-full flex-1 items-center justify-center px-6'>
+      <div className='absolute bottom-0 right-0 grid w-full grid-cols-2 gap-2 max-md:opacity-50 md:w-[70vh]'>
         <CircularTiles count={4} />
       </div>
       <div className='relative mx-auto w-full max-w-screen-md space-y-12'>
         <div className='space-y-4'>
-          <h3 className='text-3xl font-normal leading-none text-zinc-400'>Introducing</h3>
-          <img src={Logo} alt='CRISP Logo' className='h-20' />
-          <h4 className='w-full text-base leading-none text-slate-800/50'>Collusion-Resistant Impartial Selection Protocol</h4>
+          <h3 className='font-normal leading-none text-zinc-400 sm:text-xl md:text-3xl'>Introducing</h3>
+          <img src={Logo} alt='CRISP Logo' className='sm:h-10 md:h-20' />
+          <h4 className='w-full leading-none text-slate-800/50 sm:text-xs md:text-base'>
+            Collusion-Resistant Impartial Selection Protocol
+          </h4>
         </div>
         <ul className='space-y-3'>
           <li className='flex items-start space-x-2 md:items-center'>
             <Keyhole className='text-lime-600/80' size={32} />
-            <div className='text-lg text-zinc-400'>
+            <div className='text-zinc-400 sm:text-sm md:text-lg'>
               <span className='mr-1 font-bold text-lime-600/80'>Private.</span>
               Voter privacy through advanced encryption.
             </div>
           </li>
           <li className='flex items-start space-x-2 md:items-center'>
             <ListMagnifyingGlass className='text-lime-600/80' size={32} />
-            <div className='text-lg text-zinc-400'>
+            <div className='text-zinc-400 sm:text-sm md:text-lg'>
               <span className='mr-1 font-bold text-lime-600/80'>Reliable.</span>
               Verifiable results while preserving confidentiality.
             </div>
           </li>
           <li className='flex items-start space-x-2 md:items-center'>
             <ShieldCheck className='text-lime-600/80' size={32} />
-            <div className='text-lg text-zinc-400'>
+            <div className='text-zinc-400 sm:text-sm md:text-lg'>
               <span className='mr-1 font-bold text-lime-600/80'>Equitable.</span>
               Robust safeguards against collusion and tampering.
             </div>
