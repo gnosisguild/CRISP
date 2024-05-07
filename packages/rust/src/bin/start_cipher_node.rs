@@ -639,7 +639,7 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
             // keyswitch to a different public key.
             let mut decryption_shares = Vec::with_capacity(state.ciphernode_total as usize);
             let (node_state, db_key) = get_state(node_id);
-            let sk_share_bytes = node_state.sk_shares[(state.id - 1) as usize].clone(); // TODO: this will break if node misses a round
+            let sk_share_bytes = node_state.sk_shares[state.id as usize].clone(); // TODO: this will break if node misses a round
             let sk_share_1 = SecretKey::new(sk_share_bytes, &params);
 
             let sh = DecryptionShare::new(&sk_share_1, &tally, &mut thread_rng()).unwrap();
