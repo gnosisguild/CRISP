@@ -147,7 +147,7 @@ struct VoteCountRequest {
 struct SKSShareRequest {
     response: String,
     sks_share: Vec<u8>,
-    id: u32,
+    index: u32,
     round_id: u32,
 }
 
@@ -269,6 +269,14 @@ struct GetCiphernode {
     ciphernode_id: u32,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct GetEligibilityRequest {
+    round_id: u32,
+    node_id: u32,
+    is_eligible: bool,
+    reason: String,
+}
+
 fn generate_emoji() -> (String, String) {
     let emojis = [
         "🍇","🍈","🍉","🍊","🍋","🍌","🍍","🥭","🍎","🍏",
@@ -375,6 +383,49 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
     // register ip address or some way to contact nodes when a computation request comes in
 
 // }
+
+fn get_round_eligibility(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let mut incoming: GetEligibilityRequest = serde_json::from_str(&payload).unwrap();
+    println!("Request node elegibility for round {:?}", incoming.round_id);
+
+    let (state, key) = get_state(incoming.round_id);
+
+    for i in 1..state.ciphernodes.len() {
+        println!("checking ciphernode {:?}", i);
+        println!("server db id {:?}", state.ciphernodes[i as usize].id);
+        println!("incoming request id {:?}", incoming.node_id);
+        if(state.ciphernodes[i as usize].id == incoming.node_id){
+            incoming.is_eligible = true;
+            incoming.reason = "Previously Registered".to_string();
+        };
+    };
+
+    if state.ciphernode_total == state.ciphernode_count && incoming.reason != "Previously Registered" {
+        incoming.is_eligible = false;
+        incoming.reason = "Round Full".to_string();
+    };
+
+    if state.ciphernode_total > state.ciphernode_count && incoming.reason != "Previously Registered" {
+        incoming.is_eligible = true;
+        incoming.reason = "Open Node Spot".to_string();
+    };
+
+    let init_time = Utc::now();
+    let timestamp = init_time.timestamp();
+
+    if timestamp >= (state.start_time + state.poll_length as i64) {
+        incoming.is_eligible = false;
+        incoming.reason = "Waiting For New Round".to_string();
+    }
+
+    let out = serde_json::to_string(&incoming).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
 
 fn get_node_by_round(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
@@ -859,7 +910,7 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
     // we're expecting the POST to match the format of our JsonRequest struct
     let incoming: SKSShareRequest = serde_json::from_str(&payload).unwrap();
     println!("{:?}", incoming.response);
-    println!("ID: {:?}", incoming.id); // cipher node id (based on first upload of pk share)
+    println!("Index: {:?}", incoming.index); // cipher node id (based on first upload of pk share)
     println!("Round ID: {:?}", incoming.round_id);
 
 
@@ -872,12 +923,12 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
     let mut state_out_struct: Round = serde_json::from_str(&state_out_str).unwrap();
     state_out_struct.sks_share_count = state_out_struct.sks_share_count + 1;
 
-    let index = incoming.id + 1; // offset from vec push
+    let index = incoming.index + 1; // offset from vec push... TODO use hashmap with node id as key 
     state_out_struct.ciphernodes[index as usize].sks_share = incoming.sks_share;
     let state_str = serde_json::to_string(&state_out_struct).unwrap();
     let state_bytes = state_str.into_bytes();
     GLOBAL_DB.insert(round_key, state_bytes).unwrap();
-    println!("sks share stored for node id {:?}", incoming.id);
+    println!("sks share stored for node index {:?}", incoming.index);
 
     // toso get share threshold from client config
     if(state_out_struct.sks_share_count == state_out_struct.ciphernode_total) {
@@ -1012,6 +1063,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/get_web_result", get_web_result, "get_web_result");
     router.post("/get_round_state_web", get_web_result, "get_round_state_web");
     router.post("/get_node_by_round", get_node_by_round, "get_node_by_round");
+    router.post("/get_round_eligibility", get_round_eligibility, "get_round_eligibility");
 
     let cors_middleware = CorsMiddleware::with_allow_any();
     println!("Allowed origin hosts: *");
