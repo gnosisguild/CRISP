@@ -53,7 +53,7 @@ const PollResult: React.FC = () => {
             <div className='flex flex-col items-center justify-center space-y-6'>
               <div className='space-y-2 text-center'>
                 <p className='text-sm font-extrabold uppercase'>daily poll</p>
-                <h1 className='text-h1 font-bold text-slate-600'>Results for most recent poll</h1>
+                <h1 className='text-h1 font-bold text-slate-600'>Results</h1>
                 <p className=' text-2xl font-bold'>{formatDate(poll.date)}</p>
               </div>
 
