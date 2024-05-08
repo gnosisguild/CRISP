@@ -40,14 +40,6 @@ const ConfirmVote: React.FC<ConfirmVoteProps> = ({ endTime }) => {
             platforms.
           </p>
         </div>
-        <div className='flex items-center justify-between border-t-2 border-slate-600/20 pt-11'>
-          <Link to={'/whitepaper'}>
-            <p className='text-xl'>Learn more about CRISP</p>
-          </Link>
-          <Link to={'/about'}>
-            <button className='button-primary button-max'>learn more</button>
-          </Link>
-        </div>
       </CardContent>
     </div>
   )

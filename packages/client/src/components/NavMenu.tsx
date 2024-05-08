@@ -24,11 +24,6 @@ const NAV_MENU_OPTIONS = [
     icon: <Notebook />,
     path: '/about',
   },
-  {
-    name: 'Docs',
-    icon: <File />,
-    path: '/whitepaper',
-  },
 ]
 
 const NavMenu: React.FC<NavMenuProps> = () => {

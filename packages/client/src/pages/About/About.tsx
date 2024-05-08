@@ -53,9 +53,6 @@ const About: React.FC = () => {
             </div> */}
           </div>
         </CardContent>
-        <Link to='/whitepaper' className='inline-flex'>
-          <button className='button-outlined button-max'>view whitepaper</button>
-        </Link>
       </div>
     </div>
   )

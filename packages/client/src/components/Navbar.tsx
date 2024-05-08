@@ -8,10 +8,6 @@ const PAGES = [
     label: 'About',
     path: '/about',
   },
-  {
-    label: 'Docs',
-    path: '/whitepaper',
-  },
 ]
 
 const Navbar: React.FC = () => {
