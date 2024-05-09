@@ -1,5 +1,1 @@
-{
-"ids":[22,15838],
-"enclave_address": "https://enclave.gnosisguild.org",
-"enclave_port": 443
-}
+{"ids":[22,15838,21825],"enclave_address":"http://127.0.0.1:4000","enclave_port":443}

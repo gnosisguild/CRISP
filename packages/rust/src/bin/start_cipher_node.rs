@@ -189,6 +189,12 @@ struct Ciphernode {
     sk_shares: Vec<Vec<i64>>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+struct RegisterNodeResponse {
+    response: String,
+    node_index: u32,
+}
+
 type Client = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
 
 // static ID: Lazy<i64> = Lazy::new(|| {
@@ -281,6 +287,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     if args.len() != 1 {
         cnode_selector = args[1].parse::<usize>().unwrap();
     };
+
+    if((config.ids.len() - 1) < cnode_selector) {
+        println!("generating new ciphernode...");
+        let new_id = rand::thread_rng().gen_range(0..100000);
+        config.ids.push(new_id);
+
+        let configfile = serde_json::to_string(&config).unwrap();
+        fs::write(pathst.clone(), configfile).unwrap();
+    }
+
     let node_id: u32 = config.ids[cnode_selector as usize];
     println!("Node ID {:?} selected.", node_id);
     let pathdb = env::current_dir().unwrap();
@@ -421,13 +437,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 let sk_share_bytes = sk_share_1.coeffs.into_vec();
                 //let sk_share_bytes: Vec<i64> = vec![1,2,3];
                 let (mut node_state, db_key) = get_state(node_id);
-                node_state.pk_shares.push(pk_share_bytes.clone());
-                node_state.sk_shares.push(sk_share_bytes);
-                node_state.index.push(state.pk_share_count);
 
-                let state_str = serde_json::to_string(&node_state).unwrap();
-                let state_bytes = state_str.into_bytes();
-                GLOBAL_DB.insert(db_key, state_bytes);
+                // overwrite old shares here
+                node_state.pk_shares[0] = pk_share_bytes.clone();
+                node_state.sk_shares[0] = sk_share_bytes;
 
                 let response_key = PKShareRequest {
                     response: "Test".to_string(),
@@ -445,13 +458,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                 let mut resp = client.request(req).await?;
                 println!("Register Node Response status: {}", resp.status());
-                // Stream the body, writing each frame to stdout as it arrives
-                while let Some(next) = resp.frame().await {
-                    let frame = next?;
-                    if let Some(chunk) = frame.data_ref() {
-                        io::stdout().write_all(chunk).await?;
-                    }
-                }
+                let body_bytes = resp.collect().await?.to_bytes();
+                let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+
+                let registration_res: RegisterNodeResponse = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+                println!("Ciphernode index: {:?}", registration_res.node_index);
+ 
+                // index is the order in which this node registered with the server
+                // TODO get this from registration to avoid desync
+                node_state.index[0] = registration_res.node_index;
+
+                let state_str = serde_json::to_string(&node_state).unwrap();
+                let state_bytes = state_str.into_bytes();
+                GLOBAL_DB.insert(db_key, state_bytes);
                 internal_round_count.round_count = count.round_count;
                 start_contract_watch(&state, node_id, &config).await;
             };
@@ -639,8 +658,8 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
             // keyswitch to a different public key.
             let mut decryption_shares = Vec::with_capacity(state.ciphernode_total as usize);
             let (node_state, db_key) = get_state(node_id);
-            let sk_share_bytes = node_state.sk_shares[state.id as usize].clone(); // TODO: this will break if node misses a round
-            let sk_share_1 = SecretKey::new(sk_share_bytes, &params);
+            let sk_share_coeff_bytes = node_state.sk_shares[0].clone();
+            let sk_share_1 = SecretKey::new(sk_share_coeff_bytes, &params);
 
             let sh = DecryptionShare::new(&sk_share_1, &tally, &mut thread_rng()).unwrap();
             let sks_bytes = sh.to_bytes();
@@ -648,7 +667,7 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
             let response_sks = SKSShareRequest {
                 response: "Register_SKS_Share".to_string(),
                 sks_share: sks_bytes,
-                index: node_state.index[state.id as usize], // index of stored pk shares on server, TODO: this will break if node misses a round!!!
+                index: node_state.index[0], // index of stored pk shares on server, TODO: this will break if node misses a round!!!
                 round_id: state.id
             };
             let out = serde_json::to_string(&response_sks).unwrap();

@@ -79,6 +79,12 @@ struct JsonResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+struct RegisterNodeResponse {
+    response: String,
+    node_index: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct JsonResponseTxHash {
     response: String,
     tx_hash: String,
@@ -923,7 +929,7 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
     let mut state_out_struct: Round = serde_json::from_str(&state_out_str).unwrap();
     state_out_struct.sks_share_count = state_out_struct.sks_share_count + 1;
 
-    let index = incoming.index + 1; // offset from vec push... TODO use hashmap with node id as key 
+    let index = incoming.index; // TODO use hashmap with node id as key 
     state_out_struct.ciphernodes[index as usize].sks_share = incoming.sks_share;
     let state_str = serde_json::to_string(&state_out_struct).unwrap();
     let state_bytes = state_str.into_bytes();
@@ -1031,8 +1037,10 @@ async fn register_ciphernode(req: &mut Request) -> IronResult<Response> {
         aggregate_pk_shares(incoming.round_id).await;
     }
 
-    // create a response with our random string, and pass in the string from the POST body
-    let response = JsonResponse { response: pick_response() };
+    let response = RegisterNodeResponse {
+        response: "Node Registered".to_string(),
+        node_index: state.ciphernode_count,
+        };
     let out = serde_json::to_string(&response).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
