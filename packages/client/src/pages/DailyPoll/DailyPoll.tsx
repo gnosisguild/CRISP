@@ -7,17 +7,26 @@ import { useNotificationAlertContext } from '@/context/NotificationAlert'
 
 const DailyPoll: React.FC = () => {
   const { showToast } = useNotificationAlertContext()
-  const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, votingRound, roundEndDate } = useVoteManagementContext()
+  const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, votingRound, roundEndDate, roundState } = useVoteManagementContext()
   const [voteCompleted, setVotedCompleted] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
+  const [newRoundLoading, setNewRoundLoading] = useState<boolean>(false)
 
   useEffect(() => {
     const checkRound = async () => {
+      setNewRoundLoading(true)
       await existNewRound()
     }
     checkRound()
   }, [])
 
+  useEffect(() => {
+    if (roundState) {
+      setNewRoundLoading(false)
+    }
+  }, [roundState])
+
+  console.log('newRoundLoading', newRoundLoading)
   const handleVoted = async (vote: Poll | null) => {
     if (vote && votingRound) {
       setLoading(true)
@@ -45,7 +54,7 @@ const DailyPoll: React.FC = () => {
   }
   return (
     <Fragment>
-      {!voteCompleted && <DailyPollSection onVoted={handleVoted} loading={loading} />}
+      {!voteCompleted && <DailyPollSection onVoted={handleVoted} loading={loading || newRoundLoading} />}
       {voteCompleted && roundEndDate && <ConfirmVote endTime={roundEndDate} />}
     </Fragment>
   )

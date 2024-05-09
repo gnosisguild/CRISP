@@ -6,7 +6,11 @@ interface RegisterProps {
   onClose: () => void
 }
 
-export const AUTH_MSG = 'I authenticate that this twitter account is owned by me. #crisp #dailypoll'
+export const AUTH_MSG = `I am authenticating this Twitter account to cast my first encrypted vote with CRISP!
+
+Visit https://crisp.gnosisguild.org/ to vote.
+
+#FHE #ZKP #CRISP`
 
 const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
   const [showVerification, setShowVerification] = useState<boolean>(false)
@@ -16,7 +20,7 @@ const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
   const handlePost = () => {
     if (!showVerification) {
       window.open(
-        'https://twitter.com/intent/tweet?text=I%20authenticate%20that%20this%20Twitter%20account%20is%20owned%20by%20me.%20%23crisp%20%23dailypoll',
+        'https://twitter.com/intent/post?text=I%20am%20authenticating%20this%20Twitter%20account%20to%20cast%20my%20first%20encrypted%20vote%20with%20CRISP!%0A%0AVisit%20https://crisp.gnosisguild.org/%20to%20vote.%0A%0A%23FHE%20%23ZKP%20%23CRISP',
         '_blank',
       )
       setShowVerification(true)
@@ -72,7 +76,7 @@ const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
             </p>
           </div>
           <div className='flex items-center gap-4 max-md:flex-col'>
-            <textarea rows={2} className='input h-auto' disabled value={AUTH_MSG} />
+            <textarea rows={4} className='input h-auto' disabled value={AUTH_MSG} />
             <div className='hidden h-16 w-0.5 bg-slate-200 md:block' />
             <button className='button-primary md:button-max whitespace-nowrap max-md:w-full' onClick={handlePost}>
               Share post

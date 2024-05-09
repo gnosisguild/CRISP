@@ -18,11 +18,8 @@ const PollCardResult: React.FC<PollCardResultProps> = ({ isResult, results, tota
   return (
     <div className={`grid ${isResult ? 'sm:w-full md:w-1/3' : 'w-full'} grid-cols-2 gap-4 md:gap-8`}>
       {results.map((poll) => (
-        <div className='col-span-1 w-full' key={poll.label}>
-          <div
-            className={`flex w-full flex-col items-center justify-center ${isResult ? 'aspect-square space-y-6' : 'space-y-4'}`}
-            key={poll.label}
-          >
+        <div className='col-span-1 w-full' key={`${poll.label}-${poll.value}`}>
+          <div className={`flex w-full flex-col items-center justify-center ${isResult ? 'aspect-square space-y-6' : 'space-y-4'}`}>
             <Card isDetails checked={poll.checked}>
               <p className={isResult ? 'text-8xl' : 'text-5xl'}>{poll.label}</p>
             </Card>

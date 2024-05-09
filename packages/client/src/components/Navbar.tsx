@@ -8,6 +8,10 @@ const PAGES = [
     label: 'About',
     path: '/about',
   },
+  {
+    label: 'Historic Polls',
+    path: '/historic',
+  },
 ]
 
 const Navbar: React.FC = () => {
@@ -19,15 +23,15 @@ const Navbar: React.FC = () => {
             to={'/'}
             className='hover:text-twilight-blue-600 cursor-pointer font-bold text-slate-600 duration-300 ease-in-out hover:opacity-70'
           >
-            <img src={Logo} alt='CRISP Logo' className='h-6 md:h-8 cursor-pointer duration-300 ease-in-out hover:opacity-70' />
+            <img src={Logo} alt='CRISP Logo' className='h-6 cursor-pointer duration-300 ease-in-out hover:opacity-70 md:h-8' />
           </Link>
 
           <div className='flex items-center gap-8'>
             {PAGES.map(({ label, path }) => (
               <Link
-              key={label}
-              to={path}
-              className='max-md:hidden hover:text-twilight-blue-600 cursor-pointer font-bold text-slate-600 duration-300 ease-in-out hover:opacity-70'
+                key={label}
+                to={path}
+                className='hover:text-twilight-blue-600 cursor-pointer font-bold text-slate-600 duration-300 ease-in-out hover:opacity-70 max-md:hidden'
               >
                 {label}
               </Link>
