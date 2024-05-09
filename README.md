@@ -1,10 +1,14 @@
 # CRISP - Collusion-Resistant Impartial Selection Protocol
 
-CRISP (Collusion-Resistant Impartial Selection Protocol) is an integral part of the Enclave protocol, designed to redefine the landscape of privacy and security in digital decision-making. Incorporating cutting-edge technologies such as Fully Homomorphic Encryption (FHE), threshold cryptography, and zero-knowledge proofs (ZKPs), CRISP enables secure and anonymous voting mechanisms. Our protocol upholds the sanctity of each individual vote while safeguarding voter anonymity, establishing a new standard for governance and decision-making platforms.
+CRISP (Collusion-Resistant Impartial Selection Protocol) is a secure protocol for digital decision-making, leveraging fully homomorphic encryption (FHE) and threshold cryptography to enable verifiable secret ballots; a critical component for democracies and many other decision-making applications.
 
 ## Why CRISP?
 
-In our increasingly digitalized world, privacy, security, and information integrity are of paramount concern. CRISP is a pivotal innovation, crafted to counteract collusion, address governance vulnerabilities, and ensure data confidentiality. By establishing a secure, unbiased decision-making forum, CRISP empowers individuals and entities to engage in governance and other sensitive activities with confidence. This approach nurtures fairness, transparency, and trust within digital infrastructures.
+Open ballots are known to produce suboptimal outcomes due to bribery and various forms of collusion. CRISP mitigates collusion and other vulnerabilities by ensuring ballots are secret and receipt-free, enabling a secure and impartial decision-making environment.
+
+## Proof of Concept
+
+This application is a Proof of Concept (PoC), demonstrating the viability of Enclave as a network and CRISP as an application for secret ballots. For the sake of getting a demonstration of CRISP into the wild, this PoC application is not yet leveraging Enclave and omits several key components of CRISP. Future iterations of this and other applications will be progressively more complete
 
 ## Project Structure
 
