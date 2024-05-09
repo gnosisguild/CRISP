@@ -298,8 +298,15 @@ fn generate_emoji() -> (String, String) {
         "🍫","🍬","🍭","🍮","🍯","🍼","🥛","☕","🍵","🍾",
         "🍷","🍸","🍹","🍺","🍻","🥂","🥃",
     ];
-    let index1 = rand::thread_rng().gen_range(0..emojis.len());
-    let index2 = rand::thread_rng().gen_range(0..emojis.len());
+    let mut index1 = rand::thread_rng().gen_range(0..emojis.len());
+    let mut index2 = rand::thread_rng().gen_range(0..emojis.len());
+    if index1 == index2 {
+        if index1 == emojis.len() {
+            index1 = index1 - 1;
+        } else {
+            index1 = index1 + 1;
+        };
+    };
     (emojis[index1].to_string(), emojis[index2].to_string())
 }
 
