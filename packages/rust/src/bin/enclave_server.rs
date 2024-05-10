@@ -29,9 +29,9 @@ use walkdir::WalkDir;
 use ethers::{
     prelude::{abigen, Abigen},
     providers::{Http, Provider, StreamExt, Middleware},
-    middleware::SignerMiddleware,
+    middleware::{SignerMiddleware, MiddlewareBuilder},
     signers::{LocalWallet, Signer, Wallet},
-    types::{Address, U256, Bytes, TxHash, U64},
+    types::{Address, U256, Bytes, TxHash, U64, BlockNumber},
     core::k256,
     utils,
 };
@@ -381,13 +381,17 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
         .parse::<LocalWallet>().unwrap()
         .with_chain_id(11155111 as u64);
 
-    // 6. Wrap the provider and wallet together to create a signer client
+    let nonce_manager = provider.clone().nonce_manager(wallet.address());
+    let curr_nonce = nonce_manager
+        .get_transaction_count(wallet.address(), Some(BlockNumber::Pending.into()))
+        .await?
+        .as_u64();
+
     let client = SignerMiddleware::new(provider.clone(), wallet.clone());
-    //let client = Arc::new(provider);
     let address: Address = VOTE_ADDRESS.parse()?;
     let contract = IVOTE::new(address, Arc::new(client.clone()));
 
-    let test = contract.vote_encrypted(enc_vote).send().await?.clone();
+    let test = contract.vote_encrypted(enc_vote).nonce(curr_nonce).send().await?.clone();
     println!("{:?}", test);
     Ok(test)
 }
