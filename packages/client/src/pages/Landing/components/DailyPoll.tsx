@@ -71,7 +71,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
             </div>
           )}
           {loading && <LoadingAnimation isLoading={loading} />}
-          <div className='grid w-full grid-cols-2 gap-4 md:gap-8'>
+          <div className=' grid w-full grid-cols-2 gap-4 md:gap-8'>
             {pollOptions.map((poll) => (
               <div key={poll.label} className='col-span-2 md:col-span-1'>
                 <Card checked={poll.checked} onChecked={() => handleChecked(poll.value)}>
@@ -81,7 +81,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
             ))}
           </div>
           <div className='space-y-4'>
-            {noPollSelected && <div className='text-center text-sm leading-none text-slate-500'>Select your favorite</div>}
+            {noPollSelected && !isEnded && <div className='text-center text-sm leading-none text-slate-500'>Select your favorite</div>}
             <button
               className={`button-outlined button-max ${noPollSelected ? 'button-disabled' : ''}`}
               disabled={noPollSelected || loading || status !== 'Active' || isEnded}

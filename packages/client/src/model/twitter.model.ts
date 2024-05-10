@@ -22,4 +22,5 @@ export interface SocialAuth {
   validationDate: Date
   avatar: string
   username: string
+  postId: string
 }
