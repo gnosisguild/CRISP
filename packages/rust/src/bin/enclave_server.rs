@@ -1,18 +1,15 @@
 mod util;
 
-use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path, str};
-use chrono::{DateTime, TimeZone, Utc};
-use console::style;
+use std::{env, sync::Arc, str};
+use chrono::{Utc};
 use fhe::{
-    bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
-    mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
+    bfv::{BfvParametersBuilder, PublicKey},
+    mbfv::{AggregateIter, CommonRandomPoly, PublicKeyShare},
 };
-use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize as FheSerialize}; // TODO: see if we can use serde Serialize in fhe lib
-use rand::{Rng, distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
-use util::timeit::{timeit, timeit_n};
+use fhe_traits::{Serialize as FheSerialize};
+use rand::{Rng, thread_rng};
+use util::timeit::{timeit};
 use serde::{Deserialize, Serialize};
-//use serde_json::{Result, Value};
 
 use iron::prelude::*;
 use iron::status;
@@ -20,38 +17,19 @@ use iron::mime::Mime;
 use iron::Chain;
 use router::Router;
 use std::io::Read;
-use std::fs::File;
 
 use iron_cors::CorsMiddleware;
 
-use walkdir::WalkDir;
-
 use ethers::{
-    prelude::{abigen, Abigen},
-    providers::{Http, Provider, StreamExt, Middleware},
+    prelude::{abigen},
+    providers::{Http, Provider, Middleware},
     middleware::{SignerMiddleware, MiddlewareBuilder},
-    signers::{LocalWallet, Signer, Wallet},
-    types::{Address, U256, Bytes, TxHash, U64, BlockNumber},
-    core::k256,
-    utils,
+    signers::{LocalWallet, Signer},
+    types::{Address, Bytes, TxHash, U64, BlockNumber},
 };
 
 use sled::Db;
 use once_cell::sync::Lazy;
-
-struct Database {
-    db: Db,
-}
-
-impl Database {
-    pub fn new() -> Self {
-        let pathdb = env::current_dir().unwrap();
-        let mut pathdbst = pathdb.display().to_string();
-        pathdbst.push_str("/database");
-        let db = sled::open(pathdbst.clone()).unwrap();
-        Self { db }
-    }
-}
 
 static GLOBAL_DB: Lazy<Db> = Lazy::new(|| {
     let pathdb = env::current_dir().unwrap();
@@ -299,7 +277,7 @@ fn generate_emoji() -> (String, String) {
         "🍷","🍸","🍹","🍺","🍻","🥂","🥃",
     ];
     let mut index1 = rand::thread_rng().gen_range(0..emojis.len());
-    let mut index2 = rand::thread_rng().gen_range(0..emojis.len());
+    let index2 = rand::thread_rng().gen_range(0..emojis.len());
     if index1 == index2 {
         if index1 == emojis.len() {
             index1 = index1 - 1;
@@ -325,7 +303,7 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: EncryptedVote = serde_json::from_str(&payload).unwrap();
+    let incoming: EncryptedVote = serde_json::from_str(&payload).unwrap();
 
     let (mut state, key) = get_state(incoming.round_id);
 
@@ -333,7 +311,7 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     let tx_hash = call_contract(sol_vote, state.voting_address.clone()).await.unwrap();
     let mut converter = "0x".to_string();
     for i in 0..32 {
-        if(tx_hash[i] <= 16) {
+        if tx_hash[i] <= 16 {
             converter.push_str("0");
             converter.push_str(&format!("{:x}", tx_hash[i]));
         } else {
@@ -358,10 +336,10 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
     println!("calling voting contract");
 
     let infura_val = env!("INFURAKEY");
-    let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
-    RPC_URL.push_str(&infura_val);
+    let mut rpc_url = "https://sepolia.infura.io/v3/".to_string();
+    rpc_url.push_str(&infura_val);
 
-    let provider = Provider::<Http>::try_from(RPC_URL.clone())?;
+    let provider = Provider::<Http>::try_from(rpc_url.clone())?;
     // let block_number: U64 = provider.get_block_number().await?;
     // println!("{block_number}");
     abigen!(
@@ -374,7 +352,7 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
     );
 
     //const RPC_URL: &str = "https://eth.llamarpc.com";
-    let VOTE_ADDRESS: &str = &address;
+    let vote_address: &str = &address;
 
     let eth_val = env!("PRIVATEKEY");
     let wallet: LocalWallet = eth_val
@@ -388,7 +366,7 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
         .as_u64();
 
     let client = SignerMiddleware::new(provider.clone(), wallet.clone());
-    let address: Address = VOTE_ADDRESS.parse()?;
+    let address: Address = vote_address.parse()?;
     let contract = IVOTE::new(address, Arc::new(client.clone()));
 
     let test = contract.vote_encrypted(enc_vote).nonce(curr_nonce).send().await?.clone();
@@ -408,13 +386,13 @@ fn get_round_eligibility(req: &mut Request) -> IronResult<Response> {
     let mut incoming: GetEligibilityRequest = serde_json::from_str(&payload).unwrap();
     println!("Request node elegibility for round {:?}", incoming.round_id);
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
 
     for i in 1..state.ciphernodes.len() {
         println!("checking ciphernode {:?}", i);
         println!("server db id {:?}", state.ciphernodes[i as usize].id);
         println!("incoming request id {:?}", incoming.node_id);
-        if(state.ciphernodes[i as usize].id == incoming.node_id){
+        if state.ciphernodes[i as usize].id == incoming.node_id {
             incoming.is_eligible = true;
             incoming.reason = "Previously Registered".to_string();
         };
@@ -448,10 +426,10 @@ fn get_node_by_round(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: GetCiphernode = serde_json::from_str(&payload).unwrap();
+    let incoming: GetCiphernode = serde_json::from_str(&payload).unwrap();
     println!("Request node data for round {:?}", incoming.round_id);
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
     let mut cnode = Ciphernode {
         id: 0,
         pk_share: vec![0],
@@ -459,14 +437,14 @@ fn get_node_by_round(req: &mut Request) -> IronResult<Response> {
     };
 
     for i in 0..state.ciphernodes.len() {
-        if(state.ciphernodes[i as usize].id == incoming.ciphernode_id){
+        if state.ciphernodes[i as usize].id == incoming.ciphernode_id {
             cnode.id = state.ciphernodes[i as usize].id;
             cnode.pk_share = state.ciphernodes[i as usize].pk_share.clone();
             cnode.sks_share = state.ciphernodes[i as usize].sks_share.clone();
         };
     };
 
-    if(cnode.id != 0){
+    if cnode.id != 0 {
         let out = serde_json::to_string(&cnode).unwrap();
 
         let content_type = "application/json".parse::<Mime>().unwrap();
@@ -490,11 +468,11 @@ fn report_tally(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: ReportTallyRequest = serde_json::from_str(&payload).unwrap();
+    let incoming: ReportTallyRequest = serde_json::from_str(&payload).unwrap();
     println!("Request report tally for round {:?}", incoming.round_id);
 
     let (mut state, key) = get_state(incoming.round_id);
-    if(state.votes_option_1 == 0 && state.votes_option_2 == 0) {
+    if state.votes_option_1 == 0 && state.votes_option_2 == 0 {
         state.votes_option_1 = incoming.option_1;
         state.votes_option_2 = incoming.option_2;
 
@@ -513,10 +491,10 @@ fn get_web_result(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
+    let incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
     println!("Request emojis for round {:?}", incoming.round_id);
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
     
     let response = WebResultRequest {
         round_id: incoming.round_id,
@@ -540,7 +518,7 @@ fn get_poll_length_by_round(req: &mut Request) -> IronResult<Response> {
     let mut incoming: PollLengthRequest = serde_json::from_str(&payload).unwrap();
     println!("Request poll length for round {:?}", incoming.round_id);
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
     incoming.poll_length = state.poll_length;
     let out = serde_json::to_string(&incoming).unwrap();
 
@@ -555,7 +533,7 @@ fn get_emojis_by_round(req: &mut Request) -> IronResult<Response> {
     let mut incoming: GetEmojisRequest = serde_json::from_str(&payload).unwrap();
     println!("Request emojis for round {:?}", incoming.round_id);
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
     incoming.emojis = state.emojis;
     let out = serde_json::to_string(&incoming).unwrap();
 
@@ -567,10 +545,10 @@ fn get_round_state(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
+    let incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
     println!("Request state for round {:?}", incoming.round_id);
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
     let out = serde_json::to_string(&state).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -581,10 +559,10 @@ fn get_round_state_web(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
+    let incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
     println!("Request state for round {:?}", incoming.round_id);
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
     let state_lite = StateWeb {
         id: state.id,
         status: state.status,
@@ -610,10 +588,10 @@ fn get_round_state_lite(req: &mut Request) -> IronResult<Response> {
     let mut payload = String::new();
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
+    let incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
     println!("Request state for round {:?}", incoming.round_id);
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
     let state_lite = StateLite {
         id: state.id,
         status: state.status,
@@ -645,7 +623,7 @@ fn get_vote_count_by_round(req: &mut Request) -> IronResult<Response> {
     let mut incoming: VoteCountRequest = serde_json::from_str(&payload).unwrap();
     println!("Request vote count for round {:?}", incoming.round_id);
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
     incoming.vote_count = state.vote_count;
     let out = serde_json::to_string(&incoming).unwrap();
 
@@ -660,7 +638,7 @@ fn get_start_time_by_round(req: &mut Request) -> IronResult<Response> {
     let mut incoming: TimestampRequest = serde_json::from_str(&payload).unwrap();
     println!("Request start time for round {:?}", incoming.round_id);
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
     incoming.timestamp = state.start_time;
     let out = serde_json::to_string(&incoming).unwrap();
 
@@ -675,7 +653,7 @@ fn get_crp_by_round(req: &mut Request) -> IronResult<Response> {
     let mut incoming: CRPRequest = serde_json::from_str(&payload).unwrap();
     println!("Request crp for round {:?}", incoming.round_id);
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
     incoming.crp_bytes = state.crp;
     let out = serde_json::to_string(&incoming).unwrap();
 
@@ -689,7 +667,7 @@ fn get_pk_by_round(req: &mut Request) -> IronResult<Response> {
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: PKRequest = serde_json::from_str(&payload).unwrap();
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
     incoming.pk_bytes = state.pk;
     let out = serde_json::to_string(&incoming).unwrap();
 
@@ -705,7 +683,7 @@ fn get_pk_share_count(req: &mut Request) -> IronResult<Response> {
 
     let mut incoming: PKShareCount = serde_json::from_str(&payload).unwrap();
 
-    let (state, key) = get_state(incoming.round_id);
+    let (state, _key) = get_state(incoming.round_id);
     incoming.share_id = state.pk_share_count;
     let out = serde_json::to_string(&incoming).unwrap();
 
@@ -713,21 +691,21 @@ fn get_pk_share_count(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((content_type, status::Ok, out)))
 }
 
-fn get_rounds(req: &mut Request) -> IronResult<Response> {
+fn get_rounds(_req: &mut Request) -> IronResult<Response> {
     let key = "round_count";
     let mut round = GLOBAL_DB.get(key).unwrap();
-    if(round == None) {
+    if round == None {
         println!("initializing first round in db");
         GLOBAL_DB.insert(key, b"0".to_vec()).unwrap();
         round = GLOBAL_DB.get(key).unwrap();
     }
-    let mut round_key = std::str::from_utf8(round.unwrap().as_ref()).unwrap().to_string();
-    let mut round_int = round_key.parse::<u32>().unwrap();
+    let round_key = std::str::from_utf8(round.unwrap().as_ref()).unwrap().to_string();
+    let round_int = round_key.parse::<u32>().unwrap();
 
     let count = RoundCount {round_count: round_int};
     println!("round_count: {:?}", count.round_count);
 
-    let response = JsonResponse { response: "Round Count Retrieved".to_string() };
+
     let out = serde_json::to_string(&count).unwrap();
     println!("get rounds hit");
 
@@ -740,10 +718,10 @@ async fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     println!("generating round crp");
 
     let infura_val = env!("INFURAKEY");
-    let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
-    RPC_URL.push_str(&infura_val);
+    let mut rpc_url = "https://sepolia.infura.io/v3/".to_string();
+    rpc_url.push_str(&infura_val);
 
-    let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
+    let provider = Provider::<Http>::try_from(rpc_url.clone()).unwrap();
     let block_number: U64 = provider.get_block_number().await.unwrap();    
 
     let degree = 4096;
@@ -776,11 +754,11 @@ async fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     let key = "round_count";
     //db.remove(key)?;
     let round = GLOBAL_DB.get(key).unwrap();
-    if(round == None) {
+    if round == None {
         println!("initializing first round in db");
         GLOBAL_DB.insert(key, b"0".to_vec()).unwrap();
     }
-    let mut round_key = std::str::from_utf8(round.unwrap().as_ref()).unwrap().to_string();
+    let round_key = std::str::from_utf8(round.unwrap().as_ref()).unwrap().to_string();
     let mut round_int = round_key.parse::<u32>().unwrap();
     round_int = round_int + 1;
     let mut inc_round_key = round_int.to_string();
@@ -903,7 +881,7 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
     Ok(())
 }
 
-fn handler(req: &mut Request) -> IronResult<Response> {
+fn handler(_req: &mut Request) -> IronResult<Response> {
     let response = JsonResponse { response: pick_response() };
     let out = serde_json::to_string(&response).unwrap();
     println!("index handler hit");
@@ -911,7 +889,7 @@ fn handler(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((content_type, status::Ok, out)))
 }
 
-fn health_handler(req: &mut Request) -> IronResult<Response> {
+fn health_handler(_req: &mut Request) -> IronResult<Response> {
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok)))
 }
@@ -948,7 +926,7 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
     println!("sks share stored for node index {:?}", incoming.index);
 
     // toso get share threshold from client config
-    if(state_out_struct.sks_share_count == state_out_struct.ciphernode_total) {
+    if state_out_struct.sks_share_count == state_out_struct.ciphernode_total {
         println!("All sks shares received");
         //aggregate_pk_shares(incoming.round_id).await;
         // TODO: maybe notify cipher nodes
@@ -977,7 +955,7 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
     let mut shares = Vec::with_capacity(incoming.ciphernode_count as usize);
 
     // toso get share threshold from client config
-    if(state.sks_share_count == state.ciphernode_total) {
+    if state.sks_share_count == state.ciphernode_total {
         println!("All sks shares received... sending to cipher nodes");
         for i in 1..state.ciphernode_total + 1 {
             println!("reading share {:?}", i);
@@ -1043,9 +1021,9 @@ async fn register_ciphernode(req: &mut Request) -> IronResult<Response> {
     println!("ciphernode total {:?}", state.ciphernode_total);
     println!("pk share count {:?}", state.pk_share_count);
 
-    if(state.ciphernode_count == state.ciphernode_total) {
+    if state.ciphernode_count == state.ciphernode_total {
         println!("All shares received");
-        aggregate_pk_shares(incoming.round_id).await;
+        let _ = aggregate_pk_shares(incoming.round_id).await;
     }
 
     let response = RegisterNodeResponse {
@@ -1078,9 +1056,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/get_emojis_by_round", get_emojis_by_round, "get_emojis_by_round");
     router.post("/get_poll_length_by_round", get_poll_length_by_round, "get_poll_length_by_round");
     router.post("/get_round_state_lite", get_round_state_lite, "get_round_state_lite");
+    router.post("/get_round_state", get_round_state, "get_round_state");
     router.post("/report_tally", report_tally, "report_tally");
     router.post("/get_web_result", get_web_result, "get_web_result");
-    router.post("/get_round_state_web", get_web_result, "get_round_state_web");
+    router.post("/get_round_state_web", get_round_state_web, "get_round_state_web");
     router.post("/get_node_by_round", get_node_by_round, "get_node_by_round");
     router.post("/get_round_eligibility", get_round_eligibility, "get_round_eligibility");
 
