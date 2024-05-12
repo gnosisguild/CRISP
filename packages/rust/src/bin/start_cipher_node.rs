@@ -1,46 +1,35 @@
 mod util;
 
-use std::{env, error::Error, process::exit, sync::Arc, fs, path::Path, process, str};
-use std::sync::mpsc::{self, TryRecvError};
+use std::{env, sync::Arc, fs, str};
 use std::fs::File;
 use std::io::Read;
-use chrono::{DateTime, TimeZone, Utc};
-use console::style;
+use chrono::{TimeZone, Utc};
 use fhe::{
-    bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
-    mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare, SecretKeySwitchShare},
+    bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, SecretKey},
+    mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
 };
-use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize as FheSerialize, DeserializeParametrized};
-use rand::{Rng, distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
-use rand_chacha::ChaCha8Rng;
-use util::timeit::{timeit, timeit_n};
+use fhe_traits::{FheDecoder, Serialize as FheSerialize, DeserializeParametrized};
+use rand::{Rng, rngs::OsRng, thread_rng};
+use util::timeit::{timeit};
 use serde::{Deserialize, Serialize};
 use http_body_util::Empty;
 use hyper::Request;
-use hyper::header::HeaderName;
 use hyper::Method;
-use hyper::body::Body;
 
 use hyper_tls::HttpsConnector;
-use hyper_util::rt::TokioIo;
 use hyper_util::{client::legacy::Client as HyperClient, rt::TokioExecutor};
 use bytes::Bytes;
 
-use tokio::net::TcpStream;
 use http_body_util::BodyExt;
 use tokio::io::{AsyncWriteExt as _, self};
-use tokio::runtime::Runtime;
 
 use std::{thread, time};
 
 use ethers::{
-    prelude::{Abigen, Contract, EthEvent},
-    providers::{Http, Provider, StreamExt, Middleware},
-    middleware::SignerMiddleware,
-    signers::{LocalWallet, Signer, Wallet},
-    types::{Address, U256, U64, Filter, H256},
-    core::k256,
-    utils,
+    prelude::{EthEvent},
+    providers::{Http, Provider, StreamExt},
+    signers::{LocalWallet, Signer},
+    types::{Address, U64},
     contract::abigen,
 };
 
