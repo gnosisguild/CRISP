@@ -3,7 +3,7 @@ mod util;
 use std::{env, sync::Arc, fs, str};
 use std::fs::File;
 use std::io::Read;
-use chrono::{TimeZone, Utc};
+use chrono::{Utc};
 use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, SecretKey},
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
@@ -26,9 +26,7 @@ use tokio::io::{AsyncWriteExt as _, self};
 use std::{thread, time};
 
 use ethers::{
-    prelude::{EthEvent},
-    providers::{Http, Provider, StreamExt},
-    signers::{LocalWallet, Signer},
+    providers::{Http, Provider},
     types::{Address, U64},
     contract::abigen,
 };
@@ -168,7 +166,7 @@ struct RegisterNodeResponse {
     node_index: u32,
 }
 
-static GLOBAL_DB: Lazy<(Db)> = Lazy::new(|| {
+static GLOBAL_DB: Lazy<Db> = Lazy::new(|| {
     let path = env::current_dir().unwrap();
     let mut pathst = path.display().to_string();
     pathst.push_str("/example_ciphernode_config.json");
@@ -183,15 +181,15 @@ static GLOBAL_DB: Lazy<(Db)> = Lazy::new(|| {
     };
 
     let mut config: CiphernodeConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
-    let mut node_id: u32;
-    if((config.ids.len() - 1) < cnode_selector) {
+    let node_id: u32;
+    if(config.ids.len() - 1) < cnode_selector {
         println!("generating new ciphernode...");
         node_id = rand::thread_rng().gen_range(0..100000);
         config.ids.push(node_id);
 
         let configfile = serde_json::to_string(&config).unwrap();
         fs::write(pathst.clone(), configfile).unwrap();
-    } else if(config.ids[cnode_selector] == 0) {
+    } else if config.ids[cnode_selector] == 0 {
         println!("generating initial ciphernode id...");
         node_id = rand::thread_rng().gen_range(0..100000);
         config.ids[cnode_selector as usize] = node_id;
@@ -227,7 +225,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         cnode_selector = args[1].parse::<usize>().unwrap();
     };
 
-    if((config.ids.len() - 1) < cnode_selector) {
+    if(config.ids.len() - 1) < cnode_selector {
         println!("generating new ciphernode...");
         let new_id = rand::thread_rng().gen_range(0..100000);
         config.ids.push(new_id);
@@ -245,7 +243,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     pathdbst.push_str("-state");
 
     let node_state_bytes = GLOBAL_DB.get(pathdbst.clone()).unwrap();
-    if(node_state_bytes == None) {
+    if node_state_bytes == None {
         println!("Initializing node state in database.");
         let state = Ciphernode {
             id: node_id,
@@ -281,14 +279,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let https = HttpsConnector::new();
         let client_get = HyperClient::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https.clone());
         let client = HyperClient::builder(TokioExecutor::new()).build::<_, String>(https);
-   
-        let response = JsonRequest { response: "get_rounds".to_string() };
-        let out = serde_json::to_string(&response).unwrap();
 
         let mut url_get_rounds_str = config.enclave_address.clone();
         url_get_rounds_str.push_str("/get_rounds");
-        let url_get_rounds = url_get_rounds_str.parse::<hyper::Uri>()?;
-        let authority = url_get_rounds.authority().unwrap().clone();
 
         let req = Request::builder()
             .method(Method::GET)
@@ -305,7 +298,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!("Internal Round Count: {:?}", internal_round_count.round_count);
 
         // Check to see if the server reported a new round
-        if(count.round_count > internal_round_count.round_count) {
+        if count.round_count > internal_round_count.round_count {
             println!("Getting New Round State.");
 
             let response_get_state = GetRoundRequest { round_id: count.round_count };
@@ -382,7 +375,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                     .uri(url_register_keyshare)
                     .body(out)?;
 
-                let mut resp = client.request(req).await?;
+                let resp = client.request(req).await?;
                 println!("Register Node Response status: {}", resp.status());
                 let body_bytes = resp.collect().await?.to_bytes();
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
@@ -395,7 +388,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                 let state_str = serde_json::to_string(&node_state).unwrap();
                 let state_bytes = state_str.into_bytes();
-                GLOBAL_DB.insert(db_key, state_bytes);
+                let _ = GLOBAL_DB.insert(db_key, state_bytes);
                 internal_round_count.round_count = count.round_count;
                 start_contract_watch(&state, node_id, &config).await;
             };
@@ -416,7 +409,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let polling_wait = time::Duration::from_millis(6000);
         thread::sleep(polling_wait);
     }
-    Ok(())
 }
 
 fn get_state(node_id: u32) -> (Ciphernode, String) {
@@ -432,14 +424,13 @@ fn get_state(node_id: u32) -> (Ciphernode, String) {
     (state_out_struct, pathdbst)
 }
 
-async fn get_votes_contract(round_id: u32, block_start: U64, address: String, chain_id: u32) -> Vec<Vec<u8>> {
+async fn get_votes_contract(block_start: U64, address: String, _chain_id: u32) -> Vec<Vec<u8>> {
     println!("Filtering contract for votes");
     // chain state
     let infura_key = "INFURAKEY";
     let infura_val = env::var(infura_key).unwrap();
-    let mut RPC_URL = "https://sepolia.infura.io/v3/".to_string();
-    RPC_URL.push_str(&infura_val);
-    let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
+    let mut rpc_url = "https://sepolia.infura.io/v3/".to_string();
+    rpc_url.push_str(&infura_val);
 
     abigen!(
         IVOTE,
@@ -450,13 +441,8 @@ async fn get_votes_contract(round_id: u32, block_start: U64, address: String, ch
             event Voted(address indexed voter, bytes vote)
         ]"#,
     );
-    let provider = Provider::<Http>::try_from(RPC_URL.clone()).unwrap();
+    let provider = Provider::<Http>::try_from(rpc_url.clone()).unwrap();
     let contract_address = address.parse::<Address>().unwrap();
-    let eth_key = "PRIVATEKEY";
-    let eth_val = env::var(eth_key).unwrap();
-    let wallet: LocalWallet = eth_val
-        .parse::<LocalWallet>().unwrap()
-        .with_chain_id(chain_id as u64);
     let client = Arc::new(provider);
     let contract = IVOTE::new(contract_address, Arc::new(client.clone()));
 
@@ -487,7 +473,7 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
     let https = HttpsConnector::new();
     let client = HyperClient::builder(TokioExecutor::new()).build::<_, String>(https);
 
-    let mut num_parties = state.ciphernode_total;
+    let num_parties = state.ciphernode_total;
 
     // For each voting round this node is participating in, check the contracts for vote events.
     // When voting is finalized, begin group decrypt process
@@ -515,14 +501,14 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
                 .uri(url_get_voters)
                 .body(out).unwrap();
 
-            let mut resp = client.request(req).await.unwrap();
+            let resp = client.request(req).await.unwrap();
             println!("Get Vote Count Response status: {}", resp.status());
 
             let body_bytes_get_voters = resp.collect().await.unwrap().to_bytes();
             let body_str_get_voters = String::from_utf8(body_bytes_get_voters.to_vec()).unwrap();
             let num_voters: VoteCountRequest = serde_json::from_str(&body_str_get_voters).expect("JSON was not well-formatted");
 
-            let mut votes_collected = get_votes_contract(state.id, state.block_start, state.voting_address.clone(), state.chain_id).await;
+            let votes_collected = get_votes_contract(state.block_start, state.voting_address.clone(), state.chain_id).await;
             println!("All votes collected? {:?}", num_voters.vote_count == votes_collected.len() as u32);
 
             if votes_collected.len() == 0 {
@@ -541,7 +527,7 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
                     .uri(url_report)
                     .body(out).unwrap();
 
-                let mut resp = client.request(req).await.unwrap();
+                let resp = client.request(req).await.unwrap();
                 println!("Tally Reported Response status: {}", resp.status());
                 break;
             }
@@ -560,7 +546,7 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
             // should be kept private, the parties could collectively perform a
             // keyswitch to a different public key.
             let mut decryption_shares = Vec::with_capacity(state.ciphernode_total as usize);
-            let (node_state, db_key) = get_state(node_id);
+            let (node_state, _db_key) = get_state(node_id);
             let sk_share_coeff_bytes = node_state.sk_shares[0].clone();
             let sk_share_1 = SecretKey::new(sk_share_coeff_bytes, &params);
 
@@ -607,10 +593,10 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
                     .uri(url_register_get_sks)
                     .body(out).unwrap();
 
-                let mut resp = client.request(req).await.unwrap();
+                let resp = client.request(req).await.unwrap();
                 println!("Get All SKS Response status: {}", resp.status());
 
-                if(resp.status().to_string() == "500 Internal Server Error") {
+                if resp.status().to_string() == "500 Internal Server Error" {
                     println!("enclave resource failed, trying to poll for sks shares again...");
                     continue;
                 }
@@ -619,7 +605,7 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
                 let shares: SKSShareResponse = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
 
-                if(shares.response == "final") {
+                if shares.response == "final" {
                     // do decrypt
                     println!("collected all of the decrypt shares!");
                     for i in 0..state.ciphernode_total {
@@ -657,7 +643,7 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
                         .uri(url_report)
                         .body(out).unwrap();
 
-                    let mut resp = client.request(req).await.unwrap();
+                    let resp = client.request(req).await.unwrap();
                     println!("Tally Reported Response status: {}", resp.status());
                     break;
                 }
