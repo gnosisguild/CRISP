@@ -11,7 +11,6 @@ use fhe::{
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare, SecretKeySwitchShare},
 };
 use fhe_traits::{FheDecoder, FheEncoder, FheEncrypter, Serialize as FheSerialize, DeserializeParametrized};
-//use fhe_math::rq::{Poly};
 use rand::{Rng, distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 use util::timeit::{timeit, timeit_n};
@@ -23,8 +22,6 @@ use hyper::Method;
 use hyper::body::Body;
 
 use hyper_tls::HttpsConnector;
-//use hyper::body::Bytes;
-//use hyper::Client as HClient;
 use hyper_util::rt::TokioIo;
 use hyper_util::{client::legacy::Client as HyperClient, rt::TokioExecutor};
 use bytes::Bytes;
@@ -41,7 +38,6 @@ use ethers::{
     providers::{Http, Provider, StreamExt, Middleware},
     middleware::SignerMiddleware,
     signers::{LocalWallet, Signer, Wallet},
-    //types::{Address, U256, Bytes as EtherBytes, U64, Filter, H256},
     types::{Address, U256, U64, Filter, H256},
     core::k256,
     utils,
@@ -149,18 +145,6 @@ struct StateLite {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct CiphernodeDB {
-    id: u32,
-    round_storage: Vec<RoundData>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-struct RoundData {
-    round_id: u32,
-    encrypted_votes: Vec<Vec<u8>>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
 struct CiphernodeConfig {
     ids: Vec<u32>,
     enclave_address: String,
@@ -195,12 +179,6 @@ struct RegisterNodeResponse {
     node_index: u32,
 }
 
-type Client = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
-
-// static ID: Lazy<i64> = Lazy::new(|| {
-//     rand::thread_rng().gen_range(0..100000)
-// });
-
 static GLOBAL_DB: Lazy<(Db)> = Lazy::new(|| {
     let path = env::current_dir().unwrap();
     let mut pathst = path.display().to_string();
@@ -214,7 +192,6 @@ static GLOBAL_DB: Lazy<(Db)> = Lazy::new(|| {
     if args.len() != 1 {
         cnode_selector = args[1].parse::<usize>().unwrap();
     };
-    println!("{:?}", cnode_selector);
 
     let mut config: CiphernodeConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
     let mut node_id: u32;
@@ -247,34 +224,7 @@ static GLOBAL_DB: Lazy<(Db)> = Lazy::new(|| {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("Initializing parameters.");
-
-    // let args: Vec<String> = env::args().collect();
-    // let mut cnode_selector = 0;
-    // if args.len() != 1 {
-    //     cnode_selector = args[1].parse::<usize>().unwrap();
-    // };
-    // println!("{:?}", cnode_selector);
-
-    // let mut config: CiphernodeConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
-    // let mut node_id: u32;
-    // if((config.ids.len() - 1) < cnode_selector) {
-    //     println!("generating new ciphernode...");
-    //     node_id = rand::thread_rng().gen_range(0..100000);
-    //     config.ids.push(node_id);
-
-    //     let configfile = serde_json::to_string(&config).unwrap();
-    //     fs::write(pathst.clone(), configfile).unwrap();
-    // } else if(config.ids[cnode_selector] == 0) {
-    //     println!("generating initial ciphernode id...");
-    //     node_id = rand::thread_rng().gen_range(0..100000);
-    //     config.ids[cnode_selector as usize] = node_id;
-        
-    //     let configfile = serde_json::to_string(&config).unwrap();
-    //     fs::write(pathst.clone(), configfile).unwrap();
-    // } else {
-    //     node_id = config.ids[cnode_selector];
-    // };
+    println!("Getting configuration file.");
     let path = env::current_dir().unwrap();
     let mut pathst = path.display().to_string();
     pathst.push_str("/example_ciphernode_config.json");
@@ -298,7 +248,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     let node_id: u32 = config.ids[cnode_selector as usize];
-    println!("Node ID {:?} selected.", node_id);
+    println!("Node ID: {:?} selected.", node_id);
     let pathdb = env::current_dir().unwrap();
     let mut pathdbst = pathdb.display().to_string();
     pathdbst.push_str("/database/ciphernode-");
@@ -307,7 +257,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let node_state_bytes = GLOBAL_DB.get(pathdbst.clone()).unwrap();
     if(node_state_bytes == None) {
-        println!("initializing node state in db");
+        println!("Initializing node state in database.");
         let state = Ciphernode {
             id: node_id,
             index: vec![0],
@@ -320,14 +270,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         GLOBAL_DB.insert(pathdbst.clone(), state_bytes).unwrap();
     }
 
-    // check to see if this node is registered with the server
-
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;
     let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
-
-    // Generate a deterministic seed for the Common Poly
-    //let mut seed = <ChaCha8Rng as SeedableRng>::Seed::default();
 
     // Generate the BFV parameters structure.
     let params = timeit!(
@@ -343,7 +288,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut internal_round_count = RoundCount { round_count: 0 };
 
     loop {
-        println!("Polling CRISP server...");
+        println!("Polling Enclave server.");
         let https = HttpsConnector::new();
         let client_get = HyperClient::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https.clone());
         let client = HyperClient::builder(TokioExecutor::new()).build::<_, String>(https);
@@ -363,22 +308,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         let resp = client_get.request(req).await?;
 
-        eprintln!("{:?} {:?}", resp.version(), resp.status());
-        eprintln!("{:#?}", resp.headers());
         let body_bytes = resp.collect().await?.to_bytes();
         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-        println!("{:?}", body_str);
-        println!("----------------");
+        println!("Get Round Response {:?}", body_str);
         let count: RoundCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
         println!("Server Round Count: {:?}", count.round_count);
         println!("Internal Round Count: {:?}", internal_round_count.round_count);
 
         // Check to see if the server reported a new round
-        // TODO: also check timestamp to be sure round isnt over, or already registered
         if(count.round_count > internal_round_count.round_count) {
-            println!("Getting New Round State."); // This is the current pk share count for now.
-            // TODO: store and get pk/sk bytes from node db
-            //let mut node_pk_bytes 
+            println!("Getting New Round State.");
 
             let response_get_state = GetRoundRequest { round_id: count.round_count };
             let out = serde_json::to_string(&response_get_state).unwrap();
@@ -395,7 +334,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
 
             let state: StateLite = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
-            // ---------------------------------------------
 
             let get_eligibility = GetEligibilityRequest {
                 round_id: count.round_count,
@@ -430,20 +368,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
                 // deserialize crp_bytes
                 let crp = CommonRandomPoly::deserialize(&state.crp, &params).unwrap();
-                let sk_share_1 = SecretKey::random(&params, &mut OsRng); // TODO Store secret key
+                let sk_share_1 = SecretKey::random(&params, &mut OsRng);
                 let pk_share_1 = PublicKeyShare::new(&sk_share_1, crp.clone(), &mut thread_rng())?;
                 // serialize pk_share
                 let pk_share_bytes = pk_share_1.to_bytes();
                 let sk_share_bytes = sk_share_1.coeffs.into_vec();
-                //let sk_share_bytes: Vec<i64> = vec![1,2,3];
                 let (mut node_state, db_key) = get_state(node_id);
 
-                // overwrite old shares here
+                // overwrite old shares each new round
                 node_state.pk_shares[0] = pk_share_bytes.clone();
                 node_state.sk_shares[0] = sk_share_bytes;
 
                 let response_key = PKShareRequest {
-                    response: "Test".to_string(),
+                    response: "Register Ciphernode Key".to_string(),
                     pk_share: pk_share_bytes,
                     id: node_id,
                     round_id: state.id
@@ -465,7 +402,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 println!("Ciphernode index: {:?}", registration_res.node_index);
  
                 // index is the order in which this node registered with the server
-                // TODO get this from registration to avoid desync
                 node_state.index[0] = registration_res.node_index;
 
                 let state_str = serde_json::to_string(&node_state).unwrap();
@@ -476,23 +412,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             };
 
             if eligibility.is_eligible == true && eligibility.reason == "Previously Registered" {
-                // do registration
-                println!("server reported to resume watching");
+                println!("Server reported to resume watching.");
                 internal_round_count.round_count = count.round_count;
                 start_contract_watch(&state, node_id, &config).await;
             };
             if eligibility.is_eligible == false && eligibility.reason == "Round Full" {
-                // do registration
-                println!("server reported round full, wait for next round");
+                println!("Server reported round full, wait for next round.");
                 internal_round_count.round_count = count.round_count;
                 continue
             };
-
-            // TODO: if(state.poll_length + state.start_time > internal_time) { skip; }
-            // TODO: if(state.ciphernode_count == state.ciphernode_total) { skip; } 
-            // TODO: create storage for pk and allow for re-entering a round if client crashes
-
-            // --------------------------------------
         }
 
         // Polling time to server...
@@ -557,9 +485,6 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
     let plaintext_modulus: u64 = 4096;
     let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
 
-    // Generate a deterministic seed for the Common Poly
-    //let mut seed = <ChaCha8Rng as SeedableRng>::Seed::default();
-
     // Generate the BFV parameters structure.
     let params = timeit!(
         "Parameters generation",
@@ -608,18 +533,8 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
             let body_str_get_voters = String::from_utf8(body_bytes_get_voters.to_vec()).unwrap();
             let num_voters: VoteCountRequest = serde_json::from_str(&body_str_get_voters).expect("JSON was not well-formatted");
 
-
-            // get votes from db for round 
-            // let mut key = state.id.to_string();
-            // key.push_str("-");
-            // key.push_str(&node_id.to_string());
-            // key.push_str("-ciphernode-storage");
-            // let votes_db = GLOBAL_DB.get(key).unwrap().unwrap();
-            // let votes_out_str = str::from_utf8(&votes_db).unwrap();
-            // let votes_out_struct: RoundData = serde_json::from_str(&votes_out_str).unwrap();
-
             let mut votes_collected = get_votes_contract(state.id, state.block_start, state.voting_address.clone(), state.chain_id).await;
-            println!("all votes collected? {:?}", num_voters.vote_count == votes_collected.len() as u32);
+            println!("All votes collected? {:?}", num_voters.vote_count == votes_collected.len() as u32);
 
             if votes_collected.len() == 0 {
                 println!("Vote result = {} / {}", 0, num_voters.vote_count);
@@ -641,7 +556,6 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
                 println!("Tally Reported Response status: {}", resp.status());
                 break;
             }
-
 
             let tally = timeit!("Vote tallying", {
                 let mut sum = Ciphertext::zero(&params);
@@ -667,7 +581,7 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
             let response_sks = SKSShareRequest {
                 response: "Register_SKS_Share".to_string(),
                 sks_share: sks_bytes,
-                index: node_state.index[0], // index of stored pk shares on server, TODO: this will break if node misses a round!!!
+                index: node_state.index[0], // index of stored pk shares on server
                 round_id: state.id
             };
             let out = serde_json::to_string(&response_sks).unwrap();
@@ -689,7 +603,7 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
                 }
             }
 
-            // poll the chrys server to get all sks shares.
+            // poll the enclave server to get all sks shares.
             loop {
                 let response_get_sks = SKSSharePoll { 
                     response: "Get_All_SKS_Shares".to_string(),
