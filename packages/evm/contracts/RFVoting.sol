@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: LGPLv3
 pragma solidity ^0.8.20;
 
-contract RFVoting {
+import "./zk/Groth16Verifier.sol";
+
+contract RFVoting is Groth16Verifier {
 
     mapping(address voter => bytes vote) public votes;
     mapping(address validVoter => bool valid) public isValidVoter;
@@ -12,7 +14,15 @@ contract RFVoting {
 
     event Voted(address indexed voter, bytes vote);
 
-    function voteEncrypted(bytes memory _encVote) public {
+    function voteEncrypted(
+        uint[2] calldata _pA,
+        uint[2][2] calldata _pB,
+        uint[2] calldata _pC,
+        uint _pubSignals,
+        bytes memory _encVote
+    ) public {
+        _pubSignals = 0;
+        require(Groth16Verifier.verifyProof(_pA, _pB, _pC, _pubSignals));
         id++;
         //votes[msg.sender] = _encVote;
         emit Voted(msg.sender, _encVote);
