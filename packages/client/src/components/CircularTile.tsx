@@ -1,18 +1,14 @@
-import { useMediaQuery } from '@/hooks/generic/useMediaQuery'
-
 interface CircularTileProps {
   className?: string
   rotation?: number
 }
 
 const CircularTile = ({ className, rotation }: CircularTileProps) => {
-  const isMediumOrLarger = useMediaQuery('(min-width: 768px)')
-  const viewBox = isMediumOrLarger ? '0 0 256 256' : '-80 -80 350 350'
   return (
     <svg
-      className={`fill-slate-100 ${className}`}
+      className={`aspect-square w-full fill-slate-100 ${className}`}
       style={{ transform: `rotate(${rotation}deg)` }}
-      viewBox={viewBox}
+      viewBox='0 0 256 256'
       xmlns='http://www.w3.org/2000/svg'
     >
       <path
