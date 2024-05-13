@@ -4,7 +4,7 @@ import LogoutIcon from '@/assets/icons/logout.svg'
 import { useNavigate } from 'react-router-dom'
 import { useVoteManagementContext } from '@/context/voteManagement'
 //Icons
-import { CaretRight, CalendarCheck, CheckFat, File, Notebook } from '@phosphor-icons/react'
+import { CaretRight, CalendarCheck, CheckFat, Notebook } from '@phosphor-icons/react'
 
 interface NavMenuProps {}
 

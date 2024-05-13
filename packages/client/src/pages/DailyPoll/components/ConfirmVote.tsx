@@ -1,7 +1,6 @@
 import React from 'react'
 import CountdownTimer from '@/components/CountdownTime'
 import CardContent from '@/components/Cards/CardContent'
-import { Link } from 'react-router-dom'
 
 type ConfirmVoteProps = {
   endTime: Date

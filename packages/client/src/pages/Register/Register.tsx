@@ -1,4 +1,4 @@
-'use client'
+// 'use client'
 
 import { useTwitter } from '@/hooks/twitter/useTwitter'
 import React, { useState } from 'react'
