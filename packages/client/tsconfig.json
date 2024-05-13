@@ -24,6 +24,6 @@
       "libs/*": ["./libs/*"]
     }
   },
-  "include": ["src", "src/**/*.d.ts", "pkg", "libs/wasm/pkg"],
+  "include": ["src", "src/**/*.d.ts", "pkg", "libs/wasm/pkg", "libs/wasm/circuits"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

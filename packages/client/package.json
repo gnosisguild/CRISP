@@ -19,9 +19,12 @@
   "dependencies": {
     "@emotion/babel-plugin": "^11.11.0",
     "@emotion/react": "^11.11.4",
+    "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
     "@phosphor-icons/react": "^2.1.4",
     "@svgr/rollup": "^8.1.0",
     "axios": "^1.6.8",
+    "buffer": "^6.0.3",
+    "enclave-circuits": "file:../circuits",
     "ethers": "^6.12.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
