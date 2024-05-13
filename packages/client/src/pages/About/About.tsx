@@ -2,7 +2,6 @@ import React from 'react'
 // import CircleIcon from '@/assets/icons/caretCircle.svg'
 import CardContent from '@/components/Cards/CardContent'
 import CircularTiles from '@/components/CircularTiles'
-import { Link } from 'react-router-dom'
 
 const About: React.FC = () => {
   return (
