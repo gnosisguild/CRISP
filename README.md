@@ -105,6 +105,12 @@ Remember to provide exact paths if the `enclave_server`, `start_cipher_node`, an
 
 ## Contributing
 
-We welcome contributions from the community. Please read our contributing guide and code of conduct before submitting any pull requests or issues.
+We welcome and encourage community contributions to this repo. Please make sure to read the [CLA](https://github.com/gnosisguild/CLA) before contributing.
 
+### Security and Liability
 
+This repo is provided WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+### License
+
+This repo created under the [LGPL-3.0+ license](LICENSE).
