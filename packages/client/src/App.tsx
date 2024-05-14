@@ -10,22 +10,19 @@ import About from '@/pages/About/About'
 import PollResult from '@/pages/PollResult/PollResult'
 import useScrollToTop from '@/hooks/generic/useScrollToTop'
 import { useVoteManagementContext } from '@/context/voteManagement'
-import useCircuit from '@/hooks/wasm/useCircuit'
 
 const App: React.FC = () => {
   useScrollToTop()
-  const { initialLoad, wasmInstance } = useVoteManagementContext()
-  const { client } = useCircuit()
+  const { initialLoad, wasmInstance, zpkClient } = useVoteManagementContext()
 
-  console.log('client', client)
   useEffect(() => {
-    if (!wasmInstance) {
+    if (!wasmInstance && !zpkClient) {
       async function loadWasm() {
         await initialLoad()
       }
       loadWasm()
     }
-  }, [wasmInstance])
+  }, [wasmInstance, zpkClient])
 
   return (
     <Fragment>

@@ -3,9 +3,11 @@ import * as WasmInstance from 'libs/wasm/pkg/crisp_web'
 import { SocialAuth } from '@/model/twitter.model'
 import { BroadcastVoteRequest, BroadcastVoteResponse, VoteStateLite, VotingRound } from '@/model/vote.model'
 import { Poll, PollRequestResult, PollResult } from '@/model/poll.model'
+import { Proof, ZKPClient } from 'enclave-circuits/src/client'
 
 export type VoteManagementContextType = {
   isLoading: boolean
+  zpkClient: ZKPClient | null
   wasmInstance: WasmInstance.InitOutput | null
   encryptInstance: WasmInstance.Encrypt | null
   user: SocialAuth | null
@@ -15,6 +17,7 @@ export type VoteManagementContextType = {
   roundState: VoteStateLite | null
   pastPolls: PollResult[]
   setPollOptions: React.Dispatch<React.SetStateAction<Poll[]>>
+  proveVote: (vote: number) => Promise<Proof | undefined>
   initialLoad: () => Promise<void>
   existNewRound: () => Promise<void>
   getPastPolls: (roundCount: number) => Promise<void>

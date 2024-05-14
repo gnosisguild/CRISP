@@ -7,7 +7,8 @@ import { useNotificationAlertContext } from '@/context/NotificationAlert'
 
 const DailyPoll: React.FC = () => {
   const { showToast } = useNotificationAlertContext()
-  const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, votingRound, roundEndDate, roundState } = useVoteManagementContext()
+  const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, proveVote, votingRound, roundEndDate, roundState } =
+    useVoteManagementContext()
   const [voteCompleted, setVotedCompleted] = useState<boolean>(false)
   const [loading, setLoading] = useState<boolean>(false)
   const [newRoundLoading, setNewRoundLoading] = useState<boolean>(false)
@@ -26,16 +27,18 @@ const DailyPoll: React.FC = () => {
     }
   }, [roundState])
 
-  console.log('newRoundLoading', newRoundLoading)
   const handleVoted = async (vote: Poll | null) => {
     if (vote && votingRound) {
       setLoading(true)
       const voteEncrypted = await encryptVote(BigInt(vote.value), new Uint8Array(votingRound.pk_bytes))
-
-      if (voteEncrypted) {
+      const zpkProve = await proveVote(vote.value)
+      if (voteEncrypted && zpkProve) {
         const broadcastVoteResponse = await broadcastVote({
           round_id: votingRound.round_id,
           enc_vote_bytes: Array.from(voteEncrypted),
+          a: zpkProve.a,
+          b: zpkProve.b,
+          c: zpkProve.c,
         })
         await getRoundStateLite(votingRound.round_id)
         if (broadcastVoteResponse) {

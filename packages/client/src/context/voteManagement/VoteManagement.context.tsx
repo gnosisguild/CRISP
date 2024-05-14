@@ -10,6 +10,7 @@ import { convertPollData, convertTimestampToDate } from '@/utils/methods'
 import { Poll, PollResult } from '@/model/poll.model'
 import { generatePoll } from '@/utils/generate-random-poll'
 import { handleGenericError } from '@/utils/handle-generic-error'
+import useCircuitHook from '@/hooks/wasm/useCircuit'
 
 const [useVoteManagementContext, VoteManagementContextProvider] = createGenericContext<VoteManagementContextType>()
 
@@ -30,6 +31,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
    * Voting Management Methods
    **/
   const { isLoading: wasmLoading, wasmInstance, encryptInstance, initWebAssembly, encryptVote } = useWebAssemblyHook()
+  const { proveVote, initCircuits, zpkClient } = useCircuitHook()
   const {
     isLoading: enclaveLoading,
     getRoundStateLite: getRoundStateLiteRequest,
@@ -40,6 +42,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
 
   const initialLoad = async () => {
     await initWebAssembly()
+    await initCircuits()
     const round = await getRound()
     if (round) {
       await getRoundStateLite(round.round_count)
@@ -104,6 +107,8 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         pollOptions,
         roundState,
         pastPolls,
+        zpkClient,
+        proveVote,
         existNewRound,
         getWebResult,
         setPastPolls,
