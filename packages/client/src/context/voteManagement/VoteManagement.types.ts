@@ -14,6 +14,8 @@ export type VoteManagementContextType = {
   pollOptions: Poll[]
   roundState: VoteStateLite | null
   pastPolls: PollResult[]
+  txUrl: string | undefined
+  setTxUrl: React.Dispatch<React.SetStateAction<string | undefined>>
   setPollOptions: React.Dispatch<React.SetStateAction<Poll[]>>
   initialLoad: () => Promise<void>
   existNewRound: () => Promise<void>

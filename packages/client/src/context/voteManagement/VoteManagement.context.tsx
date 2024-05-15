@@ -25,6 +25,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   const [isLoading, setIsLoading] = useState<boolean>(false)
   const [pollOptions, setPollOptions] = useState<Poll[]>([])
   const [pastPolls, setPastPolls] = useState<PollResult[]>([])
+  const [txUrl, setTxUrl] = useState<string | undefined>(undefined)
 
   /**
    * Voting Management Methods
@@ -60,6 +61,13 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
 
   const getRoundStateLite = async (roundCount: number) => {
     const roundState = await getRoundStateLiteRequest(roundCount)
+
+    if (roundState?.pk.length === 1 && roundState.pk[0] === 0) {
+      handleGenericError('getRoundStateLite', {
+        message: 'Enclave server failed generating the necessary pk bytes',
+        name: 'getRoundStateLite',
+      })
+    }
     if (roundState) {
       setRoundState(roundState)
       setVotingRound({ round_id: roundState.id, pk_bytes: roundState.pk })
@@ -71,8 +79,8 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   const getPastPolls = async (roundCount: number) => {
     let results: PollResult[] = []
     try {
-      for (let i = 0; i < roundCount; i++) {
-        const result = await getWebResult(i + 1)
+      for (let i = roundCount; i > 0; i--) {
+        const result = await getWebResult(i)
         if (result) {
           const convertedPoll = convertPollData(result)
           results.push(convertedPoll)
@@ -104,6 +112,8 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         pollOptions,
         roundState,
         pastPolls,
+        txUrl,
+        setTxUrl,
         existNewRound,
         getWebResult,
         setPastPolls,

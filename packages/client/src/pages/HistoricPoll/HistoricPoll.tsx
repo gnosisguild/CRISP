@@ -30,9 +30,9 @@ const HistoricPoll: React.FC = () => {
           </div>
         )}
         <div className='mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 overflow-y-auto p-4 md:grid-cols-3'>
-          {pastPolls.map(({ totalVotes, options, roundId, date }: PollResult) => (
-            <div className='flex items-center justify-center' key={roundId}>
-              <PollCard roundId={roundId} pollOptions={options} totalVotes={totalVotes} date={date} />
+          {pastPolls.map((pollResult: PollResult) => (
+            <div className='flex items-center justify-center' key={pollResult.roundId}>
+              <PollCard {...pollResult} />
             </div>
           ))}
         </div>

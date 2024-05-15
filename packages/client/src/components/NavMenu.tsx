@@ -10,9 +10,9 @@ interface NavMenuProps {}
 
 const NAV_MENU_OPTIONS = [
   {
-    name: 'Daily Poll',
+    name: 'Current Poll',
     icon: <CalendarCheck />,
-    path: '/daily',
+    path: '/current',
   },
   {
     name: 'Historic Polls',

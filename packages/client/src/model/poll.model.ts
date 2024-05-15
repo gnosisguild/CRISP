@@ -10,6 +10,7 @@ export interface PollResult {
   totalVotes: number
   date: string
   options: PollOption[]
+  endTime: number
 }
 
 export interface PollRequestResult {

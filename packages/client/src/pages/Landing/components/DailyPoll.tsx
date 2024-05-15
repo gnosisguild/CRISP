@@ -7,13 +7,15 @@ import RegisterModal from '@/pages/Register/Register'
 import { useVoteManagementContext } from '@/context/voteManagement'
 import LoadingAnimation from '@/components/LoadingAnimation'
 import { hasPollEnded } from '@/utils/methods'
+import CountdownTimer from '@/components/CountdownTime'
 
 type DailyPollSectionProps = {
   onVoted?: (vote: Poll) => void
   loading?: boolean
+  endTime: Date | null
 }
 
-const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading }) => {
+const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, endTime }) => {
   const { user, pollOptions, setPollOptions, roundState } = useVoteManagementContext()
   const isEnded = roundState ? hasPollEnded(roundState?.poll_length, roundState?.start_time) : false
   const status = roundState?.status
@@ -68,6 +70,12 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading })
               <div className='rounded-lg border-2 border-slate-600/20 bg-white px-2 py-1.5 text-center font-bold uppercase leading-none text-slate-800/50'>
                 {roundState.vote_count} votes
               </div>
+            </div>
+          )}
+
+          {endTime && !isEnded && (
+            <div className='flex items-center justify-center max-sm:py-5 '>
+              <CountdownTimer endTime={endTime} />
             </div>
           )}
           {loading && <LoadingAnimation isLoading={loading} />}
