@@ -1,12 +1,12 @@
 interface CircularTileProps {
-  className?: string;
-  rotation?: number;
+  className?: string
+  rotation?: number
 }
 
-const CircularTile = ({className, rotation}: CircularTileProps) => {
+const CircularTile = ({ className, rotation }: CircularTileProps) => {
   return (
     <svg
-      className={`fill-slate-100 ${className}`}
+      className={`aspect-square w-full fill-slate-100 ${className}`}
       style={{ transform: `rotate(${rotation}deg)` }}
       viewBox='0 0 256 256'
       xmlns='http://www.w3.org/2000/svg'
@@ -20,4 +20,4 @@ const CircularTile = ({className, rotation}: CircularTileProps) => {
   )
 }
 
-export default CircularTile;
+export default CircularTile
