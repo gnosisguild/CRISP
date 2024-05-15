@@ -4,13 +4,15 @@ import { Poll } from '@/model/poll.model'
 import { useVoteManagementContext } from '@/context/voteManagement'
 import { useNotificationAlertContext } from '@/context/NotificationAlert'
 import { useNavigate } from 'react-router-dom'
+import { convertTimestampToDate } from '@/utils/methods'
 
 const DailyPoll: React.FC = () => {
   const navigate = useNavigate()
   const { showToast } = useNotificationAlertContext()
-  const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, votingRound, roundState } = useVoteManagementContext()
+  const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, setTxUrl, votingRound, roundState } = useVoteManagementContext()
   const [loading, setLoading] = useState<boolean>(false)
   const [newRoundLoading, setNewRoundLoading] = useState<boolean>(false)
+  const endTime = roundState && convertTimestampToDate(roundState?.start_time, roundState?.poll_length)
 
   useEffect(() => {
     const checkRound = async () => {
@@ -38,10 +40,12 @@ const DailyPoll: React.FC = () => {
         })
         await getRoundStateLite(votingRound.round_id)
         if (broadcastVoteResponse) {
+          const url = `https://sepolia.etherscan.io/tx/${broadcastVoteResponse?.tx_hash}`
+          setTxUrl(url)
           showToast({
             type: 'success',
             message: 'Successfully voted',
-            linkUrl: `https://sepolia.etherscan.io/tx/${broadcastVoteResponse?.tx_hash}`,
+            linkUrl: url,
           })
           navigate(`/result/${votingRound.round_id}/confirmation`)
           return
@@ -53,7 +57,7 @@ const DailyPoll: React.FC = () => {
   }
   return (
     <Fragment>
-      <DailyPollSection onVoted={handleVoted} loading={loading || newRoundLoading} />
+      <DailyPollSection onVoted={handleVoted} loading={loading || newRoundLoading} endTime={endTime} />
     </Fragment>
   )
 }

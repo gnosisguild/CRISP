@@ -3,11 +3,12 @@ import React, { useEffect, useState } from 'react'
 interface CardProps {
   children: React.ReactNode
   isDetails?: boolean
+  isActive?: boolean
   checked?: boolean
   onChecked?: (clicked: boolean) => void
 }
 
-const Card: React.FC<CardProps> = ({ children, isDetails, checked, onChecked }) => {
+const Card: React.FC<CardProps> = ({ children, isActive, isDetails, checked, onChecked }) => {
   const [isClicked, setIsClicked] = useState<boolean>(checked ?? false)
 
   useEffect(() => {
@@ -19,6 +20,12 @@ const Card: React.FC<CardProps> = ({ children, isDetails, checked, onChecked }) 
     if (onChecked) onChecked(!isClicked)
     setIsClicked(!isClicked)
   }
+
+  useEffect(() => {
+    if (isActive) {
+      setIsClicked(false)
+    }
+  }, [isActive])
 
   return (
     <div

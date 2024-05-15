@@ -32,7 +32,7 @@ const App: React.FC = () => {
           <Routes>
             <Route path='/' element={<Landing />} />
             <Route path='/about' element={<About />} />
-            <Route path='/daily' element={<DailyPoll />} />
+            <Route path='/current' element={<DailyPoll />} />
             <Route path='/historic' element={<HistoricPoll />} />
             <Route path='/result/:roundId/:type?' element={<PollResult />} />
             <Route path='*' element={<Navigate to='/' replace />} />

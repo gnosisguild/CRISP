@@ -51,7 +51,7 @@ const HeroSection: React.FC = () => {
               <div>Learn more.</div>
             </Link>
           </div>
-          <Link to='/daily' className='inline-flex'>
+          <Link to='/current' className='inline-flex'>
             <button className='button-primary'>Try Demo</button>
           </Link>
         </div>

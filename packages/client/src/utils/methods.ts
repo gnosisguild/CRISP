@@ -13,22 +13,35 @@ export const convertTimestampToDate = (timestamp: number, secondsToAdd: number =
   date.setSeconds(date.getMinutes() + secondsToAdd)
   return date
 }
+
 export const hasPollEnded = (pollLength: number, startTime: number): boolean => {
   const endTime = (startTime + pollLength) * 1000
   const currentTime = Date.now()
   return currentTime >= endTime
 }
 
+export const hasPollEndedByTimestamp = (endTime: number): boolean => {
+  const endTimeMillis = endTime * 1000
+  const currentTime = Date.now()
+  return currentTime >= endTimeMillis
+}
+
 export const formatDate = (isoDateString: string): string => {
   const date = new Date(isoDateString)
 
-  const formatter = new Intl.DateTimeFormat('en-US', {
+  const dateFormatter = new Intl.DateTimeFormat('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   })
 
-  return formatter.format(date)
+  const timeFormatter = new Intl.DateTimeFormat('en-US', {
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: true,
+  })
+
+  return `${dateFormatter.format(date)} -  ${timeFormatter.format(date)}`
 }
 
 export const fixPollResult = (poll: PollRequestResult): PollRequestResult => {
@@ -58,6 +71,7 @@ export const convertPollData = (request: PollRequestResult): PollResult => {
   const date = new Date(request.end_time * 1000).toISOString()
 
   return {
+    endTime: request.end_time,
     roundId: request.round_id,
     totalVotes: totalVotes,
     date: date,
