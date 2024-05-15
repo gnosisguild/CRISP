@@ -34,7 +34,7 @@ const App: React.FC = () => {
             <Route path='/about' element={<About />} />
             <Route path='/daily' element={<DailyPoll />} />
             <Route path='/historic' element={<HistoricPoll />} />
-            <Route path='/result/:roundId' element={<PollResult />} />
+            <Route path='/result/:roundId/:type?' element={<PollResult />} />
             <Route path='*' element={<Navigate to='/' replace />} />
           </Routes>
         </div>

@@ -41,7 +41,8 @@ const CountdownTimer: React.FC<CountdownTimerProps> = ({ endTime }) => {
   return (
     <div className='flex flex-col items-center justify-center space-y-2'>
       <p className='text-base font-bold uppercase text-slate-600/50'>Poll ends in:</p>
-      {loading && <LoadingAnimation isLoading={loading} />}
+
+      {loading && <LoadingAnimation isLoading={true} />}
       {!loading && remainingTime && (
         <div className='flex space-x-6'>
           <p className='text-2xl font-bold text-slate-600'>

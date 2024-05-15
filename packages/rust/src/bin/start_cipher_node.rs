@@ -490,7 +490,7 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
         let now = Utc::now();
         let internal_time = now.timestamp();
         if (state.start_time + state.poll_length as i64) < internal_time {
-            print!("poll time ended... performing fhe computation");
+            println!("poll time ended... performing fhe computation");
 
             let response_get_voters = VoteCountRequest { round_id: state.id, vote_count: 0 };
             let out = serde_json::to_string(&response_get_voters).unwrap();

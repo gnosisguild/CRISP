@@ -1,14 +1,14 @@
 import React, { Fragment, useEffect, useState } from 'react'
 import DailyPollSection from '@/pages/Landing/components/DailyPoll'
-import ConfirmVote from '@/pages/DailyPoll/components/ConfirmVote'
 import { Poll } from '@/model/poll.model'
 import { useVoteManagementContext } from '@/context/voteManagement'
 import { useNotificationAlertContext } from '@/context/NotificationAlert'
+import { useNavigate } from 'react-router-dom'
 
 const DailyPoll: React.FC = () => {
+  const navigate = useNavigate()
   const { showToast } = useNotificationAlertContext()
-  const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, votingRound, roundEndDate, roundState } = useVoteManagementContext()
-  const [voteCompleted, setVotedCompleted] = useState<boolean>(false)
+  const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, votingRound, roundState } = useVoteManagementContext()
   const [loading, setLoading] = useState<boolean>(false)
   const [newRoundLoading, setNewRoundLoading] = useState<boolean>(false)
 
@@ -26,7 +26,6 @@ const DailyPoll: React.FC = () => {
     }
   }, [roundState])
 
-  console.log('newRoundLoading', newRoundLoading)
   const handleVoted = async (vote: Poll | null) => {
     if (vote && votingRound) {
       setLoading(true)
@@ -44,7 +43,7 @@ const DailyPoll: React.FC = () => {
             message: 'Successfully voted',
             linkUrl: `https://sepolia.etherscan.io/tx/${broadcastVoteResponse?.tx_hash}`,
           })
-          setVotedCompleted(true)
+          navigate(`/result/${votingRound.round_id}/confirmation`)
           return
         }
         showToast({ type: 'danger', message: 'Error broadcasting the vote' })
@@ -54,8 +53,7 @@ const DailyPoll: React.FC = () => {
   }
   return (
     <Fragment>
-      {!voteCompleted && <DailyPollSection onVoted={handleVoted} loading={loading || newRoundLoading} />}
-      {voteCompleted && roundEndDate && <ConfirmVote endTime={roundEndDate} />}
+      <DailyPollSection onVoted={handleVoted} loading={loading || newRoundLoading} />
     </Fragment>
   )
 }
