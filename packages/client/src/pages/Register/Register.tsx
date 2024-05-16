@@ -72,7 +72,7 @@ const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
             <p className='text-base font-extrabold uppercase text-slate-500'>WHAT HAPPENS NEXT?</p>
             <p className='text-lg  text-slate-600'>
               An address will be automatically generated and associated with your twitter account so you can easily authenticate and vote in
-              future daily polls.
+              future polls.
             </p>
           </div>
           <div className='flex items-center gap-4 max-md:flex-col'>

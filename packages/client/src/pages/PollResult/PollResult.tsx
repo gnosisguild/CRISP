@@ -60,7 +60,7 @@ const PollResult: React.FC = () => {
             <div className='my-28 flex w-full flex-col items-center justify-center space-y-12'>
               <div className='flex flex-col items-center justify-center space-y-6'>
                 <div className='space-y-2 text-center'>
-                  <p className='text-sm font-extrabold uppercase'>daily poll</p>
+                  <p className='text-sm font-extrabold uppercase'>Poll {poll.roundId}</p>
                   <h1 className='text-h1 font-bold  text-slate-600 max-sm:text-3xl'>
                     {type === 'confirmation' ? 'Thanks for voting!' : 'Poll Results'}
                   </h1>
