@@ -35,6 +35,11 @@ use ethers::{
 use sled::Db;
 use once_cell::sync::Lazy;
 
+use hmac::{Hmac, Mac};
+use jwt::SignWithKey;
+use sha2::Sha256;
+use std::collections::BTreeMap;
+
 #[derive(Debug, Deserialize, Serialize)]
 struct JsonRequest {
     response: String,
@@ -283,16 +288,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         let mut url_get_rounds_str = config.enclave_address.clone();
         url_get_rounds_str.push_str("/get_rounds");
-        let token = Authorization::bearer("some-opaque-token").unwrap();
-        println!("bearer token {:?}", token.token());
+
+        let key: Hmac<Sha256> = Hmac::new_from_slice(b"some-secret")?;
+        let mut claims = BTreeMap::new();
+        claims.insert("sub", "someone");
+        let mut bearer_str = "Bearer ".to_string();
+        let token_str = claims.sign_with_key(&key)?;
+        bearer_str.push_str(&token_str);
+        println!("{:?}", bearer_str);
 
         let req = Request::builder()
-            .header("content-type", "application/wasm")
-            .header("user-agent", "the-awesome-agent/007")
-            //.header("server", "test")
-            .header("authorization", "Bearer fpKL54jvWmEGVoRdCNjG")
-            //.header(Authorization, token.token())
-            //.auth(token)
+            .header("authorization", bearer_str)
             .method(Method::GET)
             .uri(url_get_rounds_str)
             .body(Empty::<Bytes>::new())?;
@@ -499,7 +505,7 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
         let now = Utc::now();
         let internal_time = now.timestamp();
         if (state.start_time + state.poll_length as i64) < internal_time {
-            println!("poll time ended... performing fhe computation");
+            print!("poll time ended... performing fhe computation");
 
             let response_get_voters = VoteCountRequest { round_id: state.id, vote_count: 0 };
             let out = serde_json::to_string(&response_get_voters).unwrap();

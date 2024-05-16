@@ -2248,6 +2248,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "jwt"
+version = "0.16.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6204285f77fe7d9784db3fdc449ecce1a0114927a51d5a41c4c7a292011c015f"
+dependencies = [
+ "base64 0.13.1",
+ "crypto-common",
+ "digest",
+ "hmac",
+ "serde",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "k256"
 version = "0.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3524,18 +3539,21 @@ dependencies = [
  "fhe-util",
  "getrandom",
  "headers",
+ "hmac",
  "http-body-util",
  "hyper 1.3.1",
  "hyper-tls",
  "hyper-util",
  "iron",
  "iron-cors",
+ "jwt",
  "once_cell",
  "rand 0.8.5",
  "rand_chacha 0.3.1",
  "router",
  "serde",
  "serde_json",
+ "sha2",
  "sled",
  "tokio",
  "walkdir",

@@ -32,6 +32,11 @@ use ethers::{
 use sled::Db;
 use once_cell::sync::Lazy;
 
+use hmac::{Hmac, Mac};
+use jwt::VerifyWithKey;
+use sha2::Sha256;
+use std::collections::BTreeMap;
+
 static GLOBAL_DB: Lazy<Db> = Lazy::new(|| {
     let pathdb = env::current_dir().unwrap();
     let mut pathdbst = pathdb.display().to_string();
@@ -693,15 +698,17 @@ fn get_pk_share_count(req: &mut Request) -> IronResult<Response> {
 }
 
 fn get_rounds(_req: &mut Request) -> IronResult<Response> {
-    println!("{:?}", _req);
-    //format!("{}", HeaderFormatter(&_req));
-    //let test = HeaderFormat::_req.headers.get());
-    let test = _req.headers.get::<iron::headers::ContentType>().unwrap();
-    println!("content_type: {:?}", test);
-    let test3 = _req.headers.get::<iron::headers::Authorization<Bearer>>().unwrap();
-    println!("auth: {:?}", test3.token);
-    let test2 = _req.headers.get::<iron::headers::UserAgent>();
-    println!("user agent: {:?}", test2);
+    //let test = _req.headers.get::<iron::headers::ContentType>().unwrap();
+    //println!("content_type: {:?}", test);
+
+    // let test3 = _req.headers.get::<iron::headers::Authorization<Bearer>>().unwrap();
+    // println!("auth: {:?}", test3.token);
+    // let key: Hmac<Sha256> = Hmac::new_from_slice(b"some-secret").unwrap();
+    // let claims: BTreeMap<String, String> = test3.token.verify_with_key(&key).unwrap();
+    // println!("decoded hmac {:?}", claims);
+
+    //let test2 = _req.headers.get::<iron::headers::UserAgent>();
+    //println!("user agent: {:?}", test2);
 
     let key = "round_count";
     let mut round = GLOBAL_DB.get(key).unwrap();
@@ -726,6 +733,10 @@ fn get_rounds(_req: &mut Request) -> IronResult<Response> {
 
 #[tokio::main]
 async fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
+    // let auth = _req.headers.get::<iron::headers::Authorization<Bearer>>().unwrap();
+    // if auth.token != env {
+        
+    // }
     println!("generating round crp");
 
     let infura_val = env!("INFURAKEY");
