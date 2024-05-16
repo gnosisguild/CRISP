@@ -19,6 +19,7 @@ use hyper::Method;
 use hyper_tls::HttpsConnector;
 use hyper_util::{client::legacy::Client as HyperClient, rt::TokioExecutor};
 use bytes::Bytes;
+use headers::Authorization;
 
 use http_body_util::BodyExt;
 use tokio::io::{AsyncWriteExt as _, self};
@@ -282,8 +283,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         let mut url_get_rounds_str = config.enclave_address.clone();
         url_get_rounds_str.push_str("/get_rounds");
+        let token = Authorization::bearer("some-opaque-token").unwrap();
+        println!("bearer token {:?}", token.token());
 
         let req = Request::builder()
+            .header("content-type", "application/wasm")
+            .header("user-agent", "the-awesome-agent/007")
+            //.header("server", "test")
+            .header("authorization", "Bearer fpKL54jvWmEGVoRdCNjG")
+            //.header(Authorization, token.token())
+            //.auth(token)
             .method(Method::GET)
             .uri(url_get_rounds_str)
             .body(Empty::<Bytes>::new())?;

@@ -35,3 +35,4 @@ once_cell = "1.19.0"
 async-std = { version = "1", features = ["attributes", "tokio1"] }
 bytes = "1.6.0"
 iron-cors = "0.8.0"
+headers = "0.4.0"

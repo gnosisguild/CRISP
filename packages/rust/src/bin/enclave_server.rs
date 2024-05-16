@@ -15,6 +15,7 @@ use iron::prelude::*;
 use iron::status;
 use iron::mime::Mime;
 use iron::Chain;
+use iron::headers::{Header, HeaderFormat, HeaderFormatter, Bearer};
 use router::Router;
 use std::io::Read;
 
@@ -692,6 +693,16 @@ fn get_pk_share_count(req: &mut Request) -> IronResult<Response> {
 }
 
 fn get_rounds(_req: &mut Request) -> IronResult<Response> {
+    println!("{:?}", _req);
+    //format!("{}", HeaderFormatter(&_req));
+    //let test = HeaderFormat::_req.headers.get());
+    let test = _req.headers.get::<iron::headers::ContentType>().unwrap();
+    println!("content_type: {:?}", test);
+    let test3 = _req.headers.get::<iron::headers::Authorization<Bearer>>().unwrap();
+    println!("auth: {:?}", test3.token);
+    let test2 = _req.headers.get::<iron::headers::UserAgent>();
+    println!("user agent: {:?}", test2);
+
     let key = "round_count";
     let mut round = GLOBAL_DB.get(key).unwrap();
     if round == None {
