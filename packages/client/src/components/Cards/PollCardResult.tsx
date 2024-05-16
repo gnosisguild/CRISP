@@ -1,6 +1,7 @@
 import React from 'react'
 import { PollOption } from '@/model/poll.model'
 import Card from '@/components/Cards/Card'
+import { ShieldSlash } from '@phosphor-icons/react'
 
 type PollCardResultProps = {
   results: PollOption[]
@@ -27,6 +28,15 @@ const PollCardResult: React.FC<PollCardResultProps> = ({ isResult, results, tota
               <p className={isResult ? 'text-8xl max-sm:p-5 max-sm:text-6xl' : 'text-5xl'}>{poll.label}</p>
             </Card>
 
+            {isActive && isResult && (
+              <div className={isResult ? 'space-y-2 ' : ''}>
+                <div className='flex w-full items-center justify-center space-x-1 rounded-lg border-2 border-slate-600/20 bg-white p-2 py-1 font-bold uppercase  shadow-md'>
+                  <ShieldSlash weight='bold' size={24} className='text-slate-800/50' />
+                  <div className={`text-center text-sm font-bold uppercase text-slate-800/50 `}>vote encrypted</div>
+                </div>
+                <p className={` text-center text-sm font-extrabold uppercase text-slate-600/50  max-sm:text-xs`}>revealed when poll ends</p>
+              </div>
+            )}
             {!isActive && (
               <div className={isResult ? 'space-y-2 max-sm:space-y-0' : ''}>
                 <h3
