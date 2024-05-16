@@ -298,7 +298,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         println!("{:?}", bearer_str);
 
         let req = Request::builder()
-            .header("authorization", bearer_str)
+            //.header("authorization", bearer_str)
             .method(Method::GET)
             .uri(url_get_rounds_str)
             .body(Empty::<Bytes>::new())?;

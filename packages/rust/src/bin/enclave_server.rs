@@ -33,7 +33,7 @@ use sled::Db;
 use once_cell::sync::Lazy;
 
 use hmac::{Hmac, Mac};
-use jwt::VerifyWithKey;
+use jwt::{ VerifyWithKey, SignWithKey };
 use sha2::Sha256;
 use std::collections::BTreeMap;
 
@@ -265,6 +265,22 @@ struct GetEligibilityRequest {
     node_id: u32,
     is_eligible: bool,
     reason: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AuthenticationDB {
+    jwt_tokens: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AuthenticationLogin {
+    postId: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AuthenticationResponse {
+    response: String,
+    jwt_token: String,
 }
 
 fn generate_emoji() -> (String, String) {
@@ -1058,6 +1074,67 @@ async fn register_ciphernode(req: &mut Request) -> IronResult<Response> {
     Ok(Response::with((content_type, status::Ok, out)))
 }
 
+fn authentication_login(req: &mut Request) -> IronResult<Response> {
+    let mut payload = String::new();
+    // read the POST body
+    req.body.read_to_string(&mut payload).unwrap();
+    let incoming: AuthenticationLogin = serde_json::from_str(&payload).unwrap();
+    println!("Twitter Login Request");
+
+    // hmac
+    let hmac_key: Hmac<Sha256> = Hmac::new_from_slice(b"some-secret").unwrap();
+    let mut claims = BTreeMap::new();
+    claims.insert("postId", incoming.postId);
+    let token_str = claims.sign_with_key(&hmac_key).unwrap();
+
+    // db
+    let key = "authentication";
+    let mut authsdb = GLOBAL_DB.get(key).unwrap();
+    let mut response_str = "".to_string();
+    let mut jwt_token = "".to_string();
+
+    if authsdb == None {
+        println!("initializing first auth in db");
+        // hmac
+        let auth_struct = AuthenticationDB {
+            jwt_tokens: vec![token_str.clone()],
+        };
+        let authsdb_str = serde_json::to_string(&auth_struct).unwrap();
+        let authsdb_bytes = authsdb_str.into_bytes();
+        GLOBAL_DB.insert(key, authsdb_bytes).unwrap();
+        // set response
+        response_str = "Authorized".to_string();
+    } else {
+        // look for previous auth
+        let mut au_db = authsdb.unwrap();
+        let authsdb_out_str = str::from_utf8(&au_db).unwrap();
+        let mut authsdb_out_struct: AuthenticationDB = serde_json::from_str(&authsdb_out_str).unwrap();
+
+        for i in 0..authsdb_out_struct.jwt_tokens.len() {
+            if authsdb_out_struct.jwt_tokens[i as usize] == token_str {
+                println!("Found previous login.");
+                response_str = "Already Authorized".to_string();
+            } else {
+                println!("Inserting new login to db.");
+                authsdb_out_struct.jwt_tokens.push(token_str.clone());
+                let authsdb_str = serde_json::to_string(&authsdb_out_struct).unwrap();
+                let authsdb_bytes = authsdb_str.into_bytes();
+                GLOBAL_DB.insert(key, authsdb_bytes).unwrap();
+                response_str = "Authorized".to_string();
+            };
+        };
+    };
+
+    let response = AuthenticationResponse {
+        response: response_str,
+        jwt_token: token_str,
+    };
+    let out = serde_json::to_string(&response).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     // Server Code
@@ -1084,6 +1161,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.post("/get_round_state_web", get_round_state_web, "get_round_state_web");
     router.post("/get_node_by_round", get_node_by_round, "get_node_by_round");
     router.post("/get_round_eligibility", get_round_eligibility, "get_round_eligibility");
+    router.post("/authentication_login", authentication_login, "authentication_login");
 
     let cors_middleware = CorsMiddleware::with_allow_any();
     println!("Allowed origin hosts: *");
