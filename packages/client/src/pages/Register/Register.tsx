@@ -6,7 +6,7 @@ interface RegisterProps {
   onClose: () => void
 }
 
-export const AUTH_MSG = `I am authenticating this Twitter account to cast my first encrypted vote with CRISP!
+export const AUTH_MSG = `🤫 I am authenticating with my Twitter account to cast my first encrypted vote with CRISP!
 
 Visit https://crisp.gnosisguild.org/ to vote.
 
@@ -20,7 +20,7 @@ const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
   const handlePost = () => {
     if (!showVerification) {
       window.open(
-        'https://twitter.com/intent/post?text=I%20am%20authenticating%20this%20Twitter%20account%20to%20cast%20my%20first%20encrypted%20vote%20with%20CRISP!%0A%0AVisit%20https://crisp.gnosisguild.org/%20to%20vote.%0A%0A%23FHE%20%23ZKP%20%23CRISP',
+        'https://twitter.com/intent/post?text=🤫%20I%20am%20authenticating%20with%20my%20Twitter%20account%20to%20cast%20my%20first%20encrypted%20vote%20with%20CRISP%21%0A%0A%23FHE%20%23ZKP%20%23CRISP',
         '_blank',
       )
       setShowVerification(true)

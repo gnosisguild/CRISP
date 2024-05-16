@@ -8,8 +8,7 @@ const TWITTER_API = import.meta.env.VITE_TWITTER_SERVERLESS_API
 
 if (!TWITTER_API) handleGenericError('useTwitter', { name: 'TWITTER_API', message: 'Missing env VITE_TWITTER_SERVERLESS_API' })
 
-const MSG_REGEX =
-  /I am authenticating this Twitter account to cast my first encrypted vote with CRISP!\s*\n\nVisit https:\/\/t.co\/[^\s]+ to vote.\s*\n\n#FHE #ZKP #CRISP/i
+const MSG_REGEX = /🤫 I am authenticating with my Twitter account to cast my first encrypted vote with CRISP!\n\n#FHE #ZKP #CRISP/i
 
 export const useTwitter = () => {
   const url = `${TWITTER_API}/twitter-data`
