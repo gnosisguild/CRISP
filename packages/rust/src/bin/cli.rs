@@ -145,7 +145,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let _out = serde_json::to_string(&response_id).unwrap();
             let mut url_id = config.enclave_address.clone();
             url_id.push_str("/get_rounds");
+
+            //let token = Authorization::bearer("some-opaque-token").unwrap();
+            //println!("bearer token {:?}", token.token());
+            //todo: add auth field to config file to get bearer token
             let req = Request::builder()
+                .header("authorization", "Bearer fpKL54jvWmEGVoRdCNjG")
                 .method(Method::GET)
                 .uri(url_id)
                 .body(Empty::<Bytes>::new())?;
