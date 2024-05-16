@@ -18,7 +18,9 @@ const PollResult: React.FC = () => {
   const { pastPolls, getWebResult } = useVoteManagementContext()
   const [loading, setLoading] = useState<boolean>(true)
   const [poll, setPoll] = useState<PollResultType | null>(null)
-  const { roundEndDate, txUrl } = useVoteManagementContext()
+  const { roundEndDate, txUrl, roundState } = useVoteManagementContext()
+
+  const activeTotalCount = type === 'confirmation' ? roundState?.vote_count : poll?.totalVotes
 
   useEffect(() => {
     if (pastPolls.length && roundId) {
@@ -71,9 +73,14 @@ const PollResult: React.FC = () => {
                     <CountdownTimer endTime={roundEndDate} />
                   </div>
                 )}
-                <VotesBadge totalVotes={poll.totalVotes} />
+                <VotesBadge totalVotes={activeTotalCount ?? 0} />
               </div>
-              <PollCardResult results={markWinner(poll.options)} totalVotes={poll.totalVotes} isResult />
+              <PollCardResult
+                results={markWinner(poll.options)}
+                totalVotes={poll.totalVotes}
+                isResult
+                isActive={type === 'confirmation' ? true : false}
+              />
             </div>
 
             {type === 'confirmation' && txUrl && <ConfirmVote confirmationUrl={txUrl} />}
