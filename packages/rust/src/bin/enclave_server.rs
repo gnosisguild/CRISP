@@ -145,6 +145,7 @@ struct SKSShareRequest {
 struct EncryptedVote {
     round_id: u32,
     enc_vote_bytes: Vec<u8>,
+    postId: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -250,6 +251,7 @@ struct Round {
     votes_option_1: u32,
     votes_option_2: u32,
     ciphernodes: Vec<Ciphernode>,
+    has_voted: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -343,27 +345,39 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let incoming: EncryptedVote = serde_json::from_str(&payload).unwrap();
-
+    let mut response_str = "";
+    let mut converter = "".to_string();
     let (mut state, key) = get_state(incoming.round_id);
 
-    let sol_vote = Bytes::from(incoming.enc_vote_bytes);
-    let tx_hash = call_contract(sol_vote, state.voting_address.clone()).await.unwrap();
-    let mut converter = "0x".to_string();
-    for i in 0..32 {
-        if tx_hash[i] <= 16 {
-            converter.push_str("0");
-            converter.push_str(&format!("{:x}", tx_hash[i]));
+    for i in 1..state.has_voted.len() {
+        if state.has_voted[i] == incoming.postId {
+            response_str = "User Has Already Voted";
         } else {
-            converter.push_str(&format!("{:x}", tx_hash[i]));
+            response_str = "Vote Successful";
         }
-    }
+    };
 
-    state.vote_count = state.vote_count + 1;
-    let state_str = serde_json::to_string(&state).unwrap();
-    let state_bytes = state_str.into_bytes();
-    GLOBAL_DB.insert(key, state_bytes).unwrap();
+    if response_str == "Vote Successful" {
+        let sol_vote = Bytes::from(incoming.enc_vote_bytes);
+        let tx_hash = call_contract(sol_vote, state.voting_address.clone()).await.unwrap();
+        converter = "0x".to_string();
+        for i in 0..32 {
+            if tx_hash[i] <= 16 {
+                converter.push_str("0");
+                converter.push_str(&format!("{:x}", tx_hash[i]));
+            } else {
+                converter.push_str(&format!("{:x}", tx_hash[i]));
+            }
+        }
 
-    let response = JsonResponseTxHash { response: "tx_sent".to_string(), tx_hash: converter };
+        state.vote_count = state.vote_count + 1;
+        state.has_voted.push(incoming.postId);
+        let state_str = serde_json::to_string(&state).unwrap();
+        let state_bytes = state_str.into_bytes();
+        GLOBAL_DB.insert(key, state_bytes).unwrap();
+    };
+
+    let response = JsonResponseTxHash { response: response_str.to_string(), tx_hash: converter };
     let out = serde_json::to_string(&response).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -879,6 +893,7 @@ async fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
                 sks_share: vec![0],
             }
         ],
+        has_voted: vec!["".to_string()],
     };
 
     let state_str = serde_json::to_string(&state).unwrap();
