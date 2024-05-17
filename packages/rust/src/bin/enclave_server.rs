@@ -184,9 +184,15 @@ struct WebResultRequest {
     round_id: u32,
     option_1_tally: u32,
     option_2_tally: u32,
+    total_votes: u32,
     option_1_emoji: String,
     option_2_emoji: String,
     end_time: i64
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AllWebStates {
+    states: Vec<WebResultRequest>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -318,6 +324,17 @@ fn get_state(round_id: u32) -> (Round, String) {
     let state_out_str = str::from_utf8(&state_out).unwrap();
     let state_out_struct: Round = serde_json::from_str(&state_out_str).unwrap();
     (state_out_struct, round_key)
+}
+
+fn get_round_count() -> u32 {
+    let round_key = "round_count";
+    let round_db = GLOBAL_DB.get(round_key).unwrap();
+    if round_db == None {
+        println!("initializing first round in db");
+        GLOBAL_DB.insert(round_key, b"0".to_vec()).unwrap();
+    }
+    let round_str = std::str::from_utf8(round_db.unwrap().as_ref()).unwrap().to_string();
+    round_str.parse::<u32>().unwrap()
 }
 
 #[tokio::main]
@@ -514,7 +531,7 @@ fn get_web_result(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request emojis for round {:?}", incoming.round_id);
+    println!("Request web state for round {:?}", incoming.round_id);
 
     let (state, _key) = get_state(incoming.round_id);
     
@@ -522,11 +539,39 @@ fn get_web_result(req: &mut Request) -> IronResult<Response> {
         round_id: incoming.round_id,
         option_1_tally: state.votes_option_1,
         option_2_tally: state.votes_option_2,
+        total_votes: state.votes_option_1 + state.votes_option_2,
         option_1_emoji: state.emojis[0].clone(),
         option_2_emoji: state.emojis[1].clone(),
         end_time: state.start_time + state.poll_length as i64
     };
 
+    let out = serde_json::to_string(&response).unwrap();
+
+    let content_type = "application/json".parse::<Mime>().unwrap();
+    Ok(Response::with((content_type, status::Ok, out)))
+}
+
+fn get_web_result_all(req: &mut Request) -> IronResult<Response> {
+    println!("Request all web state.");
+
+    let round_count = get_round_count();
+    let mut states: Vec<WebResultRequest> = Vec::with_capacity(round_count as usize);
+
+    for i in 1..round_count {
+        let (state, _key) = get_state(i);
+        let web_state = WebResultRequest {
+            round_id: i,
+            option_1_tally: state.votes_option_1,
+            option_2_tally: state.votes_option_2,
+            total_votes: state.votes_option_1 + state.votes_option_2,
+            option_1_emoji: state.emojis[0].clone(),
+            option_2_emoji: state.emojis[1].clone(),
+            end_time: state.start_time + state.poll_length as i64
+        };
+        states.push(web_state);
+    }
+
+    let response = AllWebStates { states: states };
     let out = serde_json::to_string(&response).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
@@ -1142,6 +1187,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     router.get("/", handler, "index");
     router.get("/health", health_handler, "health");
     router.get("/get_rounds", get_rounds, "get_rounds");
+    router.get("/get_web_result_all", get_web_result_all, "get_web_result_all");
     router.post("/get_pk_share_count", get_pk_share_count, "get_pk_share_count");
     router.post("/register_ciphernode", register_ciphernode, "register_ciphernode");
     router.post("/init_crisp_round", init_crisp_round, "init_crisp_round");
