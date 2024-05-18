@@ -90,6 +90,7 @@ struct CrispConfig {
     voting_address: String,
     ciphernode_count: u32,
     enclave_address: String,
+    authentication_id: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -349,7 +350,7 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     let mut converter = "".to_string();
     let (mut state, key) = get_state(incoming.round_id);
 
-    for i in 1..state.has_voted.len() {
+    for i in 0..state.has_voted.len() {
         if state.has_voted[i] == incoming.postId {
             response_str = "User Has Already Voted";
         } else {

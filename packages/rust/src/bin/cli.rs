@@ -23,6 +23,11 @@ use http_body_util::Empty;
 use http_body_util::BodyExt;
 use tokio::io::{AsyncWriteExt as _, self};
 
+use hmac::{Hmac, Mac};
+use jwt::SignWithKey;
+use sha2::Sha256;
+use std::collections::BTreeMap;
+
 
 #[derive(Debug, Deserialize, Serialize)]
 struct JsonResponse {
@@ -61,6 +66,7 @@ struct CrispConfig {
     voting_address: String,
     ciphernode_count: u32,
     enclave_address: String,
+    authentication_id: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -73,6 +79,18 @@ struct PKRequest {
 struct EncryptedVote {
     round_id: u32,
     enc_vote_bytes: Vec<u8>,
+    postId: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AuthenticationLogin {
+    postId: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct AuthenticationResponse {
+    response: String,
+    jwt_token: String,
 }
 
 #[tokio::main]
@@ -82,6 +100,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     //let client = HyperClient::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https);
     let client_get = HyperClient::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https.clone());
     let client = HyperClient::builder(TokioExecutor::new()).build::<_, String>(https);
+    let mut auth_res = AuthenticationResponse {
+        response: "".to_string(),
+        jwt_token: "".to_string(),
+    };
 
 	print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
     let selections = &[
@@ -150,7 +172,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             //println!("bearer token {:?}", token.token());
             //todo: add auth field to config file to get bearer token
             let req = Request::builder()
-                .header("authorization", "Bearer fpKL54jvWmEGVoRdCNjG")
                 .method(Method::GET)
                 .uri(url_id)
                 .body(Empty::<Bytes>::new())?;
@@ -164,6 +185,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let count: RoundCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
             println!("Server Round Count: {:?}", count.round_count);
 
+            // TODO: get secret from env var
+            // let key: Hmac<Sha256> = Hmac::new_from_slice(b"some-secret")?;
+            // let mut claims = BTreeMap::new();
+            // claims.insert("postId", config.authentication);
+            // let mut bearer_str = "Bearer ".to_string();
+            // let token_str = claims.sign_with_key(&key)?;
+            // bearer_str.push_str(&token_str);
+            // println!("{:?}", bearer_str);
+
             let round_id = count.round_count + 1;
             let response = CrispConfig { 
                 round_id: round_id,
@@ -171,12 +201,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 chain_id: config.chain_id,
                 voting_address: config.voting_address,
                 ciphernode_count: config.ciphernode_count,
-                enclave_address: config.enclave_address.clone()
+                enclave_address: config.enclave_address.clone(),
+                authentication_id: config.authentication_id.clone(),
             };
             let out = serde_json::to_string(&response).unwrap();
             let mut url = config.enclave_address.clone();
             url.push_str("/init_crisp_round");
             let req = Request::builder()
+                .header("authorization", "Bearer fpKL54jvWmEGVoRdCNjG")
                 .method(Method::POST)
                 .uri(url)
                 .body(out)?;
@@ -213,6 +245,26 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let config: CrispConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
             println!("Voting state Initialized");
 
+            // get authentication token
+            let user = AuthenticationLogin {
+                postId: config.authentication_id.clone(),
+            };
+
+            let out = serde_json::to_string(&user).unwrap();
+            let mut url = config.enclave_address.clone();
+            url.push_str("/authentication_login");
+            let req = Request::builder()
+                .method(Method::POST)
+                .uri(url)
+                .body(out)?;
+
+            let mut resp = client.request(req).await?;
+            let body_bytes = resp.collect().await?.to_bytes();
+            let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+            auth_res = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+            println!("Authentication response {:?}", auth_res);            
+
+            // get public encrypt key
             let v: Vec<u8> = vec! [0];
             let response_pk = PKRequest { round_id: input_crisp_id, pk_bytes: v };
             let out = serde_json::to_string(&response_pk).unwrap();
@@ -271,7 +323,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             println!("Vote encrypted.");
             println!("Calling voting contract with encrypted vote.");
 
-            let request_contract = EncryptedVote { round_id: input_crisp_id, enc_vote_bytes: ct.to_bytes()};
+            let request_contract = EncryptedVote {
+                round_id: input_crisp_id,
+                enc_vote_bytes: ct.to_bytes(),
+                postId: auth_res.jwt_token,
+            };
             let out = serde_json::to_string(&request_contract).unwrap();
             let mut url = config.enclave_address.clone();
             url.push_str("/broadcast_enc_vote");
