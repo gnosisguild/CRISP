@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - "packages/rust/**"
+      - "packages/server/**"
 
 env:
   AWS_REGION: us-east-1 # set this to your preferred AWS region, e.g. us-west-1
@@ -36,7 +36,7 @@ jobs:
         id: build-image
         uses: docker/build-push-action@v4
         with:
-          context: ./packages/rust
+          context: ./packages/server
           push: true
           tags: ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
           provenance: false
