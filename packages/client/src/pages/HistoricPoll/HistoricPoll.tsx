@@ -6,12 +6,12 @@ import { useVoteManagementContext } from '@/context/voteManagement'
 import CircularTiles from '@/components/CircularTiles'
 
 const HistoricPoll: React.FC = () => {
-  const { votingRound, pastPolls, getPastPolls } = useVoteManagementContext()
+  const { votingRound, pastPolls, getPastPolls, isLoading } = useVoteManagementContext()
 
   useEffect(() => {
-    if (votingRound && votingRound?.round_id > pastPolls.length) {
+    if (votingRound && votingRound?.round_id - 1 > pastPolls.length) {
       const fetchPastPolls = async () => {
-        await getPastPolls(votingRound.round_id)
+        await getPastPolls()
       }
       fetchPastPolls()
     }
@@ -24,18 +24,21 @@ const HistoricPoll: React.FC = () => {
       </div>
       <div className='relative mx-auto flex w-full flex-col items-center justify-center space-y-8'>
         <h1 className='text-h1 font-bold text-slate-600'>Historic polls</h1>
-        {!pastPolls.length && (
+        {isLoading && (
           <div className='flex justify-center'>
-            <LoadingAnimation isLoading={true} />
+            <LoadingAnimation isLoading={isLoading} />
           </div>
         )}
-        <div className='mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 overflow-y-auto p-4 md:grid-cols-3'>
-          {pastPolls.map((pollResult: PollResult) => (
-            <div className='flex items-center justify-center' key={pollResult.roundId}>
-              <PollCard {...pollResult} />
-            </div>
-          ))}
-        </div>
+        {!pastPolls.length && !isLoading && <p className=' text-2xl font-bold text-slate-600/50 '>There are no historic polls.</p>}
+        {pastPolls.length > 0 && !isLoading && (
+          <div className='mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 overflow-y-auto p-4 md:grid-cols-3'>
+            {pastPolls.map((pollResult: PollResult) => (
+              <div className='flex items-center justify-center' key={pollResult.roundId}>
+                <PollCard {...pollResult} />
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )

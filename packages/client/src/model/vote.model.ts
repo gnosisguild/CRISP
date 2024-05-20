@@ -17,6 +17,7 @@ export interface RoundCount {
 export interface BroadcastVoteRequest {
   round_id: number
   enc_vote_bytes: number[] //bytes
+  postId: string
 }
 
 export interface BroadcastVoteResponse {

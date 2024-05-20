@@ -23,4 +23,10 @@ export interface SocialAuth {
   avatar: string
   username: string
   postId: string
+  token: string
+}
+
+export interface Auth {
+  jwt_token: string
+  response: 'Already Authorized' | 'No Authorization'
 }

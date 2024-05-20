@@ -1,6 +1,6 @@
 import { ReactNode } from 'react'
 import * as WasmInstance from 'libs/wasm/pkg/crisp_web'
-import { SocialAuth } from '@/model/twitter.model'
+import { Auth, SocialAuth } from '@/model/twitter.model'
 import { BroadcastVoteRequest, BroadcastVoteResponse, VoteStateLite, VotingRound } from '@/model/vote.model'
 import { Poll, PollRequestResult, PollResult } from '@/model/poll.model'
 
@@ -15,11 +15,13 @@ export type VoteManagementContextType = {
   roundState: VoteStateLite | null
   pastPolls: PollResult[]
   txUrl: string | undefined
+  getWebResultByRound: (round_id: number) => Promise<PollRequestResult | undefined>
+  getToken: (postId: string) => Promise<Auth | undefined>
   setTxUrl: React.Dispatch<React.SetStateAction<string | undefined>>
   setPollOptions: React.Dispatch<React.SetStateAction<Poll[]>>
   initialLoad: () => Promise<void>
   existNewRound: () => Promise<void>
-  getPastPolls: (roundCount: number) => Promise<void>
+  getPastPolls: () => Promise<void>
   setVotingRound: React.Dispatch<React.SetStateAction<VotingRound | null>>
   setUser: (value: SocialAuth | null) => void
   initWebAssembly: () => Promise<void>
@@ -27,7 +29,7 @@ export type VoteManagementContextType = {
   broadcastVote: (vote: BroadcastVoteRequest) => Promise<BroadcastVoteResponse | undefined>
   getRoundStateLite: (roundCount: number) => Promise<void>
   setPastPolls: React.Dispatch<React.SetStateAction<PollResult[]>>
-  getWebResult: (round_id: number) => Promise<PollRequestResult | undefined>
+  getWebResult: () => Promise<PollRequestResult[] | undefined>
   logout: () => void
 }
 

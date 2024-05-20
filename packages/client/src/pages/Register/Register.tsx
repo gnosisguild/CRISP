@@ -20,7 +20,7 @@ const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
   const handlePost = () => {
     if (!showVerification) {
       window.open(
-        'https://twitter.com/intent/post?text=🤫%20I%20am%20authenticating%20with%20my%20Twitter%20account%20to%20cast%20my%20first%20encrypted%20vote%20with%20CRISP%21%0A%0A%23FHE%20%23ZKP%20%23CRISP',
+        'https://twitter.com/intent/post?text=%F0%9F%A4%AB%20I%20am%20authenticating%20with%20my%20Twitter%20account%20to%20cast%20my%20first%20encrypted%20vote%20with%20CRISP!%0A%0A%23FHE%20%23ZKP%20%23CRISP',
         '_blank',
       )
       setShowVerification(true)
@@ -76,7 +76,7 @@ const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
             </p>
           </div>
           <div className='flex items-center gap-4 max-md:flex-col'>
-            <textarea rows={4} className='input h-auto' disabled value={AUTH_MSG} />
+            <textarea rows={4} className=' input h-auto min-h-20' disabled value={AUTH_MSG} />
             <div className='hidden h-16 w-0.5 bg-slate-200 md:block' />
             <button className='button-primary md:button-max whitespace-nowrap max-md:w-full' onClick={handlePost}>
               Share post

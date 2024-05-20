@@ -34,6 +34,8 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   const {
     isLoading: enclaveLoading,
     getRoundStateLite: getRoundStateLiteRequest,
+    getWebResultByRound,
+    getToken,
     getWebResult,
     getRound,
     broadcastVote,
@@ -76,18 +78,13 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
     }
   }
 
-  const getPastPolls = async (roundCount: number) => {
-    let results: PollResult[] = []
+  const getPastPolls = async () => {
     try {
-      for (let i = roundCount; i > 0; i--) {
-        const result = await getWebResult(i)
-        if (result) {
-          const convertedPoll = convertPollData(result)
-          results.push(convertedPoll)
-        }
-        await new Promise((resolve) => setTimeout(resolve, 500))
+      const result = await getWebResult()
+      if (result) {
+        const convertedPolls = convertPollData(result)
+        setPastPolls(convertedPolls)
       }
-      setPastPolls(results)
     } catch (error) {
       handleGenericError('getPastPolls', error as Error)
     }
@@ -113,6 +110,8 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         roundState,
         pastPolls,
         txUrl,
+        getWebResultByRound,
+        getToken,
         setTxUrl,
         existNewRound,
         getWebResult,

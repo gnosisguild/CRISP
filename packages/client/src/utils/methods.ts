@@ -1,4 +1,5 @@
 import { PollOption, PollRequestResult, PollResult } from '@/model/poll.model'
+import { VoteStateLite } from '@/model/vote.model'
 
 export const markWinner = (options: PollOption[]) => {
   const highestVoteCount = Math.max(...options.map((o) => o.votes))
@@ -44,37 +45,77 @@ export const formatDate = (isoDateString: string): string => {
   return `${dateFormatter.format(date)} -  ${timeFormatter.format(date)}`
 }
 
-export const fixPollResult = (poll: PollRequestResult): PollRequestResult => {
+export const fixResult = (poll: PollRequestResult): PollRequestResult => {
   let fixedPollResult = { ...poll }
   fixedPollResult.option_1_tally = poll.option_2_tally
   fixedPollResult.option_2_tally = poll.option_1_tally
   return fixedPollResult
 }
 
-export const convertPollData = (request: PollRequestResult): PollResult => {
-  const totalVotes = request.option_1_tally + request.option_2_tally
+export const fixPollResult = (polls: PollRequestResult[]): PollRequestResult[] => {
+  return polls.map((poll) => {
+    return fixResult(poll)
+  })
+}
+
+export const convertPollData = (request: PollRequestResult[]): PollResult[] => {
+  const pollResults = request.map((poll) => {
+    const totalVotes = poll.total_votes
+    const options: PollOption[] = [
+      {
+        value: 0,
+        votes: poll.option_1_tally,
+        label: poll.option_1_emoji,
+        checked: false,
+      },
+      {
+        value: 1,
+        votes: poll.option_2_tally,
+        label: poll.option_2_emoji,
+        checked: false,
+      },
+    ]
+
+    const date = new Date(poll.end_time * 1000).toISOString()
+
+    return {
+      endTime: poll.end_time,
+      roundId: poll.round_id,
+      totalVotes: totalVotes,
+      date: date,
+      options: options,
+    }
+  })
+
+  pollResults.sort((a, b) => b.endTime - a.endTime)
+
+  return pollResults
+}
+
+export const convertVoteStateLite = (voteState: VoteStateLite): PollResult => {
+  const endTime = voteState.start_time + voteState.poll_length
+  const date = new Date(endTime * 1000).toISOString()
+
   const options: PollOption[] = [
     {
       value: 0,
-      votes: request.option_1_tally,
-      label: request.option_1_emoji,
+      votes: 0,
+      label: voteState.emojis[0],
       checked: false,
     },
     {
       value: 1,
-      votes: request.option_2_tally,
-      label: request.option_2_emoji,
+      votes: 0,
+      label: voteState.emojis[1],
       checked: false,
     },
   ]
 
-  const date = new Date(request.end_time * 1000).toISOString()
-
   return {
-    endTime: request.end_time,
-    roundId: request.round_id,
-    totalVotes: totalVotes,
+    roundId: voteState.id,
+    totalVotes: voteState.vote_count,
     date: date,
     options: options,
+    endTime: endTime,
   }
 }

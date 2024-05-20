@@ -58,6 +58,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, e
           <div className='space-y-2'>
             <p className='text-center text-sm font-extrabold uppercase text-slate-400'>Daily Poll</p>
             <h3 className='md:text-h3 text-center font-bold leading-none text-slate-600'>Choose your favorite</h3>
+            {!roundState && <p className='text-center text-2xl font-bold text-slate-600/50 '>There are is no current daily poll.</p>}
           </div>
           {roundState && (
             <div className='flex items-center justify-center space-x-2'>
@@ -88,16 +89,18 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, e
               </div>
             ))}
           </div>
-          <div className='space-y-4'>
-            {noPollSelected && !isEnded && <div className='text-center text-sm leading-none text-slate-500'>Select your favorite</div>}
-            <button
-              className={`button-outlined button-max ${noPollSelected ? 'button-disabled' : ''}`}
-              disabled={noPollSelected || loading || status !== 'Active' || isEnded}
-              onClick={castVote}
-            >
-              cast vote
-            </button>
-          </div>
+          {roundState && (
+            <div className='space-y-4'>
+              {noPollSelected && !isEnded && <div className='text-center text-sm leading-none text-slate-500'>Select your favorite</div>}
+              <button
+                className={`button-outlined button-max ${noPollSelected ? 'button-disabled' : ''}`}
+                disabled={noPollSelected || loading || status !== 'Active' || isEnded}
+                onClick={castVote}
+              >
+                cast vote
+              </button>
+            </div>
+          )}
         </div>
       </div>
       <Modal show={modalOpen} onClose={closeModal}>

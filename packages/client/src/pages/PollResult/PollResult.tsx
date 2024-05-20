@@ -2,7 +2,7 @@ import React, { Fragment, useEffect, useState } from 'react'
 import CardContent from '@/components/Cards/CardContent'
 import VotesBadge from '@/components/VotesBadge'
 import PollCardResult from '@/components/Cards/PollCardResult'
-import { convertPollData, formatDate, markWinner } from '@/utils/methods'
+import { convertPollData, convertVoteStateLite, formatDate, markWinner } from '@/utils/methods'
 import PastPollSection from '@/pages/Landing/components/PastPoll'
 import { useParams } from 'react-router-dom'
 import LoadingAnimation from '@/components/LoadingAnimation'
@@ -15,7 +15,7 @@ import ConfirmVote from '../DailyPoll/components/ConfirmVote'
 const PollResult: React.FC = () => {
   const params = useParams()
   const { roundId, type } = params
-  const { pastPolls, getWebResult } = useVoteManagementContext()
+  const { pastPolls, getWebResultByRound } = useVoteManagementContext()
   const [loading, setLoading] = useState<boolean>(true)
   const [poll, setPoll] = useState<PollResultType | null>(null)
   const { roundEndDate, txUrl, roundState } = useVoteManagementContext()
@@ -23,8 +23,8 @@ const PollResult: React.FC = () => {
   const activeTotalCount = type === 'confirmation' ? roundState?.vote_count : poll?.totalVotes
 
   useEffect(() => {
-    if (pastPolls.length && roundId) {
-      const currentPoll = pastPolls.find((poll) => poll.roundId === parseInt(roundId))
+    if (activeTotalCount && roundState) {
+      const currentPoll = convertVoteStateLite(roundState)
       if (currentPoll) {
         setPoll(currentPoll)
         setLoading(false)
@@ -35,10 +35,10 @@ const PollResult: React.FC = () => {
   useEffect(() => {
     if (!pastPolls.length && roundId) {
       const fetchPoll = async () => {
-        const pollResult = await getWebResult(parseInt(roundId))
+        const pollResult = await getWebResultByRound(parseInt(roundId))
         if (pollResult) {
-          const convertedPoll = convertPollData(pollResult)
-          setPoll(convertedPoll)
+          const convertedPoll = convertPollData([pollResult])
+          setPoll(convertedPoll[0])
           setLoading(false)
         }
       }

@@ -20,6 +20,7 @@ export interface PollRequestResult {
   option_1_emoji: string
   option_2_emoji: string
   end_time: number
+  total_votes: number
 }
 
 export interface Poll {
