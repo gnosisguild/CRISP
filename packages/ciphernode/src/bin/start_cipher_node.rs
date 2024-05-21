@@ -289,13 +289,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let mut url_get_rounds_str = config.enclave_address.clone();
         url_get_rounds_str.push_str("/get_rounds");
 
+        // generate a bearer token with shared server secret
         let key: Hmac<Sha256> = Hmac::new_from_slice(b"some-secret")?;
         let mut claims = BTreeMap::new();
         claims.insert("sub", "someone");
         let mut bearer_str = "Bearer ".to_string();
         let token_str = claims.sign_with_key(&key)?;
         bearer_str.push_str(&token_str);
-        println!("{:?}", bearer_str);
 
         let req = Request::builder()
             //.header("authorization", bearer_str)
@@ -303,14 +303,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             .uri(url_get_rounds_str)
             .body(Empty::<Bytes>::new())?;
 
-        let resp = client_get.request(req).await?;
-
-        let body_bytes = resp.collect().await?.to_bytes();
-        let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-        println!("Get Round Response {:?}", body_str);
-        let count: RoundCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
-        println!("Server Round Count: {:?}", count.round_count);
-        println!("Internal Round Count: {:?}", internal_round_count.round_count);
+        let resp = client_get.request(req).await;
+        let mut count = RoundCount {
+            round_count: 0
+        };
+        match resp {
+            Ok(n)  => {
+                println!("n is {:?}", n);
+                let body_bytes = n.collect().await?.to_bytes();
+                let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
+                println!("Get Round Response {:?}", body_str);
+                count = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+                println!("Server Round Count: {:?}", count.round_count);
+                println!("Internal Round Count: {:?}", internal_round_count.round_count);
+            },
+            Err(e) => println!("Error: {:?}", e),
+        }
 
         // Check to see if the server reported a new round
         if count.round_count > internal_round_count.round_count {
