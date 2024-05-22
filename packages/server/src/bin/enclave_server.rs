@@ -1175,15 +1175,17 @@ fn authentication_login(req: &mut Request) -> IronResult<Response> {
             if authsdb_out_struct.jwt_tokens[i as usize] == token_str {
                 println!("Found previous login.");
                 response_str = "Already Authorized".to_string();
-            } else {
-                println!("Inserting new login to db.");
-                authsdb_out_struct.jwt_tokens.push(token_str.clone());
-                let authsdb_str = serde_json::to_string(&authsdb_out_struct).unwrap();
-                let authsdb_bytes = authsdb_str.into_bytes();
-                GLOBAL_DB.insert(key, authsdb_bytes).unwrap();
-                response_str = "Authorized".to_string();
-            };
+            }
         };
+
+        if response_str != "Already Authorized" {
+            println!("Inserting new login to db.");
+            authsdb_out_struct.jwt_tokens.push(token_str.clone());
+            let authsdb_str = serde_json::to_string(&authsdb_out_struct).unwrap();
+            let authsdb_bytes = authsdb_str.into_bytes();
+            GLOBAL_DB.insert(key, authsdb_bytes).unwrap();
+            response_str = "Authorized".to_string();
+        }
     };
 
     let response = AuthenticationResponse {
