@@ -8,9 +8,7 @@ interface RegisterProps {
 
 export const AUTH_MSG = `🤫 I am authenticating with my Twitter account to cast my first encrypted vote with CRISP!
 
-Visit https://crisp.gnosisguild.org/ to vote.
-
-#FHE #ZKP #CRISP`
+#FHE #ZKP #CRISP `
 
 const RegisterModal: React.FC<RegisterProps> = ({ onClose }) => {
   const [showVerification, setShowVerification] = useState<boolean>(false)
