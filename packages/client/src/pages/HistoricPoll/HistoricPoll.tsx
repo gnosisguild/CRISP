@@ -1,12 +1,29 @@
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import PollCard from '@/components/Cards/PollCard'
 import { PollResult } from '@/model/poll.model'
 import LoadingAnimation from '@/components/LoadingAnimation'
 import { useVoteManagementContext } from '@/context/voteManagement'
 import CircularTiles from '@/components/CircularTiles'
+import { debounce } from '@/utils/methods'
 
 const HistoricPoll: React.FC = () => {
   const { votingRound, pastPolls, getPastPolls, isLoading } = useVoteManagementContext()
+  const [visiblePolls, setVisiblePolls] = useState<PollResult[]>([])
+  const [page, setPage] = useState<number>(0)
+  const [loadingMore, setLoadingMore] = useState<boolean>(false)
+
+  const loadMorePolls = useCallback(() => {
+    if (loadingMore || isLoading) return
+    setLoadingMore(true)
+    setTimeout(() => {
+      setPage((prevPage) => prevPage + 1)
+      window.scrollTo({
+        top: document.documentElement.scrollTop - 150,
+        behavior: 'smooth',
+      })
+      setLoadingMore(false)
+    }, 1000) // 1 second delay
+  }, [loadingMore, isLoading])
 
   useEffect(() => {
     if (votingRound && votingRound?.round_id - 1 > pastPolls.length) {
@@ -15,7 +32,31 @@ const HistoricPoll: React.FC = () => {
       }
       fetchPastPolls()
     }
-  }, [pastPolls, votingRound])
+  }, [pastPolls, votingRound, getPastPolls])
+
+  useEffect(() => {
+    setVisiblePolls(pastPolls.slice(0, 12)) // Initialize with the first 12 polls
+  }, [pastPolls])
+
+  useEffect(() => {
+    const newVisiblePolls = pastPolls.slice(0, (page + 1) * 12)
+    setVisiblePolls(newVisiblePolls)
+  }, [page, pastPolls])
+
+  const handleScroll = useCallback(
+    debounce(() => {
+      const { scrollTop, clientHeight, scrollHeight } = document.documentElement
+      if (scrollTop + clientHeight >= scrollHeight && !loadingMore && pastPolls.length > visiblePolls.length) {
+        loadMorePolls()
+      }
+    }, 200),
+    [loadMorePolls, loadingMore, pastPolls.length, visiblePolls.length],
+  )
+
+  useEffect(() => {
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [handleScroll])
 
   return (
     <div className='relative mt-8 flex w-full flex-1 items-center justify-center px-6 py-12 md:mt-0'>
@@ -30,13 +71,28 @@ const HistoricPoll: React.FC = () => {
           </div>
         )}
         {!pastPolls.length && !isLoading && <p className=' text-2xl font-bold text-slate-600/50 '>There are no historic polls.</p>}
-        {pastPolls.length > 0 && !isLoading && (
+        {visiblePolls.length > 0 && (
           <div className='mx-auto grid w-full max-w-7xl grid-cols-1 items-center gap-8 overflow-y-auto p-4 md:grid-cols-3'>
-            {pastPolls.map((pollResult: PollResult) => (
-              <div className='flex items-center justify-center' key={pollResult.roundId}>
-                <PollCard {...pollResult} />
-              </div>
-            ))}
+            {visiblePolls.map((pollResult: PollResult, index: number) => {
+              if (visiblePolls.length === index + 1) {
+                return (
+                  <div className='flex items-center justify-center' key={`${pollResult.roundId}-${index}`}>
+                    <PollCard {...pollResult} />
+                  </div>
+                )
+              } else {
+                return (
+                  <div className='flex items-center justify-center' key={`${pollResult.roundId}-${index}`}>
+                    <PollCard {...pollResult} />
+                  </div>
+                )
+              }
+            })}
+          </div>
+        )}
+        {loadingMore && (
+          <div className='flex w-full items-center justify-center'>
+            <LoadingAnimation isLoading={loadingMore} />
           </div>
         )}
       </div>
