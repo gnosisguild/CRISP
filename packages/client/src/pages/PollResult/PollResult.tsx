@@ -1,4 +1,4 @@
-import React, { Fragment, useCallback, useEffect, useState } from 'react'
+import React, { Fragment, useEffect, useState } from 'react'
 import CardContent from '@/components/Cards/CardContent'
 import VotesBadge from '@/components/VotesBadge'
 import PollCardResult from '@/components/Cards/PollCardResult'
