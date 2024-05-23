@@ -26,6 +26,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   const [pollOptions, setPollOptions] = useState<Poll[]>([])
   const [pastPolls, setPastPolls] = useState<PollResult[]>([])
   const [txUrl, setTxUrl] = useState<string | undefined>(undefined)
+  const [pollResult, setPollResult] = useState<PollResult | null>(null)
 
   /**
    * Voting Management Methods
@@ -110,6 +111,8 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         roundState,
         pastPolls,
         txUrl,
+        pollResult,
+        setPollResult,
         getWebResultByRound,
         getToken,
         setTxUrl,

@@ -6,7 +6,6 @@ import { convertPollData, convertVoteStateLite, formatDate, markWinner } from '@
 import PastPollSection from '@/pages/Landing/components/PastPoll'
 import { useParams } from 'react-router-dom'
 import LoadingAnimation from '@/components/LoadingAnimation'
-import { PollResult as PollResultType } from '@/model/poll.model'
 import { useVoteManagementContext } from '@/context/voteManagement'
 import CircularTiles from '@/components/CircularTiles'
 import CountdownTimer from '@/components/CountdownTime'
@@ -15,33 +14,38 @@ import ConfirmVote from '../DailyPoll/components/ConfirmVote'
 const PollResult: React.FC = () => {
   const params = useParams()
   const { roundId, type } = params
-  const { pastPolls, getWebResultByRound } = useVoteManagementContext()
+  const { pastPolls, getWebResultByRound, pollResult, setPollResult } = useVoteManagementContext()
   const [loading, setLoading] = useState<boolean>(true)
-  const [poll, setPoll] = useState<PollResultType | null>(null)
   const { roundEndDate, txUrl, roundState } = useVoteManagementContext()
 
-  const activeTotalCount = type === 'confirmation' ? roundState?.vote_count : poll?.totalVotes
+  const activeTotalCount = type === 'confirmation' ? roundState?.vote_count : pollResult?.totalVotes
 
   const fetchPoll = async () => {
     const pollResult = await getWebResultByRound(parseInt(roundId as string))
     if (pollResult) {
       const convertedPoll = convertPollData([pollResult])
-      setPoll(convertedPoll[0])
+      setPollResult(convertedPoll[0])
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    if (!poll && roundId) {
+    if (!pollResult && roundId && loading) {
       fetchPoll()
-    } else if (activeTotalCount && roundState) {
+    } else if (activeTotalCount && roundState && type === 'confirmation') {
       const currentPoll = convertVoteStateLite(roundState)
       if (currentPoll) {
-        setPoll(currentPoll)
+        setPollResult(currentPoll)
         setLoading(false)
       }
     }
   }, [pastPolls, roundId, roundState, activeTotalCount])
+
+  useEffect(() => {
+    if (pollResult && loading) {
+      setLoading(false)
+    }
+  }, [pollResult])
 
   return (
     <div className='relative flex w-full flex-1 items-center justify-center px-6 py-12'>
@@ -49,21 +53,21 @@ const PollResult: React.FC = () => {
         <CircularTiles count={4} />
       </div>
       <div className='mb-28 flex min-h-[730px] w-screen flex-col  items-center justify-center'>
-        {loading && !poll && (
+        {loading && !pollResult && (
           <div className='flex items-center justify-center'>
             <LoadingAnimation isLoading={loading} />
           </div>
         )}
-        {!loading && poll && (
+        {!loading && pollResult && (
           <Fragment>
             <div className='my-28 flex w-full flex-col items-center justify-center space-y-12'>
               <div className='flex flex-col items-center justify-center space-y-6'>
                 <div className='space-y-2 text-center'>
-                  <p className='text-sm font-extrabold uppercase'>Poll {poll.roundId}</p>
+                  <p className='text-sm font-extrabold uppercase'>Poll {pollResult.roundId}</p>
                   <h1 className='text-h1 font-bold  text-slate-600 max-sm:text-3xl'>
                     {type === 'confirmation' ? 'Thanks for voting!' : 'Poll Results'}
                   </h1>
-                  {type !== 'confirmation' && <p className='text-2xl font-bold max-sm:text-lg'>{formatDate(poll.date)}</p>}
+                  {type !== 'confirmation' && <p className='text-2xl font-bold max-sm:text-lg'>{formatDate(pollResult.date)}</p>}
                 </div>
                 {type === 'confirmation' && roundEndDate && (
                   <div className='flex items-center justify-center max-sm:py-5 '>
@@ -73,8 +77,8 @@ const PollResult: React.FC = () => {
                 <VotesBadge totalVotes={activeTotalCount ?? 0} />
               </div>
               <PollCardResult
-                results={markWinner(poll.options)}
-                totalVotes={poll.totalVotes}
+                results={markWinner(pollResult.options)}
+                totalVotes={pollResult.totalVotes}
                 isResult
                 isActive={type === 'confirmation' ? true : false}
               />

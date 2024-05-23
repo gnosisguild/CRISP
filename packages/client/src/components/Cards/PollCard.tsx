@@ -9,7 +9,7 @@ import { useVoteManagementContext } from '@/context/voteManagement'
 const PollCard: React.FC<PollResult> = ({ roundId, options, totalVotes, date, endTime }) => {
   const navigate = useNavigate()
   const [results, setResults] = useState<PollOption[]>(options)
-  const { roundState } = useVoteManagementContext()
+  const { roundState, setPollResult } = useVoteManagementContext()
 
   const isActive = !hasPollEndedByTimestamp(endTime)
   const activeTotalCount = roundState?.vote_count ?? 0
@@ -20,7 +20,17 @@ const PollCard: React.FC<PollResult> = ({ roundId, options, totalVotes, date, en
   }, [options])
 
   const handleNavigation = () => {
-    isActive ? navigate('/current') : navigate(`/result/${roundId}`)
+    if (isActive) {
+      return navigate('/current')
+    }
+    navigate(`/result/${roundId}`)
+    setPollResult({
+      roundId,
+      options,
+      totalVotes,
+      date,
+      endTime,
+    })
   }
 
   return (

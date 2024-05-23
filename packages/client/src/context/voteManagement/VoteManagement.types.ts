@@ -15,6 +15,8 @@ export type VoteManagementContextType = {
   roundState: VoteStateLite | null
   pastPolls: PollResult[]
   txUrl: string | undefined
+  pollResult: PollResult | null
+  setPollResult: React.Dispatch<React.SetStateAction<PollResult | null>>
   getWebResultByRound: (round_id: number) => Promise<PollRequestResult | undefined>
   getToken: (postId: string) => Promise<Auth | undefined>
   setTxUrl: React.Dispatch<React.SetStateAction<string | undefined>>
