@@ -1,4 +1,4 @@
-import React, { Fragment, useEffect, useState } from 'react'
+import React, { Fragment, useCallback, useEffect, useState } from 'react'
 import CardContent from '@/components/Cards/CardContent'
 import VotesBadge from '@/components/VotesBadge'
 import PollCardResult from '@/components/Cards/PollCardResult'
@@ -22,29 +22,26 @@ const PollResult: React.FC = () => {
 
   const activeTotalCount = type === 'confirmation' ? roundState?.vote_count : poll?.totalVotes
 
+  const fetchPoll = async () => {
+    const pollResult = await getWebResultByRound(parseInt(roundId as string))
+    if (pollResult) {
+      const convertedPoll = convertPollData([pollResult])
+      setPoll(convertedPoll[0])
+      setLoading(false)
+    }
+  }
+
   useEffect(() => {
-    if (activeTotalCount && roundState) {
+    if (!poll && roundId) {
+      fetchPoll()
+    } else if (activeTotalCount && roundState) {
       const currentPoll = convertVoteStateLite(roundState)
       if (currentPoll) {
         setPoll(currentPoll)
         setLoading(false)
       }
     }
-  }, [pastPolls, roundId])
-
-  useEffect(() => {
-    if (!pastPolls.length && roundId) {
-      const fetchPoll = async () => {
-        const pollResult = await getWebResultByRound(parseInt(roundId))
-        if (pollResult) {
-          const convertedPoll = convertPollData([pollResult])
-          setPoll(convertedPoll[0])
-          setLoading(false)
-        }
-      }
-      fetchPoll()
-    }
-  }, [pastPolls, roundId])
+  }, [pastPolls, roundId, roundState, activeTotalCount])
 
   return (
     <div className='relative flex w-full flex-1 items-center justify-center px-6 py-12'>
