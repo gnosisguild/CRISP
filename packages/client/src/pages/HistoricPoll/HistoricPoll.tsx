@@ -64,7 +64,7 @@ const HistoricPoll: React.FC = () => {
         <CircularTiles count={4} />
       </div>
       <div className='relative mx-auto flex w-full flex-col items-center justify-center space-y-8'>
-        <h1 className='text-h1 font-bold text-slate-600'>Historic polls</h1>
+        <h1 className='text-h1 mt-20 font-bold text-slate-600'>Historic polls</h1>
         {isLoading && (
           <div className='flex justify-center'>
             <LoadingAnimation isLoading={isLoading} />
