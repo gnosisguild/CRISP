@@ -119,3 +119,11 @@ export const convertVoteStateLite = (voteState: VoteStateLite): PollResult => {
     endTime: endTime,
   }
 }
+
+export const debounce = (func: (...args: any[]) => void, wait: number) => {
+  let timeout: ReturnType<typeof setTimeout>
+  return (...args: any[]) => {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => func(...args), wait)
+  }
+}

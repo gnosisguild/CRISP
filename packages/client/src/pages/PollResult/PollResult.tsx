@@ -113,7 +113,7 @@ const PollResult: React.FC = () => {
             )}
             {pastPolls.length > 0 && (
               <div className='z-50'>
-                <PastPollSection customLabel='Historic polls' useFullHeight={false} />
+                <PastPollSection customLabel='Historic polls' useFullHeight={false} limit={3} />
               </div>
             )}
           </Fragment>

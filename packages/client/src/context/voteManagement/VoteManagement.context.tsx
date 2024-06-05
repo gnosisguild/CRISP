@@ -88,6 +88,8 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
       }
     } catch (error) {
       handleGenericError('getPastPolls', error as Error)
+    } finally {
+      setIsLoading(false)
     }
   }
 
