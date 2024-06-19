@@ -3,7 +3,7 @@ mod util;
 use wasm_bindgen::prelude::*;
 
 use serde::Deserialize;
-use std::{env, sync::Arc, thread, time};
+use std::{env, sync::Arc, thread, time, fs, path::Path};
 
 use fhe::{
     bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
@@ -86,38 +86,47 @@ impl Encrypt {
 }
 
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("=test");
-    let mut encrypt = Encrypt::new();
+    // let mut encrypt = Encrypt::new();
 
-    let degree = 4096;
-    let plaintext_modulus: u64 = 4096;
-    let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
+    // let degree = 4096;
+    // let plaintext_modulus: u64 = 4096;
+    // let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
 
-    // Generate the BFV parameters structure.
-    let params = timeit!(
-        "Parameters generation",
-        BfvParametersBuilder::new()
-            .set_degree(degree)
-            .set_plaintext_modulus(plaintext_modulus)
-            .set_moduli(&moduli)
-            .build_arc()?
-    );
+    // // Generate the BFV parameters structure.
+    // let params = timeit!(
+    //     "Parameters generation",
+    //     BfvParametersBuilder::new()
+    //         .set_degree(degree)
+    //         .set_plaintext_modulus(plaintext_modulus)
+    //         .set_moduli(&moduli)
+    //         .build_arc()?
+    // );
 
-    let mut rng = thread_rng();
-    let sk = SecretKey::random(&params, &mut rng);
-    let pk = PublicKey::new(&sk, &mut rng);
+    // let mut rng = thread_rng();
+    // let sk = SecretKey::random(&params, &mut rng);
+    // let pk = PublicKey::new(&sk, &mut rng);
+    // println!("{:?}", pk);
+    // let pk_bytes = pk.to_bytes();
+    // println!("{:?}", pk_bytes);
 
-    // this is an example of a message converted to an array of u64
-    let message: Vec<u64> = vec![0, 12, 128];
-    let res = encrypt.encrypt_message(message, pk.to_bytes());
+    // let path = env::current_dir().unwrap();
+    // let mut pathst = path.display().to_string();
+    // pathst.push_str("/public_key");
+    // fs::write(pathst.clone(), pk_bytes).unwrap();
+    // let pk_str = serde_json::to_string(&pk).unwrap();
 
-    let deserialized_message = Ciphertext::from_bytes(&res.unwrap(), &params).unwrap();
-    let decrypted = sk.try_decrypt(&deserialized_message)?;
-    let decoded = Vec::<u64>::try_decode(&decrypted, Encoding::poly()).unwrap();
-    // print decoded message
-    for i in 0..3 {
-        println!("{:?}", decoded[i]);
-    }
+    // // this is an example of a message converted to an array of u64
+    // let message: Vec<u64> = vec![0, 12, 128];
+    // let res = encrypt.encrypt_message(message, pk.to_bytes());
+
+    // let deserialized_message = Ciphertext::from_bytes(&res.unwrap(), &params).unwrap();
+    // let decrypted = sk.try_decrypt(&deserialized_message)?;
+    // let decoded = Vec::<u64>::try_decode(&decrypted, Encoding::poly()).unwrap();
+
+    // // print decoded message
+    // for i in 0..3 {
+    //     println!("{:?}", decoded[i]);
+    // }
 
     Ok(())
 }
