@@ -9,7 +9,7 @@ const Footer: React.FC = () => {
       <div className='mx-auto flex w-full max-w-screen-xl flex-col items-center justify-end gap-2 md:flex-row'>
         <div className='flex items-center gap-2'>
           <p className='text-sm'>Secured with</p>
-          <Link to='https://github.com/gnosisguild/enclave' target='_blank' className='flex flex-col items-center gap-2 md:flex-row'>
+          <Link to='https://enclave.gg' target='_blank' className='flex flex-col items-center gap-2 md:flex-row'>
             <img src={EnclaveLogo} className='h-6 w-auto cursor-pointer duration-300 ease-in-out hover:opacity-70' />
           </Link>
         </div>
