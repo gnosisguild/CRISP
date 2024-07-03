@@ -28,6 +28,7 @@ jobs:
         env:
           VITE_TWITTER_SERVERLESS_API: ${{secrets.VITE_TWITTER_SERVERLESS_API}}
           VITE_ENCLAVE_API: ${{secrets.VITE_ENCLAVE_API}}
+          VITE_DYNAMIC_ENV_ID: ${{secrets.VITE_DYNAMIC_ENV_ID}}
       - name: Deploy to GitHub Pages
         uses: JamesIves/github-pages-deploy-action@v4.3.3
         with:
