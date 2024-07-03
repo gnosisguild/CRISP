@@ -5,6 +5,7 @@ import { Link } from 'react-router-dom'
 import { Keyhole, ListMagnifyingGlass, ShieldCheck } from '@phosphor-icons/react'
 
 const HeroSection: React.FC = () => {
+  
   return (
     <div className='relative flex w-full flex-1 items-center justify-center px-6'>
       <div className='absolute bottom-0 right-0 grid w-full grid-cols-2 gap-2 max-md:opacity-50 md:w-[70vh]'>

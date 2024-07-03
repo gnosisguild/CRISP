@@ -5,15 +5,23 @@ import { useVoteManagementContext } from '@/context/voteManagement'
 import { useNotificationAlertContext } from '@/context/NotificationAlert'
 import { useNavigate } from 'react-router-dom'
 import { convertTimestampToDate } from '@/utils/methods'
+import { useDynamicContext } from '@dynamic-labs/sdk-react-core'
 
 const DailyPoll: React.FC = () => {
   const navigate = useNavigate()
   const { showToast } = useNotificationAlertContext()
-  const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, setTxUrl, votingRound, roundState, user } =
-    useVoteManagementContext()
+  const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, setTxUrl, votingRound, roundState } = useVoteManagementContext()
+  const { user: userProfile } = useDynamicContext()
   const [loading, setLoading] = useState<boolean>(false)
   const [newRoundLoading, setNewRoundLoading] = useState<boolean>(false)
   const endTime = roundState && convertTimestampToDate(roundState?.start_time, roundState?.poll_length)
+  const user =
+    userProfile &&
+    userProfile.verifiedCredentials.find((credential) => {
+      if (credential.format === 'oauth') {
+        return credential
+      }
+    })
 
   useEffect(() => {
     const checkRound = async () => {
@@ -43,7 +51,7 @@ const DailyPoll: React.FC = () => {
       return broadcastVote({
         round_id: votingRound.round_id,
         enc_vote_bytes: Array.from(voteEncrypted),
-        postId: user.token,
+        postId: user.id,
       })
     },
     [broadcastVote, user, votingRound],
