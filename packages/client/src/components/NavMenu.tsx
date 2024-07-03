@@ -2,9 +2,9 @@
 import React, { useEffect, useRef, useState } from 'react'
 import LogoutIcon from '@/assets/icons/logout.svg'
 import { useNavigate } from 'react-router-dom'
-import { useVoteManagementContext } from '@/context/voteManagement'
 //Icons
 import { CaretRight, CalendarCheck, CheckFat, Notebook } from '@phosphor-icons/react'
+import { useDynamicContext } from '@dynamic-labs/sdk-react-core'
 
 interface NavMenuProps {}
 
@@ -28,10 +28,18 @@ const NAV_MENU_OPTIONS = [
 
 const NavMenu: React.FC<NavMenuProps> = () => {
   const navigate = useNavigate()
-  const { user, logout } = useVoteManagementContext()
+  const { user: userProfile, handleLogOut } = useDynamicContext()
   const menuRef = useRef<HTMLDivElement>(null)
   const [isOpen, setIsOpen] = useState<boolean>(false)
   const buttonRef = useRef<HTMLButtonElement>(null)
+
+  const user =
+    userProfile &&
+    userProfile.verifiedCredentials.find((credential) => {
+      if (credential.format === 'oauth') {
+        return credential
+      }
+    })
 
   const handleClickOutside = (event: MouseEvent) => {
     if (
@@ -66,7 +74,7 @@ const NavMenu: React.FC<NavMenuProps> = () => {
 
   const handleLogout = () => {
     navigate('/')
-    logout()
+    handleLogOut()
     return setIsOpen(!isOpen)
   }
 
@@ -77,8 +85,8 @@ const NavMenu: React.FC<NavMenuProps> = () => {
         onClick={toggleMenu}
         className='flex items-center justify-between space-x-1 rounded-lg border-2 bg-white/60 px-2 py-1 duration-300 ease-in-out hover:bg-white'
       >
-        <img src={user.avatar} className='h-[20px] w-[20px] rounded-full' />
-        <p className='text-xs font-bold'>@{user.username}</p>
+        <img src={user.oauthAccountPhotos?.length ? user.oauthAccountPhotos[0] : ''} className='h-[20px] w-[20px] rounded-full' />
+        <p className='text-xs font-bold'>{user.publicIdentifier}</p>
         <CaretRight className={isOpen ? '-rotate-90 transition-transform duration-200' : ''} />
       </button>
 

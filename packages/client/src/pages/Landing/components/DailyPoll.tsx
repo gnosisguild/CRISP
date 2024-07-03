@@ -8,6 +8,7 @@ import { useVoteManagementContext } from '@/context/voteManagement'
 import LoadingAnimation from '@/components/LoadingAnimation'
 import { hasPollEnded } from '@/utils/methods'
 import CountdownTimer from '@/components/CountdownTime'
+import { useDynamicContext } from '@dynamic-labs/sdk-react-core'
 
 type DailyPollSectionProps = {
   onVoted?: (vote: Poll) => void
@@ -16,14 +17,15 @@ type DailyPollSectionProps = {
 }
 
 const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, endTime }) => {
-  const { user, pollOptions, setPollOptions, roundState } = useVoteManagementContext()
+  const { setShowAuthFlow, isAuthenticated, user } = useDynamicContext()
+
+  const { pollOptions, setPollOptions, roundState } = useVoteManagementContext()
   const isEnded = roundState ? hasPollEnded(roundState?.poll_length, roundState?.start_time) : false
   const status = roundState?.status
   const [pollSelected, setPollSelected] = useState<Poll | null>(null)
   const [noPollSelected, setNoPollSelected] = useState<boolean>(true)
   const [modalOpen, setModalOpen] = useState(false)
 
-  const openModal = () => setModalOpen(true)
   const closeModal = () => {
     setModalOpen(false)
   }
@@ -39,7 +41,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, e
   }
 
   const castVote = () => {
-    if (!user) return openModal()
+    if (!isAuthenticated && !user) return setShowAuthFlow(true)
     if (pollSelected && onVoted) {
       onVoted(pollSelected)
     }
