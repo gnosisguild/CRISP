@@ -5,6 +5,7 @@ import svgr from '@svgr/rollup'
 import wasm from 'vite-plugin-wasm'
 import topLevelAwait from 'vite-plugin-top-level-await'
 import path from 'path'
+import { nodePolyfills } from 'vite-plugin-node-polyfills'
 
 // const development: boolean = !process.env.NODE_ENV || process.env.NODE_ENV === 'development'
 
@@ -35,6 +36,7 @@ export default defineConfig({
     }),
     viteTsconfigPaths(),
     svgr(),
+    nodePolyfills({ include: ['buffer'] }),
   ],
   server: {
     open: true,

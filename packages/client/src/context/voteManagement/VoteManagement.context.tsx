@@ -2,7 +2,6 @@ import { createGenericContext } from '@/utils/create-generic-context'
 import { VoteManagementContextType, VoteManagementProviderProps } from '@/context/voteManagement'
 import { useWebAssemblyHook } from '@/hooks/wasm/useWebAssembly'
 import { useEffect, useState } from 'react'
-import { SocialAuth } from '@/model/twitter.model'
 import useLocalStorage from '@/hooks/generic/useLocalStorage'
 import { VoteStateLite, VotingRound } from '@/model/vote.model'
 import { useEnclaveServer } from '@/hooks/enclave/useEnclaveServer'
@@ -10,6 +9,7 @@ import { convertPollData, convertTimestampToDate } from '@/utils/methods'
 import { Poll, PollResult } from '@/model/poll.model'
 import { generatePoll } from '@/utils/generate-random-poll'
 import { handleGenericError } from '@/utils/handle-generic-error'
+import { StatusAPIResponse } from '@farcaster/auth-client'
 
 const [useVoteManagementContext, VoteManagementContextProvider] = createGenericContext<VoteManagementContextType>()
 
@@ -17,8 +17,8 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   /**
    * Voting Management States
    **/
-  const [socialAuth, setSocialAuth] = useLocalStorage<SocialAuth | null>('socialAuth', null)
-  const [user, setUser] = useState<SocialAuth | null>(socialAuth)
+  const [farcasterAuth, setFarcasterUser] = useLocalStorage<StatusAPIResponse | null>('farcasterAuth', null)
+  const [user, setUser] = useState<StatusAPIResponse | null>(farcasterAuth)
   const [roundState, setRoundState] = useState<VoteStateLite | null>(null)
   const [votingRound, setVotingRound] = useState<VotingRound | null>(null)
   const [roundEndDate, setRoundEndDate] = useState<Date | null>(null)
@@ -59,7 +59,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
 
   const logout = () => {
     setUser(null)
-    setSocialAuth(null)
+    setFarcasterUser(null)
   }
 
   const getRoundStateLite = async (roundCount: number) => {

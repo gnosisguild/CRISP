@@ -3,7 +3,8 @@ import { BroadcastVoteRequest, BroadcastVoteResponse, RoundCount, VoteStateLite 
 import { useApi } from '../generic/useFetchApi'
 import { PollRequestResult } from '@/model/poll.model'
 import { fixPollResult, fixResult } from '@/utils/methods'
-import { Auth } from '@/model/twitter.model'
+import { Auth } from '@/model/auth.model'
+
 
 const ENCLAVE_API = import.meta.env.VITE_ENCLAVE_API
 
