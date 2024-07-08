@@ -43,7 +43,7 @@ const DailyPoll: React.FC = () => {
       return broadcastVote({
         round_id: votingRound.round_id,
         enc_vote_bytes: Array.from(voteEncrypted),
-        postId: user.token,
+        postId: user.fid?.toString() ?? '',
       })
     },
     [broadcastVote, user, votingRound],

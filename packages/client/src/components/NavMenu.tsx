@@ -77,7 +77,7 @@ const NavMenu: React.FC<NavMenuProps> = () => {
         onClick={toggleMenu}
         className='flex items-center justify-between space-x-1 rounded-lg border-2 bg-white/60 px-2 py-1 duration-300 ease-in-out hover:bg-white'
       >
-        <img src={user.avatar} className='h-[20px] w-[20px] rounded-full' />
+        <img src={user.pfpUrl} className='h-[20px] w-[20px] rounded-full' />
         <p className='text-xs font-bold'>@{user.username}</p>
         <CaretRight className={isOpen ? '-rotate-90 transition-transform duration-200' : ''} />
       </button>

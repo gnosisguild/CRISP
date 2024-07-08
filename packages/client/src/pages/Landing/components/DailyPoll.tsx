@@ -1,13 +1,16 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Poll } from '@/model/poll.model'
 import Card from '@/components/Cards/Card'
 import Modal from '@/components/Modal'
 import CircularTiles from '@/components/CircularTiles'
-import RegisterModal from '@/pages/Register/Register'
+
 import { useVoteManagementContext } from '@/context/voteManagement'
 import LoadingAnimation from '@/components/LoadingAnimation'
 import { hasPollEnded } from '@/utils/methods'
 import CountdownTimer from '@/components/CountdownTime'
+import { useSignIn } from '@farcaster/auth-kit'
+
+import FarcasterModal from '@/components/FarcasterModal'
 
 type DailyPollSectionProps = {
   onVoted?: (vote: Poll) => void
@@ -16,6 +19,10 @@ type DailyPollSectionProps = {
 }
 
 const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, endTime }) => {
+  const { url, connect, signIn, data, error } = useSignIn({
+    timeout: 300000,
+    interval: 2000,
+  })
   const { user, pollOptions, setPollOptions, roundState } = useVoteManagementContext()
   const isEnded = roundState ? hasPollEnded(roundState?.poll_length, roundState?.start_time) : false
   const status = roundState?.status
@@ -28,6 +35,13 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, e
     setModalOpen(false)
   }
 
+  useEffect(() => {
+    const fetch = async () => {
+      await connect()
+    }
+    fetch()
+  }, [])
+
   const handleChecked = (selectedId: number) => {
     const updatedOptions = pollOptions.map((option) => ({
       ...option,
@@ -39,7 +53,10 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, e
   }
 
   const castVote = () => {
-    if (!user) return openModal()
+    if (!user) {
+      signIn()
+      return openModal()
+    }
     if (pollSelected && onVoted) {
       onVoted(pollSelected)
     }
@@ -103,8 +120,8 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, e
           )}
         </div>
       </div>
-      <Modal show={modalOpen} onClose={closeModal}>
-        <RegisterModal onClose={closeModal} />
+      <Modal show={modalOpen} onClose={closeModal} className='max-w-96 py-12'>
+        <FarcasterModal url={url} data={data} error={error} onClose={closeModal} />
       </Modal>
     </>
   )
