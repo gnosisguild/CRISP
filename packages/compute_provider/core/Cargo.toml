@@ -1,0 +1,11 @@
+[package]
+name = "compute-provider-core"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+risc0-zkvm = { workspace = true }
+risc0-zkp = { workspace = true }
+serde = { workspace = true }
+fhe = { workspace = true }
+fhe-traits = { workspace = true }

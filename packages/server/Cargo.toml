@@ -14,6 +14,7 @@ fhe-util = { git = "https://github.com/gnosisguild/fhe.rs", version = "0.1.0-bet
 rand_chacha = "0.3.1"
 rand = "0.8.5"
 ethers = "2.0"
+compute-provider-host = { path = "../compute_provider/host" }
 getrandom = { version = "0.2.11", features = ["js"] }
 # Ethers' async features rely upon the Tokio async runtime.
 tokio = { version = "1.37.0", features = ["full"] }

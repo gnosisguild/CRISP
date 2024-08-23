@@ -19,3 +19,6 @@ deployments
 coverage.json
 package-lock.json
 yarn.lock
+
+contracts/Elf.sol
+contracts/ImageID.sol

@@ -18,7 +18,6 @@ use iron::Chain;
 use iron::headers::{Header, HeaderFormat, HeaderFormatter, Bearer};
 use router::Router;
 use std::io::Read;
-
 use iron_cors::CorsMiddleware;
 
 use ethers::{
