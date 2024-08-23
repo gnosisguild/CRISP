@@ -9,3 +9,4 @@ risc0-zkp = { workspace = true }
 serde = { workspace = true }
 fhe = { workspace = true }
 fhe-traits = { workspace = true }
+zk-kit-imt = "0.0.5"

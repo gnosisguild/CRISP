@@ -1,13 +1,13 @@
-use risc0_zkp::core::digest::Digest;
+use fhe::bfv::{BfvParameters, Ciphertext};
+use fhe_traits::{Deserialize, DeserializeParametrized, Serialize};
 use risc0_zkvm::sha::{Impl, Sha256};
-use fhe::bfv::{Ciphertext, BfvParameters};
-use fhe_traits::{DeserializeParametrized, Serialize, Deserialize};
 use std::sync::Arc;
+use zk_kit_imt::imt::IMT;
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct TallyResult {
     pub tallied_ciphertext: Vec<u8>,
-    pub ciphertexts_digest: Digest
+    pub merkle_root: String,
 }
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -29,13 +29,34 @@ impl CiphertextInput {
         }
         let tally: Arc<Ciphertext> = Arc::new(sum);
 
-        // Compute the digest of the ciphertexts
-        let digest = *Impl::hash_bytes(&self.ciphertexts.concat());
+        let merkle_root = self.compute_merkle_root();
 
         TallyResult {
             tallied_ciphertext: tally.to_bytes(),
-            ciphertexts_digest: digest
+            merkle_root,
         }
     }
-    
+
+    fn compute_merkle_root(&self) -> String {
+        fn hash_function(nodes: Vec<String>) -> String {
+            let concatenated = nodes.join("");
+            let hash = Impl::hash_bytes(concatenated.as_bytes());
+            format!("{:?}", hash)
+        }
+
+        let num_leaves = self.ciphertexts.len();
+        let arity = 2;
+        let depth = (num_leaves as f64).log(arity as f64).ceil() as usize;
+        let zero = format!("{:?}", Impl::hash_bytes(&[0u8]));
+
+        let mut tree =
+            IMT::new(hash_function, depth, zero, arity, vec![]).expect("Failed to create IMT");
+
+        for ciphertext in &self.ciphertexts {
+            let hash = format!("{:?}", Impl::hash_bytes(ciphertext));
+            tree.insert(hash).expect("Failed to insert into IMT");
+        }
+
+        tree.root().expect("Failed to get root from IMT")
+    }
 }
