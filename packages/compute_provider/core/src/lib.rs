@@ -64,7 +64,7 @@ impl CiphertextInput {
         }
 
         const ZERO: &str = "0";
-        const DEPTH: usize = 32;
+        const DEPTH: usize = 10;
         const ARITY: usize = 2;
 
         let mut tree = IMT::new(
