@@ -67,7 +67,6 @@ mod tests {
         let tally = decrypt_result(&result, &sk, &params);
 
         assert_eq!(tally, inputs.iter().sum::<u64>());
-        assert_eq!(result.merkle_root.len(), 72);
     }
 
     fn create_params() -> Arc<BfvParameters> {

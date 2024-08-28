@@ -10,3 +10,10 @@ serde = { workspace = true }
 fhe = { workspace = true }
 fhe-traits = { workspace = true }
 zk-kit-imt = "0.0.5"
+sha3 = "0.10.8"
+num-bigint = "0.4"
+num-traits = "0.2"
+hex = "0.4"
+light-poseidon = "0.2.0"
+ark-ff = "0.4.2"
+ark-bn254 = "0.4.0"

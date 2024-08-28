@@ -1,8 +1,16 @@
+use std::{str::FromStr, sync::Arc};
+
+use num_bigint::BigUint;
+use num_traits::Num;
+use sha3::{Digest, Keccak256};
+
+use ark_bn254::Fr;
+use ark_ff::{BigInt, BigInteger};
 use fhe::bfv::{BfvParameters, Ciphertext};
 use fhe_traits::{Deserialize, DeserializeParametrized, Serialize};
-use risc0_zkvm::sha::{Impl, Sha256};
-use std::sync::Arc;
+use light_poseidon::{Poseidon, PoseidonHasher};
 use zk_kit_imt::imt::IMT;
+
 
 #[derive(Clone, Debug, Eq, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct TallyResult {
@@ -38,23 +46,53 @@ impl CiphertextInput {
     }
 
     fn compute_merkle_root(&self) -> String {
-        fn hash_function(nodes: Vec<String>) -> String {
-            let concatenated = nodes.join("");
-            let hash = Impl::hash_bytes(concatenated.as_bytes());
-            format!("{:?}", hash)
+        fn poseidon_hash(nodes: Vec<String>) -> String {
+            let mut poseidon = Poseidon::<Fr>::new_circom(2).unwrap();
+            let mut field_elements = Vec::new();
+
+            for node in nodes {
+                let sanitized_node = node.trim_start_matches("0x");
+                let numeric_str = BigUint::from_str_radix(sanitized_node, 16)
+                    .unwrap()
+                    .to_string();
+                let field_repr = Fr::from_str(&numeric_str).unwrap();
+                field_elements.push(field_repr);
+            }
+
+            let result_hash: BigInt<4> = poseidon.hash(&field_elements).unwrap().into();
+            hex::encode(result_hash.to_bytes_be())
         }
 
-        let num_leaves = self.ciphertexts.len();
-        let arity = 2;
-        let depth = (num_leaves as f64).log(arity as f64).ceil() as usize;
-        let zero = format!("{:?}", Impl::hash_bytes(&[0u8]));
+        const ZERO: &str = "0";
+        const DEPTH: usize = 32;
+        const ARITY: usize = 2;
 
-        let mut tree =
-            IMT::new(hash_function, depth, zero, arity, vec![]).expect("Failed to create IMT");
+        let mut tree = IMT::new(
+            poseidon_hash,
+            DEPTH,
+            ZERO.to_string(),
+            ARITY,
+            vec![],
+        )
+        .unwrap();
+
+        let mut poseidon_instance = Poseidon::<Fr>::new_circom(2).unwrap();
 
         for ciphertext in &self.ciphertexts {
-            let hash = format!("{:?}", Impl::hash_bytes(ciphertext));
-            tree.insert(hash).expect("Failed to insert into IMT");
+            let mut keccak_hasher = Keccak256::new();
+            keccak_hasher.update(ciphertext);
+            let hex_output = hex::encode(keccak_hasher.finalize());
+            let sanitized_hex = hex_output.trim_start_matches("0x");
+            let numeric_value = BigUint::from_str_radix(sanitized_hex, 16)
+                .unwrap()
+                .to_string();
+            let fr_element = Fr::from_str(&numeric_value).unwrap();
+            let zero_element = Fr::from_str("0").unwrap();
+            let hash_bigint: BigInt<4> = poseidon_instance
+                .hash(&[fr_element, zero_element])
+                .unwrap().into();
+            let data_hash = hex::encode(hash_bigint.to_bytes_be());
+            tree.insert(data_hash).unwrap();
         }
 
         tree.root().expect("Failed to get root from IMT")
