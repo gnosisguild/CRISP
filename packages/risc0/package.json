@@ -1,0 +1,17 @@
+{
+  "name": "crisp-risc0",
+  "version": "0.0.0",
+  "description": "Risc0 implementation of CRISP",
+  "repository": "https://github.com/gnosisguild/CRISP",
+  "author": "Gnosis Guild",
+  "license": "LGPL-V3",
+  "private": false,
+  "devDependencies": {
+    "@nomicfoundation/hardhat-foundry": "^1.1.2",
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.10"
+  },
+  "scripts": {
+    "hardhat": "hardhat"
+  }
+}

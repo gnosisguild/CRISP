@@ -1,6 +1,6 @@
 {
   "name": "@gnosisguild/crisp",
-  "description": "",
+  "description": "Collusion Resistant Impartial Selection Protocol",
   "version": "1.0.0",
   "author": {
     "name": "gnosisguild",
