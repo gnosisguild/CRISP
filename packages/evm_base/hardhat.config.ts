@@ -1,11 +1,9 @@
 import "@nomicfoundation/hardhat-foundry";
 import "@nomicfoundation/hardhat-toolbox";
-import { config as dotenvConfig } from "dotenv";
 import "hardhat-deploy";
 import type { HardhatUserConfig } from "hardhat/config";
 import { vars } from "hardhat/config";
 import type { NetworkUserConfig } from "hardhat/types";
-import { resolve } from "path";
 
 // Run 'npx hardhat vars setup' to see the list of variables that need to be set
 

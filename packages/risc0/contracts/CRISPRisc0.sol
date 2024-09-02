@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity >=0.8.26;
 
-import {CRISPBase, IComputationModule, IInputValidator, IEnclave} from "evm-base/contracts/CRISPBase.sol";
+import {CRISPBase, IComputationModule, IInputValidator, IEnclave} from "evm_base/contracts/CRISPBase.sol";
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 import {ImageID} from "./ImageID.sol";
 
