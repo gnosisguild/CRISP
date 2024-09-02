@@ -45,7 +45,8 @@ const HeroSection: React.FC = () => {
           <div className='flex flex-wrap items-center text-sm md:space-x-2'>
             <div className='text-slate-400'>This is a simple demonstration of CRISP technology.</div>
             <Link
-              to='/about'
+              target='_blank'
+              to='https://docs.enclave.gg'
               className='inline-flex cursor-pointer items-center space-x-1 text-lime-600 duration-300 ease-in-out hover:underline hover:opacity-70'
             >
               <div>Learn more.</div>
