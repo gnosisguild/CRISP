@@ -9,7 +9,6 @@ struct Params {
     uint64 degree;
     uint64 plaintextModulus;
     uint64[] ciphertextModuli;
-    uint256 seed;
     IInputValidator inputValidator;
 }
 
@@ -31,19 +30,25 @@ contract CRISPRisc0 is CRISPBase {
 
     function validate(
         uint256 e3Id,
+        uint256 seed,
         bytes memory data
     ) external override returns (IInputValidator) {
         require(params[e3Id].degree == 0, E3AlreadyInitialized());
-        Params memory _params = abi.decode(data, (Params));
+        (
+            uint64 degree,
+            uint64 plaintextModulus,
+            uint64[] memory ciphertextModuli,
+            IInputValidator inputValidator
+        ) = abi.decode(data, (uint64, uint64, uint64[], IInputValidator));
         // TODO: require that params are valid
 
-        params[e3Id].degree = _params.degree;
-        params[e3Id].plaintextModulus = _params.plaintextModulus;
-        params[e3Id].ciphertextModuli = _params.ciphertextModuli;
-        params[e3Id].seed = _params.seed;
-        params[e3Id].inputValidator = _params.inputValidator;
+        params[e3Id].degree = degree;
+        params[e3Id].plaintextModulus = plaintextModulus;
+        params[e3Id].ciphertextModuli = ciphertextModuli;
+        params[e3Id].seed = seed;
+        params[e3Id].inputValidator = inputValidator;
 
-        return _params.inputValidator;
+        return inputValidator;
     }
 
     function verify(

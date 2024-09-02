@@ -27,6 +27,7 @@
     "typescript": "^5.5.4"
   },
   "scripts": {
-    "hardhat": "hardhat"
+    "hardhat": "hardhat",
+    "compile": "forge compile"
   }
 }

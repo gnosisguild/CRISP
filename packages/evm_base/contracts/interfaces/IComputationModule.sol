@@ -9,6 +9,7 @@ interface IComputationModule {
     /// @return inputValidator The input validator to be used for the computation.
     function validate(
         uint256 e3Id,
+        uint256 seed,
         bytes calldata params
     ) external returns (IInputValidator inputValidator);
 
