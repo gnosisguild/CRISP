@@ -25,14 +25,14 @@ impl ComputeProvider {
                 leaf_hashes: Vec::new(),
                 tree_depth: 10,
                 zero_node: String::from("0"),
-                arity: 0,
+                arity: 2,
             },
             use_parallel,
             batch_size,
         }
     }
 
-    pub fn start(&self) -> (ComputationResult, Vec<u8>) {
+    pub fn start(&mut self) -> (ComputationResult, Vec<u8>) {
         tracing_subscriber::fmt()
             .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
             .init();
@@ -44,13 +44,14 @@ impl ComputeProvider {
         }
     }
 
-    fn start_sequential(&self) -> (ComputationResult, Vec<u8>) {
+    fn start_sequential(&mut self) -> (ComputationResult, Vec<u8>) {
         let mut tree_handler = MerkleTree::new(
             self.input.tree_depth,
             self.input.zero_node.clone(),
             self.input.arity,
         );
         tree_handler.compute_leaf_hashes(&self.input.ciphertexts);
+        self.input.leaf_hashes = tree_handler.leaf_hashes.clone();
 
         let env = ExecutorEnv::builder()
             .write(&self.input)
@@ -128,8 +129,8 @@ impl ComputeProvider {
             arity: 2,
         };
 
-        let mut final_tree_handler = MerkleTree::new(final_depth, final_input.zero_node.clone(), final_input.arity);
-        final_input.zero_node = final_tree_handler.build_tree().zeroes[parallel_tree_depth].clone();
+        let final_tree_handler = MerkleTree::new(final_depth, final_input.zero_node.clone(), final_input.arity);
+        final_input.zero_node = final_tree_handler.zeroes()[parallel_tree_depth].clone();
 
         let env = ExecutorEnv::builder()
             .write(&final_input)
@@ -169,14 +170,14 @@ mod tests {
     fn test_compute_provider() {
         let params = create_params();
         let (sk, pk) = generate_keys(&params);
-        let inputs = vec![1, 1, 0];
+        let inputs = vec![1, 1, 0, 1];
         let ciphertexts = encrypt_inputs(&inputs, &pk, &params);
 
-        let provider = ComputeProvider::new(
+        let mut provider = ComputeProvider::new(
             ciphertexts.iter().map(|c| c.to_bytes()).collect(),
             params.to_bytes(),
-            false,
-            None,
+            true,
+            Some(2),
         ); // use_parallel = false, no batch size
         let (result, _seal) = provider.start();
 

@@ -45,26 +45,36 @@ impl MerkleTree {
         }
     }
 
-    pub fn build_tree(&self) -> IMT {
-        fn poseidon_hash(nodes: Vec<String>) -> String {
-            let mut poseidon = Poseidon::<Fr>::new_circom(2).unwrap();
-            let mut field_elements = Vec::new();
+    fn poseidon_hash(nodes: Vec<String>) -> String {
+        let mut poseidon = Poseidon::<Fr>::new_circom(2).unwrap();
+        let mut field_elements = Vec::new();
 
-            for node in nodes {
-                let sanitized_node = node.trim_start_matches("0x");
-                let numeric_str = BigUint::from_str_radix(sanitized_node, 16)
-                    .unwrap()
-                    .to_string();
-                let field_repr = Fr::from_str(&numeric_str).unwrap();
-                field_elements.push(field_repr);
-            }
-
-            let result_hash: BigInt<4> = poseidon.hash(&field_elements).unwrap().into();
-            hex::encode(result_hash.to_bytes_be())
+        for node in nodes {
+            let sanitized_node = node.trim_start_matches("0x");
+            let numeric_str = BigUint::from_str_radix(sanitized_node, 16)
+                .unwrap()
+                .to_string();
+            let field_repr = Fr::from_str(&numeric_str).unwrap();
+            field_elements.push(field_repr);
         }
 
+        let result_hash: BigInt<4> = poseidon.hash(&field_elements).unwrap().into();
+        hex::encode(result_hash.to_bytes_be())
+    }
+
+    pub fn zeroes(&self) -> Vec<String> {
+        let mut zeroes = Vec::new();
+        let mut current_zero = self.zero_node.clone();
+        for _ in 0..self.tree_depth {
+            zeroes.push(current_zero.clone());
+            current_zero = Self::poseidon_hash(vec![current_zero; self.arity]);
+        }
+        zeroes
+    }
+
+    pub fn build_tree(&self) -> IMT {
         IMT::new(
-            poseidon_hash,
+            Self::poseidon_hash,
             self.tree_depth,
             self.zero_node.clone(),
             self.arity,
