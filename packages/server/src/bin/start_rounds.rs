@@ -1,5 +1,4 @@
-mod util;
-
+use rfv::util::timeit::timeit;
 use dialoguer::{theme::ColorfulTheme, Input, FuzzySelect};
 use std::{thread, time, env};
 use serde::{Deserialize, Serialize};
@@ -11,7 +10,6 @@ use fhe::{
 };
 use fhe_traits::{FheEncoder, FheEncrypter, Serialize as FheSerialize, DeserializeParametrized};
 use rand::{thread_rng};
-use util::timeit::{timeit};
 
 use hyper::Request;
 use hyper::Method;

@@ -1005,6 +1005,7 @@ dependencies = [
  "risc0-zkp",
  "risc0-zkvm",
  "serde",
+ "zk-kit-imt",
 ]
 
 [[package]]
@@ -6341,6 +6342,16 @@ dependencies = [
  "sha1",
  "time 0.3.36",
  "zstd",
+]
+
+[[package]]
+name = "zk-kit-imt"
+version = "0.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e4bec228e2acafec7bd22c9a0a5e0c5e2a6d0c17df69f5ad11c24ce6dc6356c6"
+dependencies = [
+ "hex",
+ "tiny-keccak",
 ]
 
 [[package]]
