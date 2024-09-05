@@ -1,34 +1,14 @@
+import "@nomicfoundation/hardhat-foundry";
 import "@nomicfoundation/hardhat-toolbox";
-import { config as dotenvConfig } from "dotenv";
 import "hardhat-deploy";
 import type { HardhatUserConfig } from "hardhat/config";
+import { vars } from "hardhat/config";
 import type { NetworkUserConfig } from "hardhat/types";
-import { resolve } from "path";
 
-const dotenvConfigPath: string = process.env.DOTENV_CONFIG_PATH || "./.env";
-dotenvConfig({ path: resolve(__dirname, dotenvConfigPath) });
+// Run 'npx hardhat vars setup' to see the list of variables that need to be set
 
-// Ensure that we have all the environment variables we need.
-const mnemonic: string | undefined = process.env.MNEMONIC;
-if (!mnemonic) {
-  throw new Error("Please set your MNEMONIC in a .env file");
-}
-
-const infuraApiKey: string | undefined = process.env.INFURA_API_KEY;
-if (!infuraApiKey) {
-  throw new Error("Please set your INFURA_API_KEY in a .env file");
-}
-
-const { PK } = process.env;
-
-const sharedNetworkConfig: HttpNetworkUserConfig = {};
-if (PK) {
-  sharedNetworkConfig.accounts = [PK];
-} else {
-  sharedNetworkConfig.accounts = {
-    mnemonic: MNEMONIC || DEFAULT_MNEMONIC,
-  };
-}
+const mnemonic: string = vars.get("MNEMONIC");
+const infuraApiKey: string = vars.get("INFURA_API_KEY");
 
 const chainIds = {
   "arbitrum-mainnet": 42161,
@@ -113,11 +93,7 @@ const config: HardhatUserConfig = {
     "polygon-mainnet": getChainConfig("polygon-mainnet"),
     "polygon-mumbai": getChainConfig("polygon-mumbai"),
     sepolia: getChainConfig("sepolia"),
-    //goerli: getChainConfig("goerli"),
-    goerli: {
-      ...sharedNetworkConfig,
-      url: `https://goerli.infura.io/v3/${infuraApiKey}`,
-    },
+    goerli: getChainConfig("goerli"),
   },
   paths: {
     artifacts: "./artifacts",
@@ -126,7 +102,7 @@ const config: HardhatUserConfig = {
     tests: "./test",
   },
   solidity: {
-    version: "0.8.21",
+    version: "0.8.26",
     settings: {
       metadata: {
         // Not including the metadata hash
