@@ -12,7 +12,7 @@ use ethers::{
     signers::{LocalWallet, Signer},
     types::{Address, Bytes, TxHash, BlockNumber},
 };
-
+use log::info;
 
 use crate::enclave_server::models::{EncryptedVote, JsonResponseTxHash, GetEmojisRequest, VoteCountRequest};
 use crate::enclave_server::database::{GLOBAL_DB, get_state};
@@ -66,7 +66,7 @@ async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
     let out = serde_json::to_string(&response).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
-    println!("Request for round {:?} send vote tx", incoming.round_id);
+    info!("Request for round {:?} send vote tx", incoming.round_id);
     Ok(Response::with((content_type, status::Ok, out)))
 }
 
@@ -76,7 +76,7 @@ fn get_emojis_by_round(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: GetEmojisRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request emojis for round {:?}", incoming.round_id);
+    info!("Request emojis for round {:?}", incoming.round_id);
 
     let (state, _key) = get_state(incoming.round_id);
     incoming.emojis = state.emojis;
@@ -91,7 +91,7 @@ fn get_vote_count_by_round(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: VoteCountRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request vote count for round {:?}", incoming.round_id);
+    info!("Request vote count for round {:?}", incoming.round_id);
 
     let (state, _key) = get_state(incoming.round_id);
     incoming.vote_count = state.vote_count;
@@ -102,7 +102,7 @@ fn get_vote_count_by_round(req: &mut Request) -> IronResult<Response> {
 }
 
 async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<dyn std::error::Error + Send + Sync>> {
-    println!("calling voting contract");
+    info!("calling voting contract");
 
     let infura_val = env!("INFURAKEY");
     let mut rpc_url = "https://sepolia.infura.io/v3/".to_string();
@@ -110,7 +110,7 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
 
     let provider = Provider::<Http>::try_from(rpc_url.clone())?;
     // let block_number: U64 = provider.get_block_number().await?;
-    // println!("{block_number}");
+    // info!("{block_number}");
     abigen!(
         IVOTE,
         r#"[
@@ -139,6 +139,6 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
     let contract = IVOTE::new(address, Arc::new(client.clone()));
 
     let test = contract.vote_encrypted(enc_vote).nonce(curr_nonce).send().await?.clone();
-    println!("{:?}", test);
+    info!("{:?}", test);
     Ok(test)
 }

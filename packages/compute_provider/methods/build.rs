@@ -1,6 +1,6 @@
 
-const SOLIDITY_IMAGE_ID_PATH: &str = "../../evm/contracts/ImageID.sol";
-const SOLIDITY_ELF_PATH: &str = "../../evm/contracts/Elf.sol";
+const SOLIDITY_IMAGE_ID_PATH: &str = "../../risc0/contracts/ImageID.sol";
+const SOLIDITY_ELF_PATH: &str = "../../risc0/contracts/Elf.sol";
 
 fn main() {
     let guests = risc0_build::embed_methods();

@@ -3,7 +3,7 @@ use iron::status;
 use iron::mime::Mime;
 use router::Router;
 use std::io::Read;
-
+use log::info;
 
 use crate::enclave_server::models::{GetRoundRequest, WebResultRequest, AllWebStates, StateLite, StateWeb};
 use crate::enclave_server::database::{get_state, get_round_count};
@@ -22,7 +22,7 @@ fn get_web_result(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request web state for round {:?}", incoming.round_id);
+    info!("Request web state for round {:?}", incoming.round_id);
 
     let (state, _key) = get_state(incoming.round_id);
     
@@ -43,7 +43,7 @@ fn get_web_result(req: &mut Request) -> IronResult<Response> {
 }
 
 fn get_web_result_all(_req: &mut Request) -> IronResult<Response> {
-    println!("Request all web state.");
+    info!("Request all web state.");
 
     let round_count = get_round_count();
     let mut states: Vec<WebResultRequest> = Vec::with_capacity(round_count as usize);
@@ -76,7 +76,7 @@ fn get_round_state(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request state for round {:?}", incoming.round_id);
+    info!("Request state for round {:?}", incoming.round_id);
 
     let (state, _key) = get_state(incoming.round_id);
     let out = serde_json::to_string(&state).unwrap();
@@ -90,7 +90,7 @@ fn get_round_state_web(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request state for round {:?}", incoming.round_id);
+    info!("Request state for round {:?}", incoming.round_id);
 
     let (state, _key) = get_state(incoming.round_id);
     let state_lite = StateWeb {
@@ -120,7 +120,7 @@ fn get_round_state_lite(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let incoming: GetRoundRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request state for round {:?}", incoming.round_id);
+    info!("Request state for round {:?}", incoming.round_id);
 
     let (state, _key) = get_state(incoming.round_id);
     let state_lite = StateLite {

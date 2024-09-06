@@ -1,6 +1,7 @@
 use hyper::{Request, Method};
 use http_body_util::BodyExt;
 use serde::{Deserialize, Serialize};
+use log::info;
 use crate::cli::HyperClientPost;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -33,6 +34,6 @@ pub async fn authenticate_user(config: &super::CrispConfig, client: &HyperClient
     let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
     let auth_res: AuthenticationResponse = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
 
-    println!("Authentication response {:?}", auth_res);
+    info!("Authentication response {:?}", auth_res);
     Ok(auth_res)
 }

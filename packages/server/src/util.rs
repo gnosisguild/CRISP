@@ -4,6 +4,7 @@ use fhe::bfv;
 use fhe_traits::FheEncoder;
 use fhe_util::transcode_from_bytes;
 use std::{cmp::min, fmt, sync::Arc, time::Duration};
+use log::info;
 
 /// Macros to time code and display a human-readable duration.
 pub mod timeit {
@@ -16,7 +17,7 @@ pub mod timeit {
             for _ in 1..$loops {
                 let _ = $code;
             }
-            println!(
+            info!(
                 "⏱  {}: {}",
                 $name,
                 DisplayDuration(start.elapsed() / $loops)
@@ -31,7 +32,7 @@ pub mod timeit {
             use crate::util::DisplayDuration;
             let start = std::time::Instant::now();
             let r = $code;
-            println!("⏱  {}: {}", $name, DisplayDuration(start.elapsed()));
+            info!("⏱  {}: {}", $name, DisplayDuration(start.elapsed()));
             r
         }};
     }
@@ -99,12 +100,12 @@ pub fn encode_database(
         number_elements_per_plaintext(par.degree(), plaintext_nbits, elements_size);
     let number_rows =
         (database.len() + number_elements_per_plaintext - 1) / number_elements_per_plaintext;
-    println!("number_rows = {number_rows}");
-    println!("number_elements_per_plaintext = {number_elements_per_plaintext}");
+    info!("number_rows = {number_rows}");
+    info!("number_elements_per_plaintext = {number_elements_per_plaintext}");
     let dimension_1 = (number_rows as f64).sqrt().ceil() as usize;
     let dimension_2 = (number_rows + dimension_1 - 1) / dimension_1;
-    println!("dimensions = {dimension_1} {dimension_2}");
-    println!("dimension = {}", dimension_1 * dimension_2);
+    info!("dimensions = {dimension_1} {dimension_2}");
+    info!("dimension = {}", dimension_1 * dimension_2);
     let mut preprocessed_database =
         vec![
             bfv::Plaintext::zero(bfv::Encoding::poly_at_level(level), &par).unwrap();

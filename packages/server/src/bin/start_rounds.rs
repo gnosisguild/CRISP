@@ -105,9 +105,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     loop {
     	print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    	println!("Starting new CRISP round!");
+    	info!("Starting new CRISP round!");
 
-	    println!("Reading proposal details from config.");
+	    info!("Reading proposal details from config.");
         let path = env::current_dir().unwrap();
         let mut pathst = path.display().to_string();
         pathst.push_str("/example_config.json");
@@ -115,13 +115,13 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let mut data = String::new();
         file.read_to_string(&mut data).unwrap();
         let config: CrispConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
-        println!("round id: {:?}", config.round_id); // get new round id from current id in server
-        println!("poll length {:?}", config.poll_length);
-        println!("chain id: {:?}", config.chain_id);
-        println!("voting contract: {:?}", config.voting_address);
-        println!("ciphernode count: {:?}", config.ciphernode_count);
+        info!("round id: {:?}", config.round_id); // get new round id from current id in server
+        info!("poll length {:?}", config.poll_length);
+        info!("chain id: {:?}", config.chain_id);
+        info!("voting contract: {:?}", config.voting_address);
+        info!("ciphernode count: {:?}", config.ciphernode_count);
 
-        println!("Initializing Keyshare nodes...");
+        info!("Initializing Keyshare nodes...");
 
         let response_id = JsonRequestGetRounds { response: "Test".to_string() };
         let _out = serde_json::to_string(&response_id).unwrap();
@@ -129,7 +129,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         url_id.push_str("/get_rounds");
 
         //let token = Authorization::bearer("some-opaque-token").unwrap();
-        //println!("bearer token {:?}", token.token());
+        //info!("bearer token {:?}", token.token());
         //todo: add auth field to config file to get bearer token
         let req = Request::builder()
             .method(Method::GET)
@@ -138,12 +138,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         let resp = client_get.request(req).await?;
 
-        println!("Response status: {}", resp.status());
+        info!("Response status: {}", resp.status());
 
         let body_bytes = resp.collect().await?.to_bytes();
         let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
         let count: RoundCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
-        println!("Server Round Count: {:?}", count.round_count);
+        info!("Server Round Count: {:?}", count.round_count);
 
         // TODO: get secret from env var
         // let key: Hmac<Sha256> = Hmac::new_from_slice(b"some-secret")?;
@@ -152,7 +152,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         // let mut bearer_str = "Bearer ".to_string();
         // let token_str = claims.sign_with_key(&key)?;
         // bearer_str.push_str(&token_str);
-        // println!("{:?}", bearer_str);
+        // info!("{:?}", bearer_str);
 
         let round_id = count.round_count + 1;
         let response = CrispConfig { 
@@ -175,7 +175,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
         let mut resp = client.request(req).await?;
 
-        println!("Response status: {}", resp.status());
+        info!("Response status: {}", resp.status());
 
         while let Some(next) = resp.frame().await {
             let frame = next?;
@@ -183,7 +183,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 io::stdout().write_all(chunk).await?;
             }
         }
-        println!("Round Initialized.");
+        info!("Round Initialized.");
 
         let next_round_start = config.poll_length + 60;
         let seconds = time::Duration::from_secs(next_round_start as u64);

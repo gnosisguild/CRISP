@@ -8,6 +8,7 @@ use jwt::SignWithKey;
 use sha2::Sha256;
 use std::collections::BTreeMap;
 use hmac::{Hmac, Mac};
+use log::info;
 
 use crate::enclave_server::models::{JsonResponse, AuthenticationLogin, AuthenticationDB, AuthenticationResponse};
 use crate::enclave_server::database::{GLOBAL_DB, pick_response};
@@ -27,7 +28,7 @@ fn handler(_req: &mut Request) -> IronResult<Response> {
         response: pick_response(),
     };
     let out = serde_json::to_string(&response).unwrap();
-    println!("index handler hit");
+    info!("index handler hit");
     let content_type = "application/json".parse::<Mime>().unwrap();
     Ok(Response::with((content_type, status::Ok, out)))
 }
@@ -42,7 +43,7 @@ fn authentication_login(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let incoming: AuthenticationLogin = serde_json::from_str(&payload).unwrap();
-    println!("Twitter Login Request");
+    info!("Twitter Login Request");
 
     // hmac
     let hmac_key: Hmac<Sha256> = Hmac::new_from_slice(b"some-secret").unwrap();
@@ -57,7 +58,7 @@ fn authentication_login(req: &mut Request) -> IronResult<Response> {
     let mut jwt_token = "".to_string();
 
     if authsdb == None {
-        println!("initializing first auth in db");
+        info!("initializing first auth in db");
         // hmac
         let auth_struct = AuthenticationDB {
             jwt_tokens: vec![token_str.clone()],
@@ -75,13 +76,13 @@ fn authentication_login(req: &mut Request) -> IronResult<Response> {
 
         for i in 0..authsdb_out_struct.jwt_tokens.len() {
             if authsdb_out_struct.jwt_tokens[i as usize] == token_str {
-                println!("Found previous login.");
+                info!("Found previous login.");
                 response_str = "Already Authorized".to_string();
             }
         };
 
         if response_str != "Already Authorized" {
-            println!("Inserting new login to db.");
+            info!("Inserting new login to db.");
             authsdb_out_struct.jwt_tokens.push(token_str.clone());
             let authsdb_str = serde_json::to_string(&authsdb_out_struct).unwrap();
             let authsdb_bytes = authsdb_str.into_bytes();

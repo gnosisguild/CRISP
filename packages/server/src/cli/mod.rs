@@ -9,6 +9,7 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 use http_body_util::Empty;
+use log::info;
 
 use auth::{authenticate_user, AuthenticationResponse};
 use voting::{initialize_crisp_round, participate_in_existing_round};
@@ -82,7 +83,7 @@ pub async fn run_cli() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             participate_in_existing_round(&config, &client, &auth_res).await?;
         }
     } else {
-        println!("Check back soon!");
+        info!("Check back soon!");
         std::process::exit(1);
     }
 

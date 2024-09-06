@@ -12,6 +12,7 @@ use iron::status;
 use iron::mime::Mime;
 use router::Router;
 use std::io::Read;
+use log::info;
 
 use crate::enclave_server::models::{Round, Ciphernode, JsonResponse, JsonRequest, RegisterNodeResponse, SKSShareRequest, SKSSharePoll, SKSShareResponse, PKShareCount, PKRequest, GetCiphernode, GetEligibilityRequest, CRPRequest};
 use crate::enclave_server::database::{GLOBAL_DB, get_state, pick_response};
@@ -36,9 +37,9 @@ async fn register_ciphernode(req: &mut Request) -> IronResult<Response> {
 
     // we're expecting the POST to match the format of our JsonRequest struct
     let incoming: JsonRequest = serde_json::from_str(&payload).unwrap();
-    println!("{:?}", incoming.response);
-    println!("ID: {:?}", incoming.id);
-    println!("Round ID: {:?}", incoming.round_id);
+    info!("{:?}", incoming.response);
+    info!("ID: {:?}", incoming.id);
+    info!("Round ID: {:?}", incoming.round_id);
 
     let (mut state, key) = get_state(incoming.round_id);
 
@@ -54,13 +55,13 @@ async fn register_ciphernode(req: &mut Request) -> IronResult<Response> {
     let state_bytes = state_str.into_bytes();
     GLOBAL_DB.insert(key, state_bytes).unwrap();
 
-    println!("pk share store for node id {:?}", incoming.id);
-    println!("ciphernode count {:?}", state.ciphernode_count);
-    println!("ciphernode total {:?}", state.ciphernode_total);
-    println!("pk share count {:?}", state.pk_share_count);
+    info!("pk share store for node id {:?}", incoming.id);
+    info!("ciphernode count {:?}", state.ciphernode_count);
+    info!("ciphernode total {:?}", state.ciphernode_total);
+    info!("pk share count {:?}", state.pk_share_count);
 
     if state.ciphernode_count == state.ciphernode_total {
-        println!("All shares received");
+        info!("All shares received");
         let _ = aggregate_pk_shares(incoming.round_id).await;
     }
 
@@ -82,14 +83,14 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
 
     // we're expecting the POST to match the format of our JsonRequest struct
     let incoming: SKSShareRequest = serde_json::from_str(&payload).unwrap();
-    println!("{:?}", incoming.response);
-    println!("Index: {:?}", incoming.index); // cipher node id (based on first upload of pk share)
-    println!("Round ID: {:?}", incoming.round_id);
+    info!("{:?}", incoming.response);
+    info!("Index: {:?}", incoming.index); // cipher node id (based on first upload of pk share)
+    info!("Round ID: {:?}", incoming.round_id);
 
 
     let mut round_key = incoming.round_id.to_string();
     round_key.push_str("-storage");
-    println!("Database key is {:?}", round_key);
+    info!("Database key is {:?}", round_key);
 
     let state_out = GLOBAL_DB.get(round_key.clone()).unwrap().unwrap();
     let state_out_str = str::from_utf8(&state_out).unwrap();
@@ -101,11 +102,11 @@ fn register_sks_share(req: &mut Request) -> IronResult<Response> {
     let state_str = serde_json::to_string(&state_out_struct).unwrap();
     let state_bytes = state_str.into_bytes();
     GLOBAL_DB.insert(round_key, state_bytes).unwrap();
-    println!("sks share stored for node index {:?}", incoming.index);
+    info!("sks share stored for node index {:?}", incoming.index);
 
     // toso get share threshold from client config
     if state_out_struct.sks_share_count == state_out_struct.ciphernode_total {
-        println!("All sks shares received");
+        info!("All sks shares received");
         //aggregate_pk_shares(incoming.round_id).await;
         // TODO: maybe notify cipher nodes
     }
@@ -134,9 +135,9 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
 
     // toso get share threshold from client config
     if state.sks_share_count == state.ciphernode_total {
-        println!("All sks shares received... sending to cipher nodes");
+        info!("All sks shares received... sending to cipher nodes");
         for i in 1..state.ciphernode_total + 1 {
-            println!("reading share {:?}", i);
+            info!("reading share {:?}", i);
             shares.push(state.ciphernodes[i as usize].sks_share.clone());
         }
         let response = SKSShareResponse { 
@@ -149,7 +150,7 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
         let state_bytes = state_str.into_bytes();
         GLOBAL_DB.insert(key, state_bytes).unwrap();
         let out = serde_json::to_string(&response).unwrap();
-        println!("get rounds hit");
+        info!("get rounds hit");
 
         let content_type = "application/json".parse::<Mime>().unwrap();
         Ok(Response::with((content_type, status::Ok, out)))
@@ -160,7 +161,7 @@ fn get_sks_shares(req: &mut Request) -> IronResult<Response> {
             sks_shares: shares,
         };
         let out = serde_json::to_string(&response).unwrap();
-        println!("get rounds hit");
+        info!("get rounds hit");
 
         let content_type = "application/json".parse::<Mime>().unwrap();
         Ok(Response::with((content_type, status::Ok, out)))
@@ -172,7 +173,7 @@ fn get_crp_by_round(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: CRPRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request crp for round {:?}", incoming.round_id);
+    info!("Request crp for round {:?}", incoming.round_id);
 
     let (state, _key) = get_state(incoming.round_id);
     incoming.crp_bytes = state.crp;
@@ -193,7 +194,7 @@ fn get_pk_by_round(req: &mut Request) -> IronResult<Response> {
     let out = serde_json::to_string(&incoming).unwrap();
 
     let content_type = "application/json".parse::<Mime>().unwrap();
-    println!("Request for round {:?} public key", incoming.round_id);
+    info!("Request for round {:?} public key", incoming.round_id);
     Ok(Response::with((content_type, status::Ok, out)))
 }
 
@@ -217,14 +218,14 @@ fn get_round_eligibility(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let mut incoming: GetEligibilityRequest = serde_json::from_str(&payload).unwrap();
-    println!("Request node elegibility for round {:?}", incoming.round_id);
+    info!("Request node elegibility for round {:?}", incoming.round_id);
 
     let (state, _key) = get_state(incoming.round_id);
 
     for i in 1..state.ciphernodes.len() {
-        println!("checking ciphernode {:?}", i);
-        println!("server db id {:?}", state.ciphernodes[i as usize].id);
-        println!("incoming request id {:?}", incoming.node_id);
+        info!("checking ciphernode {:?}", i);
+        info!("server db id {:?}", state.ciphernodes[i as usize].id);
+        info!("incoming request id {:?}", incoming.node_id);
         if state.ciphernodes[i as usize].id == incoming.node_id {
             incoming.is_eligible = true;
             incoming.reason = "Previously Registered".to_string();
@@ -260,7 +261,7 @@ fn get_node_by_round(req: &mut Request) -> IronResult<Response> {
     // read the POST body
     req.body.read_to_string(&mut payload).unwrap();
     let incoming: GetCiphernode = serde_json::from_str(&payload).unwrap();
-    println!("Request node data for round {:?}", incoming.round_id);
+    info!("Request node data for round {:?}", incoming.round_id);
 
     let (state, _key) = get_state(incoming.round_id);
     let mut cnode = Ciphernode {
@@ -299,7 +300,7 @@ fn get_node_by_round(req: &mut Request) -> IronResult<Response> {
 
 
 async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("aggregating validator keyshare");
+    info!("aggregating validator keyshare");
 
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;
@@ -320,14 +321,14 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
 
     let mut round_key = round_id.to_string();
     round_key.push_str("-storage");
-    println!("Database key is {:?}", round_key);
+    info!("Database key is {:?}", round_key);
 
     let state_out = GLOBAL_DB.get(round_key.clone()).unwrap().unwrap();
     let state_out_str = str::from_utf8(&state_out).unwrap();
     let mut state: Round = serde_json::from_str(&state_out_str).unwrap();
-    println!("checking db after drop {:?}", state.ciphernode_count);
-    println!("{:?}", state.ciphernodes[0].id);
-    //println!("{:?}", state.ciphernodes[0].pk_share);
+    info!("checking db after drop {:?}", state.ciphernode_count);
+    info!("{:?}", state.ciphernodes[0].id);
+    //info!("{:?}", state.ciphernodes[0].pk_share);
 
     //let crp = CommonRandomPoly::new_deterministic(&params, seed)?;
     let crp = CommonRandomPoly::deserialize(&state.crp, &params)?;
@@ -341,7 +342,7 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
     let mut parties :Vec<Party> = Vec::new();
     for i in 1..state.ciphernode_total + 1 { // todo fix init code that causes offset
         // read in pk_shares from storage
-        println!("Aggregating PKShare... id {}", i);
+        info!("Aggregating PKShare... id {}", i);
         let data_des = PublicKeyShare::deserialize(&state.ciphernodes[i as usize].pk_share, &params, crp.clone()).unwrap();
         // let pk_share = PublicKeyShare::new(&sk_share, crp.clone(), &mut thread_rng())?;
         parties.push(Party { pk_share: data_des });
@@ -353,13 +354,13 @@ async fn aggregate_pk_shares(round_id: u32) -> Result<(), Box<dyn std::error::Er
         let pk: PublicKey = parties.iter().map(|p| p.pk_share.clone()).aggregate()?;
         pk
     });
-    //println!("{:?}", pk);
-    println!("Multiparty Public Key Generated");
+    //info!("{:?}", pk);
+    info!("Multiparty Public Key Generated");
     let store_pk = pk.to_bytes();
     state.pk = store_pk;
     let state_str = serde_json::to_string(&state).unwrap();
     let state_bytes = state_str.into_bytes();
     GLOBAL_DB.insert(round_key, state_bytes).unwrap();
-    println!("aggregate pk stored for round {:?}", round_id);
+    info!("aggregate pk stored for round {:?}", round_id);
     Ok(())
 }

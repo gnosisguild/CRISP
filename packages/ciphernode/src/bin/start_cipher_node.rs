@@ -450,10 +450,12 @@ fn get_state(node_id: u32) -> (Ciphernode, String) {
 async fn get_votes_contract(block_start: U64, address: String, _chain_id: u32) -> Vec<Vec<u8>> {
     println!("Filtering contract for votes");
     // chain state
-    let infura_key = "INFURAKEY";
-    let infura_val = env::var(infura_key).unwrap();
-    let mut rpc_url = "https://sepolia.infura.io/v3/".to_string();
-    rpc_url.push_str(&infura_val);
+    // let infura_key = "INFURAKEY";
+    // let infura_val = env::var(infura_key).unwrap();
+    // let mut rpc_url = "https://sepolia.infura.io/v3/".to_string();
+    // rpc_url.push_str(&infura_val);
+
+    let mut rpc_url = "http://127.0.0.1:8545".to_string();
 
     abigen!(
         IVOTE,

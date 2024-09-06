@@ -6,6 +6,7 @@ use hyper::{Method, Request};
 use serde::{Deserialize, Serialize};
 use std::{thread, time};
 use tokio::io::{self, AsyncWriteExt as _};
+use log::info;
 
 use crate::cli::AuthenticationResponse;
 use crate::cli::{HyperClientGet, HyperClientPost};
@@ -49,9 +50,9 @@ pub async fn initialize_crisp_round(
     client_get: &HyperClientGet,
     client: &HyperClientPost,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("Starting new CRISP round!");
+    info!("Starting new CRISP round!");
 
-    println!("Initializing Keyshare nodes...");
+    info!("Initializing Keyshare nodes...");
 
     let response_id = JsonRequestGetRounds {
         response: "Test".to_string(),
@@ -67,12 +68,12 @@ pub async fn initialize_crisp_round(
 
     let resp = client_get.request(req).await?;
 
-    println!("Response status: {}", resp.status());
+    info!("Response status: {}", resp.status());
 
     let body_bytes = resp.collect().await?.to_bytes();
     let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
     let count: RoundCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
-    println!("Server Round Count: {:?}", count.round_count);
+    info!("Server Round Count: {:?}", count.round_count);
 
     let round_id = count.round_count + 1;
     let response = super::CrispConfig {
@@ -95,7 +96,7 @@ pub async fn initialize_crisp_round(
 
     let mut resp = client.request(req).await?;
 
-    println!("Response status: {}", resp.status());
+    info!("Response status: {}", resp.status());
 
     while let Some(next) = resp.frame().await {
         let frame = next?;
@@ -103,11 +104,11 @@ pub async fn initialize_crisp_round(
             tokio::io::stdout().write_all(chunk).await?;
         }
     }
-    println!("Round Initialized.");
-    println!("Gathering Keyshare nodes for execution environment...");
+    info!("Round Initialized.");
+    info!("Gathering Keyshare nodes for execution environment...");
     let three_seconds = time::Duration::from_millis(1000);
     thread::sleep(three_seconds);
-    println!("\nYou can now vote Encrypted with Round ID: {:?}", round_id);
+    info!("\nYou can now vote Encrypted with Round ID: {:?}", round_id);
 
     Ok(())
 }
@@ -121,7 +122,7 @@ pub async fn participate_in_existing_round(
         .with_prompt("Enter CRISP round ID.")
         .interact_text()
         .unwrap();
-    println!("Voting state Initialized");
+    info!("Voting state Initialized");
 
     // get public encrypt key
     let v: Vec<u8> = vec![0];
@@ -136,15 +137,16 @@ pub async fn participate_in_existing_round(
 
     let resp = client.request(req).await?;
 
-    println!("Response status: {}", resp.status());
+    info!("Response status: {}", resp.status());
 
     let body_bytes = resp.collect().await?.to_bytes();
     let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
     let pk_res: PKRequest = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
-    println!(
+    info!(
         "Shared Public Key for CRISP round {:?} collected.",
         pk_res.round_id
     );
+    info!("Public Key: {:?}", pk_res.pk_bytes);
 
     let degree = 4096;
     let plaintext_modulus: u64 = 4096;
@@ -172,19 +174,19 @@ pub async fn participate_in_existing_round(
 
     let mut vote_choice: u64 = 0;
     if selection_3 == 0 {
-        println!("Exiting voting system. You may choose to vote later.");
+        info!("Exiting voting system. You may choose to vote later.");
         return Ok(());
     } else if selection_3 == 1 {
         vote_choice = 1;
     } else if selection_3 == 2 {
         vote_choice = 0;
     }
-    println!("Encrypting vote.");
+    info!("Encrypting vote.");
     let votes: Vec<u64> = [vote_choice].to_vec();
     let pt = Plaintext::try_encode(&[votes[0]], Encoding::poly(), &params)?;
     let ct = pk_deserialized.try_encrypt(&pt, &mut thread_rng())?;
-    println!("Vote encrypted.");
-    println!("Calling voting contract with encrypted vote.");
+    info!("Vote encrypted.");
+    info!("Calling voting contract with encrypted vote.");
 
     let request_contract = EncryptedVote {
         round_id: input_crisp_id,
@@ -198,14 +200,14 @@ pub async fn participate_in_existing_round(
 
     let resp = client.request(req).await?;
 
-    println!("Response status: {}", resp.status());
+    info!("Response status: {}", resp.status());
 
     let body_bytes = resp.collect().await?.to_bytes();
     let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
     let contract_res: JsonResponseTxHash =
         serde_json::from_str(&body_str).expect("JSON was not well-formatted");
-    println!("Contract call: {:?}", contract_res.response);
-    println!("TxHash is {:?}", contract_res.tx_hash);
+    info!("Contract call: {:?}", contract_res.response);
+    info!("TxHash is {:?}", contract_res.tx_hash);
 
     Ok(())
 }
