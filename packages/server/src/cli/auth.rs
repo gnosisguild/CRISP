@@ -25,6 +25,7 @@ pub async fn authenticate_user(config: &super::CrispConfig, client: &HyperClient
     let mut url = config.enclave_address.clone();
     url.push_str("/authentication_login");
     let req = Request::builder()
+    .header("Content-Type", "application/json")
         .method(Method::POST)
         .uri(url)
         .body(out)?;

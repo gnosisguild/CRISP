@@ -1,5 +1,11 @@
 use ethers::types::U64;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
+use sled::Db;
+
+pub struct AppState {
+    pub db: Arc<Db>,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct JsonResponse {

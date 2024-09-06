@@ -1,15 +1,18 @@
 mod index;
+mod auth;
+mod state;
+mod voting;
 mod rounds;
 mod ciphernode;
-mod voting;
-mod state;
 
-use router::Router;
+use actix_web::{web, HttpResponse, Responder};
 
-pub fn setup_routes(router: &mut Router) {
-    index::setup_routes(router);
-    rounds::setup_routes(router);
-    ciphernode::setup_routes(router);
-    voting::setup_routes(router);
-    state::setup_routes(router);
+pub fn setup_routes(config: &mut web::ServiceConfig) {
+    index::setup_routes(config);
+    auth::setup_routes(config);
+    state::setup_routes(config);
+    voting::setup_routes(config);
+    rounds::setup_routes(config);
+    ciphernode::setup_routes(config);
+
 }

@@ -1,6 +1,6 @@
 {
   "round_id": 0,
-  "poll_length": 600,
+  "poll_length": 120,
   "chain_id": 31337,
   "voting_address": "0x5FbDB2315678afecb367f032d93F642f64180aa3",
   "ciphernode_count": 2,

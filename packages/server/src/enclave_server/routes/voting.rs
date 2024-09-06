@@ -1,9 +1,5 @@
 
 use std::{env, sync::Arc, str};
-use iron::prelude::*;
-use iron::status;
-use iron::mime::Mime;
-use router::Router;
 use std::io::Read;
 use ethers::{
     prelude::abigen,
@@ -14,103 +10,97 @@ use ethers::{
 };
 use log::info;
 
-use crate::enclave_server::models::{EncryptedVote, JsonResponseTxHash, GetEmojisRequest, VoteCountRequest};
+use actix_web::{web, HttpResponse, Responder};
+
+use crate::enclave_server::models::{EncryptedVote, JsonResponseTxHash, AppState, GetEmojisRequest, VoteCountRequest};
 use crate::enclave_server::database::{GLOBAL_DB, get_state};
 
-
-pub fn setup_routes(router: &mut Router) {
-    router.post("/broadcast_enc_vote", broadcast_enc_vote, "broadcast_enc_vote");
-    router.post("/get_vote_count_by_round", get_vote_count_by_round, "get_vote_count_by_round");
-    router.post("/get_emojis_by_round", get_emojis_by_round, "get_emojis_by_round");
+pub fn setup_routes(config: &mut web::ServiceConfig) {
+    config
+        .route("/broadcast_enc_vote", web::post().to(broadcast_enc_vote))
+        .route("/get_vote_count_by_round", web::post().to(get_vote_count_by_round))
+        .route("/get_emojis_by_round", web::post().to(get_emojis_by_round));
 }
-
-#[tokio::main]
-async fn broadcast_enc_vote(req: &mut Request) -> IronResult<Response> {
-    let mut payload = String::new();
-    // read the POST body
-    req.body.read_to_string(&mut payload).unwrap();
-    let incoming: EncryptedVote = serde_json::from_str(&payload).unwrap();
+async fn broadcast_enc_vote(
+    data: web::Json<EncryptedVote>,
+    state: web::Data<AppState>,  // Access shared state
+) -> impl Responder {
+    let incoming = data.into_inner();
     let mut response_str = "";
     let mut converter = "".to_string();
-    let (mut state, key) = get_state(incoming.round_id);
+    let (mut state_data, key) = get_state(incoming.round_id);
 
-    for i in 0..state.has_voted.len() {
-        if state.has_voted[i] == incoming.postId {
+    for voted in &state_data.has_voted {
+        if *voted == incoming.postId {
             response_str = "User Has Already Voted";
-        } else {
-            response_str = "Vote Successful";
+            break;
         }
-    };
+    }
 
-    if response_str == "Vote Successful" {
+    if response_str == "" {
+        response_str = "Vote Successful";
         let sol_vote = Bytes::from(incoming.enc_vote_bytes);
-        let tx_hash = call_contract(sol_vote, state.voting_address.clone()).await.unwrap();
+        let tx_hash = call_contract(sol_vote, state_data.voting_address.clone()).await.unwrap();
+
         converter = "0x".to_string();
         for i in 0..32 {
             if tx_hash[i] <= 16 {
                 converter.push_str("0");
-                converter.push_str(&format!("{:x}", tx_hash[i]));
-            } else {
-                converter.push_str(&format!("{:x}", tx_hash[i]));
             }
+            converter.push_str(&format!("{:x}", tx_hash[i]));
         }
 
-        state.vote_count = state.vote_count + 1;
-        state.has_voted.push(incoming.postId);
-        let state_str = serde_json::to_string(&state).unwrap();
-        let state_bytes = state_str.into_bytes();
-        GLOBAL_DB.insert(key, state_bytes).unwrap();
+        state_data.vote_count += 1;
+        state_data.has_voted.push(incoming.postId.clone());
+        let state_str = serde_json::to_string(&state_data).unwrap();
+        state.db.insert(key, state_str.into_bytes()).unwrap();
+    }
+
+    let response = JsonResponseTxHash {
+        response: response_str.to_string(),
+        tx_hash: converter,
     };
 
-    let response = JsonResponseTxHash { response: response_str.to_string(), tx_hash: converter };
-    let out = serde_json::to_string(&response).unwrap();
-
-    let content_type = "application/json".parse::<Mime>().unwrap();
     info!("Request for round {:?} send vote tx", incoming.round_id);
-    Ok(Response::with((content_type, status::Ok, out)))
+    HttpResponse::Ok().json(response)
 }
 
-
-fn get_emojis_by_round(req: &mut Request) -> IronResult<Response> {
-    let mut payload = String::new();
-    // read the POST body
-    req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: GetEmojisRequest = serde_json::from_str(&payload).unwrap();
+// Get Emojis by Round Handler
+async fn get_emojis_by_round(
+    data: web::Json<GetEmojisRequest>,
+) -> impl Responder {
+    let mut incoming = data.into_inner();
     info!("Request emojis for round {:?}", incoming.round_id);
 
-    let (state, _key) = get_state(incoming.round_id);
-    incoming.emojis = state.emojis;
-    let out = serde_json::to_string(&incoming).unwrap();
+    let (state_data, _) = get_state(incoming.round_id);
+    incoming.emojis = state_data.emojis;
 
-    let content_type = "application/json".parse::<Mime>().unwrap();
-    Ok(Response::with((content_type, status::Ok, out)))
+    HttpResponse::Ok().json(incoming)
 }
 
-fn get_vote_count_by_round(req: &mut Request) -> IronResult<Response> {
-    let mut payload = String::new();
-    // read the POST body
-    req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: VoteCountRequest = serde_json::from_str(&payload).unwrap();
+// Get Vote Count by Round Handler
+async fn get_vote_count_by_round(
+    data: web::Json<VoteCountRequest>,
+) -> impl Responder {
+    let mut incoming = data.into_inner();
     info!("Request vote count for round {:?}", incoming.round_id);
 
-    let (state, _key) = get_state(incoming.round_id);
-    incoming.vote_count = state.vote_count;
-    let out = serde_json::to_string(&incoming).unwrap();
+    let (state_data, _) = get_state(incoming.round_id);
+    incoming.vote_count = state_data.vote_count;
 
-    let content_type = "application/json".parse::<Mime>().unwrap();
-    Ok(Response::with((content_type, status::Ok, out)))
+    HttpResponse::Ok().json(incoming)
 }
 
-async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<dyn std::error::Error + Send + Sync>> {
+// Call Contract Function
+async fn call_contract(
+    enc_vote: Bytes,
+    address: String,
+) -> Result<TxHash, Box<dyn std::error::Error + Send + Sync>> {
     info!("calling voting contract");
 
-    let infura_val = env!("INFURAKEY");
-    let mut rpc_url = "https://sepolia.infura.io/v3/".to_string();
-    rpc_url.push_str(&infura_val);
-
+    let rpc_url = "http://0.0.0.0:8545".to_string();
     let provider = Provider::<Http>::try_from(rpc_url.clone())?;
-    // let block_number: U64 = provider.get_block_number().await?;
-    // info!("{block_number}");
+
     abigen!(
         IVOTE,
         r#"[
@@ -120,13 +110,11 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
         ]"#,
     );
 
-    //const RPC_URL: &str = "https://eth.llamarpc.com";
     let vote_address: &str = &address;
-
     let eth_val = env!("PRIVATEKEY");
     let wallet: LocalWallet = eth_val
-        .parse::<LocalWallet>().unwrap()
-        .with_chain_id(11155111 as u64);
+        .parse::<LocalWallet>()?
+        .with_chain_id(31337 as u64);
 
     let nonce_manager = provider.clone().nonce_manager(wallet.address());
     let curr_nonce = nonce_manager
@@ -138,7 +126,8 @@ async fn call_contract(enc_vote: Bytes, address: String) -> Result<TxHash, Box<d
     let address: Address = vote_address.parse()?;
     let contract = IVOTE::new(address, Arc::new(client.clone()));
 
-    let test = contract.vote_encrypted(enc_vote).nonce(curr_nonce).send().await?.clone();
-    info!("{:?}", test);
-    Ok(test)
+    let tx = contract.vote_encrypted(enc_vote).nonce(curr_nonce).send().await?.clone();
+    info!("{:?}", tx);
+
+    Ok(tx)
 }

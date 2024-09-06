@@ -90,6 +90,7 @@ pub async fn initialize_crisp_round(
     url.push_str("/init_crisp_round");
     let req = Request::builder()
         .header("authorization", "Bearer fpKL54jvWmEGVoRdCNjG")
+        .header("Content-Type", "application/json")
         .method(Method::POST)
         .uri(url)
         .body(out)?;
@@ -133,7 +134,7 @@ pub async fn participate_in_existing_round(
     let out = serde_json::to_string(&response_pk).unwrap();
     let mut url = config.enclave_address.clone();
     url.push_str("/get_pk_by_round");
-    let req = Request::builder().method(Method::POST).uri(url).body(out)?;
+    let req = Request::builder().header("Content-Type", "application/json").method(Method::POST).uri(url).body(out)?;
 
     let resp = client.request(req).await?;
 
@@ -196,7 +197,7 @@ pub async fn participate_in_existing_round(
     let out = serde_json::to_string(&request_contract).unwrap();
     let mut url = config.enclave_address.clone();
     url.push_str("/broadcast_enc_vote");
-    let req = Request::builder().method(Method::POST).uri(url).body(out)?;
+    let req = Request::builder().header("Content-Type", "application/json").method(Method::POST).uri(url).body(out)?;
 
     let resp = client.request(req).await?;
 

@@ -1,14 +1,13 @@
 use chrono::Utc;
 use fhe::{bfv::BfvParametersBuilder, mbfv::CommonRandomPoly};
 use fhe_traits::Serialize;
-use iron::mime::Mime;
-use iron::prelude::*;
 use iron::status;
 use rand::thread_rng;
-use router::Router;
 use std::env;
 use std::io::Read;
 use log::info;
+
+use actix_web::{web, HttpResponse, Responder};
 
 use ethers::{
     providers::{Http, Middleware, Provider},
@@ -20,75 +19,48 @@ use crate::util::timeit::timeit;
 use crate::enclave_server::database::{generate_emoji, get_state, GLOBAL_DB};
 use crate::enclave_server::models::{
     Ciphernode, CrispConfig, JsonResponse, PollLengthRequest, ReportTallyRequest, Round,
-    RoundCount, TimestampRequest,
+    RoundCount, TimestampRequest, AppState
 };
 
-pub fn setup_routes(router: &mut Router) {
-    router.get("/get_rounds", get_rounds, "get_rounds");
-    router.post("/init_crisp_round", init_crisp_round, "init_crisp_round");
-    router.post(
-        "/get_start_time_by_round",
-        get_start_time_by_round,
-        "get_start_time_by_round",
-    );
-    router.post(
-        "/get_poll_length_by_round",
-        get_poll_length_by_round,
-        "get_poll_length_by_round",
-    );
-    router.post("/report_tally", report_tally, "report_tally");
+pub fn setup_routes(config: &mut web::ServiceConfig) {
+    config
+        .route("/get_rounds", web::get().to(get_rounds))
+        .route("/init_crisp_round", web::post().to(init_crisp_round))
+        .route("/get_start_time_by_round", web::post().to(get_start_time_by_round))
+        .route("/get_poll_length_by_round", web::post().to(get_poll_length_by_round))
+        .route("/report_tally", web::post().to(report_tally));
 }
-
-fn get_rounds(_req: &mut Request) -> IronResult<Response> {
-    //let test = _req.headers.get::<iron::headers::ContentType>().unwrap();
-    //info!("content_type: {:?}", test);
-
-    // let test3 = _req.headers.get::<iron::headers::Authorization<Bearer>>().unwrap();
-    // info!("auth: {:?}", test3.token);
-    // let key: Hmac<Sha256> = Hmac::new_from_slice(b"some-secret").unwrap();
-    // let claims: BTreeMap<String, String> = test3.token.verify_with_key(&key).unwrap();
-    // info!("decoded hmac {:?}", claims);
-
-    //let test2 = _req.headers.get::<iron::headers::UserAgent>();
-    //info!("user agent: {:?}", test2);
-
+async fn get_rounds(state: web::Data<AppState>) -> impl Responder {
     let key = "round_count";
-    let mut round = GLOBAL_DB.get(key).unwrap();
-    if round == None {
+    let mut round = state.db.get(key).unwrap();
+
+    if round.is_none() {
         info!("initializing first round in db");
-        GLOBAL_DB.insert(key, b"0".to_vec()).unwrap();
-        round = GLOBAL_DB.get(key).unwrap();
+        state.db.insert(key, b"0".to_vec()).unwrap();
+        round = state.db.get(key).unwrap();
     }
-    let round_key = std::str::from_utf8(round.unwrap().as_ref())
-        .unwrap()
-        .to_string();
+
+    let round_key = std::str::from_utf8(round.unwrap().as_ref()).unwrap().to_string();
     let round_int = round_key.parse::<u32>().unwrap();
 
     let count = RoundCount {
         round_count: round_int,
     };
+
     info!("round_count: {:?}", count.round_count);
 
-    let out = serde_json::to_string(&count).unwrap();
-    info!("get rounds hit");
-
-    let content_type = "application/json".parse::<Mime>().unwrap();
-    Ok(Response::with((content_type, status::Ok, out)))
+    HttpResponse::Ok().json(count)
 }
 
-#[tokio::main]
-async fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
-    // let auth = _req.headers.get::<iron::headers::Authorization<Bearer>>().unwrap();
-    // if auth.token != env {
-
-    // }
+// Initialize CRISP Round Handler
+async fn init_crisp_round(
+    data: web::Json<CrispConfig>,
+    state: web::Data<AppState>,  // Access shared state
+) -> impl Responder {
     info!("generating round crp");
 
-    let infura_val = env!("INFURAKEY");
-    let mut rpc_url = "https://sepolia.infura.io/v3/".to_string();
-    rpc_url.push_str(&infura_val);
-
-    let provider = Provider::<Http>::try_from(rpc_url.clone()).unwrap();
+    let rpc_url = "http://0.0.0.0:8545".to_string();
+    let provider = Provider::<Http>::try_from(rpc_url).unwrap();
     let block_number: U64 = provider.get_block_number().await.unwrap();
 
     let degree = 4096;
@@ -108,35 +80,24 @@ async fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
     let crp = CommonRandomPoly::new(&params, &mut thread_rng()).unwrap();
     let crp_bytes = crp.to_bytes();
 
-    let mut payload = String::new();
-
-    // read the POST body
-    req.body.read_to_string(&mut payload).unwrap();
-
-    // we're expecting the POST to match the format of our JsonRequest struct
-    let incoming: CrispConfig = serde_json::from_str(&payload).unwrap();
-    info!("ID: {:?}", incoming.round_id); // TODO: check that client sent the expected next round_id
+    let incoming = data.into_inner();
+    info!("ID: {:?}", incoming.round_id); // TODO: Check that client sent the expected next round_id
     info!("Address: {:?}", incoming.voting_address);
 
-    // --------------
+    // Initialize or increment round count
     let key = "round_count";
-    //db.remove(key)?;
-    let round = GLOBAL_DB.get(key).unwrap();
-    if round == None {
+    let round = state.db.get(key).unwrap();
+    if round.is_none() {
         info!("initializing first round in db");
-        GLOBAL_DB.insert(key, b"0".to_vec()).unwrap();
+        state.db.insert(key, b"0".to_vec()).unwrap();
     }
-    let round_key = std::str::from_utf8(round.unwrap().as_ref())
-        .unwrap()
-        .to_string();
+
+    let round_key = std::str::from_utf8(round.unwrap().as_ref()).unwrap().to_string();
     let mut round_int = round_key.parse::<u32>().unwrap();
-    round_int = round_int + 1;
-    let mut inc_round_key = round_int.to_string();
-    inc_round_key.push_str("-storage");
-    info!(
-        "Database key is {:?} and round int is {:?}",
-        inc_round_key, round_int
-    );
+    round_int += 1;
+
+    let inc_round_key = format!("{}-storage", round_int);
+    info!("Database key is {:?} and round int is {:?}", inc_round_key, round_int);
 
     let init_time = Utc::now();
     let timestamp = init_time.timestamp();
@@ -144,7 +105,7 @@ async fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
 
     let (emoji1, emoji2) = generate_emoji();
 
-    let state = Round {
+    let state_data = Round {
         id: round_int,
         status: "Active".to_string(),
         poll_length: incoming.poll_length,
@@ -170,75 +131,66 @@ async fn init_crisp_round(req: &mut Request) -> IronResult<Response> {
         has_voted: vec!["".to_string()],
     };
 
-    let state_str = serde_json::to_string(&state).unwrap();
-    let state_bytes = state_str.into_bytes();
-    let key2 = round_int.to_string();
-    GLOBAL_DB.insert(inc_round_key, state_bytes).unwrap();
+    let state_str = serde_json::to_string(&state_data).unwrap();
+    state.db.insert(inc_round_key, state_str.into_bytes()).unwrap();
 
-    let new_round_bytes = key2.into_bytes();
-    GLOBAL_DB.insert(key, new_round_bytes).unwrap();
+    let new_round_bytes = round_int.to_string().into_bytes();
+    state.db.insert(key, new_round_bytes).unwrap();
 
-    // create a response with our random string, and pass in the string from the POST body
     let response = JsonResponse {
         response: "CRISP Initiated".to_string(),
     };
-    let out = serde_json::to_string(&response).unwrap();
 
-    let content_type = "application/json".parse::<Mime>().unwrap();
-    Ok(Response::with((content_type, status::Ok, out)))
+    HttpResponse::Ok().json(response)
 }
 
-fn get_start_time_by_round(req: &mut Request) -> IronResult<Response> {
-    let mut payload = String::new();
-    // read the POST body
-    req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: TimestampRequest = serde_json::from_str(&payload).unwrap();
+// Get Start Time by Round Handler
+async fn get_start_time_by_round(
+    data: web::Json<TimestampRequest>,
+) -> impl Responder {
+    let mut incoming = data.into_inner();
     info!("Request start time for round {:?}", incoming.round_id);
 
-    let (state, _key) = get_state(incoming.round_id);
-    incoming.timestamp = state.start_time;
-    let out = serde_json::to_string(&incoming).unwrap();
+    let (state_data, _) = get_state(incoming.round_id);
+    incoming.timestamp = state_data.start_time;
 
-    let content_type = "application/json".parse::<Mime>().unwrap();
-    Ok(Response::with((content_type, status::Ok, out)))
+    HttpResponse::Ok().json(incoming)
 }
 
-fn get_poll_length_by_round(req: &mut Request) -> IronResult<Response> {
-    let mut payload = String::new();
-    // read the POST body
-    req.body.read_to_string(&mut payload).unwrap();
-    let mut incoming: PollLengthRequest = serde_json::from_str(&payload).unwrap();
+// Get Poll Length by Round Handler
+async fn get_poll_length_by_round(
+    data: web::Json<PollLengthRequest>,
+) -> impl Responder {
+    let mut incoming = data.into_inner();
     info!("Request poll length for round {:?}", incoming.round_id);
 
-    let (state, _key) = get_state(incoming.round_id);
-    incoming.poll_length = state.poll_length;
-    let out = serde_json::to_string(&incoming).unwrap();
+    let (state_data, _) = get_state(incoming.round_id);
+    incoming.poll_length = state_data.poll_length;
 
-    let content_type = "application/json".parse::<Mime>().unwrap();
-    Ok(Response::with((content_type, status::Ok, out)))
+    HttpResponse::Ok().json(incoming)
 }
 
-fn report_tally(req: &mut Request) -> IronResult<Response> {
-    let mut payload = String::new();
-    // read the POST body
-    req.body.read_to_string(&mut payload).unwrap();
-    let incoming: ReportTallyRequest = serde_json::from_str(&payload).unwrap();
+// Report Tally Handler
+async fn report_tally(
+    data: web::Json<ReportTallyRequest>,
+    state: web::Data<AppState>,  
+) -> impl Responder {
+    let incoming = data.into_inner();
     info!("Request report tally for round {:?}", incoming.round_id);
 
-    let (mut state, key) = get_state(incoming.round_id);
-    if state.votes_option_1 == 0 && state.votes_option_2 == 0 {
-        state.votes_option_1 = incoming.option_1;
-        state.votes_option_2 = incoming.option_2;
+    let (mut state_data, key) = get_state(incoming.round_id);
 
-        let state_str = serde_json::to_string(&state).unwrap();
-        let state_bytes = state_str.into_bytes();
-        GLOBAL_DB.insert(key, state_bytes).unwrap();
+    if state_data.votes_option_1 == 0 && state_data.votes_option_2 == 0 {
+        state_data.votes_option_1 = incoming.option_1;
+        state_data.votes_option_2 = incoming.option_2;
+
+        let state_str = serde_json::to_string(&state_data).unwrap();
+        state.db.insert(key, state_str.into_bytes()).unwrap();
     }
+
     let response = JsonResponse {
         response: "Tally Reported".to_string(),
     };
-    let out = serde_json::to_string(&response).unwrap();
 
-    let content_type = "application/json".parse::<Mime>().unwrap();
-    Ok(Response::with((content_type, status::Ok, out)))
+    HttpResponse::Ok().json(response)
 }

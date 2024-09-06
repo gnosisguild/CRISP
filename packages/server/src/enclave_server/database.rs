@@ -1,16 +1,14 @@
 
-use std::{env, str};
+use std::{env, str, sync::Arc};
 use once_cell::sync::Lazy;
 use sled::Db;
 use rand::Rng;
 use log::info;
 use super::models::Round;
 
-pub static GLOBAL_DB: Lazy<Db> = Lazy::new(|| {
-    let pathdb = env::current_dir().unwrap();
-    let mut pathdbst = pathdb.display().to_string();
-    pathdbst.push_str("/database/enclave_server");
-    sled::open(pathdbst.clone()).unwrap()
+pub static GLOBAL_DB: Lazy<Arc<Db>> = Lazy::new(|| {
+    let pathdb = std::env::current_dir().unwrap().join("database/enclave_server");
+    Arc::new(sled::open(pathdb).unwrap())
 });
 
 pub fn get_state(round_id: u32) -> (Round, String) {

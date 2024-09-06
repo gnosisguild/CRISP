@@ -9,11 +9,31 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 use http_body_util::Empty;
-use log::info;
 
 use auth::{authenticate_user, AuthenticationResponse};
 use voting::{initialize_crisp_round, participate_in_existing_round};
 use serde::{Deserialize, Serialize};
+use env_logger::{Builder, Target};
+use log::LevelFilter;
+use log::info;
+use std::io::Write; // Use `std::io::Write` for writing to the buffer
+
+fn init_logger() {
+    let mut builder = Builder::new();
+    builder
+        .target(Target::Stdout) // Set target to stdout
+        .filter(None, LevelFilter::Info) // Set log level to Info
+        .format(|buf, record| {
+            writeln!(
+                buf, // Use `writeln!` correctly with the `buf`
+                "[{}:{}] - {}",
+                record.file().unwrap_or("unknown"),
+                record.line().unwrap_or(0),
+                record.args()
+            )
+        })
+        .init();
+}
 
 type HyperClientGet = HyperClient<HttpsConnector<HttpConnector>, Empty<Bytes>>;
 type HyperClientPost = HyperClient<HttpsConnector<HttpConnector>, String>;
@@ -31,6 +51,8 @@ struct CrispConfig {
 
 #[tokio::main]
 pub async fn run_cli() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    init_logger();
+
     let https = HttpsConnector::new();
     let client_get: HyperClientGet = HyperClient::builder(TokioExecutor::new()).build(https.clone());
     let client: HyperClientPost = HyperClient::builder(TokioExecutor::new()).build(https);
