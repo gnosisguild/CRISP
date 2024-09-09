@@ -40,6 +40,28 @@ use jwt::SignWithKey;
 use sha2::Sha256;
 use std::collections::BTreeMap;
 
+use env_logger::{Builder, Target};
+use log::LevelFilter;
+use log::info;
+use std::io::Write; // Use `std::io::Write` for writing to the buffer
+
+fn init_logger() {
+    let mut builder = Builder::new();
+    builder
+        .target(Target::Stdout) // Set target to stdout
+        .filter(None, LevelFilter::Info) // Set log level to Info
+        .format(|buf, record| {
+            writeln!(
+                buf, // Use `writeln!` correctly with the `buf`
+                "[{}:{}] - {}",
+                record.file().unwrap_or("unknown"),
+                record.line().unwrap_or(0),
+                record.args()
+            )
+        })
+        .init();
+    }
+
 #[derive(Debug, Deserialize, Serialize)]
 struct JsonRequest {
     response: String,
@@ -189,21 +211,21 @@ static GLOBAL_DB: Lazy<Db> = Lazy::new(|| {
     let mut config: CiphernodeConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
     let node_id: u32;
     if(config.ids.len() - 1) < cnode_selector {
-        println!("generating new ciphernode...");
+        info!("generating new ciphernode...");
         node_id = rand::thread_rng().gen_range(0..100000);
         config.ids.push(node_id);
 
         let configfile = serde_json::to_string(&config).unwrap();
         fs::write(pathst.clone(), configfile).unwrap();
     } else if config.ids[cnode_selector] == 0 {
-        println!("generating initial ciphernode id...");
+        info!("generating initial ciphernode id...");
         node_id = rand::thread_rng().gen_range(0..100000);
         config.ids[cnode_selector as usize] = node_id;
         
         let configfile = serde_json::to_string(&config).unwrap();
         fs::write(pathst.clone(), configfile).unwrap();
     } else {
-        println!("Using ciphernode id {:?}", config.ids[cnode_selector]);
+        info!("Using ciphernode id {:?}", config.ids[cnode_selector]);
         node_id = config.ids[cnode_selector];
     };
 
@@ -211,13 +233,15 @@ static GLOBAL_DB: Lazy<Db> = Lazy::new(|| {
     let mut pathdbst = pathdb.display().to_string();
     pathdbst.push_str("/database/ciphernode-");
     pathdbst.push_str(&node_id.to_string());
-    println!("Node database path {:?}", pathdbst);
+    info!("Node database path {:?}", pathdbst);
     sled::open(pathdbst.clone()).unwrap()
 });
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    println!("Getting configuration file.");
+    init_logger();
+
+    info!("Getting configuration file.");
     let path = env::current_dir().unwrap();
     let mut pathst = path.display().to_string();
     pathst.push_str("/example_ciphernode_config.json");
@@ -232,7 +256,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     };
 
     if(config.ids.len() - 1) < cnode_selector {
-        println!("generating new ciphernode...");
+        info!("generating new ciphernode...");
         let new_id = rand::thread_rng().gen_range(0..100000);
         config.ids.push(new_id);
 
@@ -241,7 +265,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     }
 
     let node_id: u32 = config.ids[cnode_selector as usize];
-    println!("Node ID: {:?} selected.", node_id);
+    info!("Node ID: {:?} selected.", node_id);
     let pathdb = env::current_dir().unwrap();
     let mut pathdbst = pathdb.display().to_string();
     pathdbst.push_str("/database/ciphernode-");
@@ -250,7 +274,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let node_state_bytes = GLOBAL_DB.get(pathdbst.clone()).unwrap();
     if node_state_bytes == None {
-        println!("Initializing node state in database.");
+        info!("Initializing node state in database.");
         let state = Ciphernode {
             id: node_id,
             index: vec![0],
@@ -281,7 +305,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let mut internal_round_count = RoundCount { round_count: 0 };
 
     loop {
-        println!("Polling Enclave server.");
+        info!("Polling Enclave server.");
         let https = HttpsConnector::new();
         let client_get = HyperClient::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https.clone());
         let client = HyperClient::builder(TokioExecutor::new()).build::<_, String>(https);
@@ -309,32 +333,33 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         };
         match resp {
             Ok(n)  => {
-                println!("n is {:?}", n);
+                info!("n is {:?}", n);
                 let body_bytes = n.collect().await?.to_bytes();
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-                println!("Get Round Response {:?}", body_str);
+                info!("Get Round Response {:?}", body_str);
                 count = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
-                println!("Server Round Count: {:?}", count.round_count);
-                println!("Internal Round Count: {:?}", internal_round_count.round_count);
+                info!("Server Round Count: {:?}", count.round_count);
+                info!("Internal Round Count: {:?}", internal_round_count.round_count);
             },
-            Err(e) => println!("Error: {:?}", e),
+            Err(e) => info!("Error: {:?}", e),
         }
 
         // Check to see if the server reported a new round
         if count.round_count > internal_round_count.round_count {
-            println!("Getting New Round State.");
+            info!("Getting New Round State.");
 
             let response_get_state = GetRoundRequest { round_id: count.round_count };
             let out = serde_json::to_string(&response_get_state).unwrap();
             let mut url_get_state = config.enclave_address.clone();
             url_get_state.push_str("/get_round_state_lite");
             let req = Request::builder()
+            .header("Content-Type", "application/json")
                 .method(Method::POST)
                 .uri(url_get_state)
                 .body(out)?;
 
             let resp = client.request(req).await?;
-            println!("Get Round State Response status: {}", resp.status());
+            info!("Get Round State Response status: {}", resp.status());
             let body_bytes = resp.collect().await?.to_bytes();
             let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
 
@@ -350,17 +375,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             let mut url_get_eligibility = config.enclave_address.clone();
             url_get_eligibility.push_str("/get_round_eligibility");
             let req = Request::builder()
+            .header("Content-Type", "application/json")
                 .method(Method::POST)
                 .uri(url_get_eligibility)
                 .body(out)?;
 
             let resp = client.request(req).await?;
-            println!("Get Eligibility Response status: {}", resp.status());
+            info!("Get Eligibility Response status: {}", resp.status());
             let body_bytes = resp.collect().await?.to_bytes();
             let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
 
             let eligibility: GetEligibilityRequest = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
-            println!("Ciphernode eligibility: {:?}", eligibility.reason);
+            info!("Ciphernode eligibility: {:?}", eligibility.reason);
 
             if eligibility.is_eligible == false && eligibility.reason == "Waiting For New Round" {
                 internal_round_count.round_count = count.round_count;
@@ -369,7 +395,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
             if eligibility.is_eligible == true && eligibility.reason == "Open Node Spot" {
                 // do registration
-                println!("Generating PK share and serializing.");
+                info!("Generating PK share and serializing.");
 
                 // deserialize crp_bytes
                 let crp = CommonRandomPoly::deserialize(&state.crp, &params).unwrap();
@@ -394,17 +420,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
                 let mut url_register_keyshare = config.enclave_address.clone();
                 url_register_keyshare.push_str("/register_ciphernode");
                 let req = Request::builder()
+                .header("Content-Type", "application/json")
                     .method(Method::POST)
                     .uri(url_register_keyshare)
                     .body(out)?;
 
                 let resp = client.request(req).await?;
-                println!("Register Node Response status: {}", resp.status());
+                info!("Register Node Response status: {}", resp.status());
                 let body_bytes = resp.collect().await?.to_bytes();
                 let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
 
                 let registration_res: RegisterNodeResponse = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
-                println!("Ciphernode index: {:?}", registration_res.node_index);
+                info!("Ciphernode index: {:?}", registration_res.node_index);
  
                 // index is the order in which this node registered with the server
                 node_state.index[0] = registration_res.node_index;
@@ -417,12 +444,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             };
 
             if eligibility.is_eligible == true && eligibility.reason == "Previously Registered" {
-                println!("Server reported to resume watching.");
+                info!("Server reported to resume watching.");
                 internal_round_count.round_count = count.round_count;
                 start_contract_watch(&state, node_id, &config).await;
             };
             if eligibility.is_eligible == false && eligibility.reason == "Round Full" {
-                println!("Server reported round full, wait for next round.");
+                info!("Server reported round full, wait for next round.");
                 internal_round_count.round_count = count.round_count;
                 continue
             };
@@ -440,7 +467,7 @@ fn get_state(node_id: u32) -> (Ciphernode, String) {
     pathdbst.push_str("/database/ciphernode-");
     pathdbst.push_str(&node_id.to_string());
     pathdbst.push_str("-state");
-    println!("Database key is {:?}", pathdbst);
+    info!("Database key is {:?}", pathdbst);
     let state_out = GLOBAL_DB.get(pathdbst.clone()).unwrap().unwrap();
     let state_out_str = str::from_utf8(&state_out).unwrap();
     let state_out_struct: Ciphernode = serde_json::from_str(&state_out_str).unwrap();
@@ -448,7 +475,7 @@ fn get_state(node_id: u32) -> (Ciphernode, String) {
 }
 
 async fn get_votes_contract(block_start: U64, address: String, _chain_id: u32) -> Vec<Vec<u8>> {
-    println!("Filtering contract for votes");
+    info!("Filtering contract for votes");
     // chain state
     // let infura_key = "INFURAKEY";
     // let infura_val = env::var(infura_key).unwrap();
@@ -511,33 +538,37 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
 
     // TODO: move to thread so main loop can continue to look for more work
     loop {
-        println!("Waiting for round {:?} poll to end.", state.id);
+        info!("Waiting for round {:?} poll to end.", state.id);
         let now = Utc::now();
         let internal_time = now.timestamp();
         if (state.start_time + state.poll_length as i64) < internal_time {
-            print!("poll time ended... performing fhe computation");
+            info!("poll time ended... performing fhe computation");
 
             let response_get_voters = VoteCountRequest { round_id: state.id, vote_count: 0 };
             let out = serde_json::to_string(&response_get_voters).unwrap();
             let mut url_get_voters = config.enclave_address.clone();
             url_get_voters.push_str("/get_vote_count_by_round");
             let req = Request::builder()
+            .header("Content-Type", "application/json")
                 .method(Method::POST)
                 .uri(url_get_voters)
                 .body(out).unwrap();
 
             let resp = client.request(req).await.unwrap();
-            println!("Get Vote Count Response status: {}", resp.status());
+            info!("Get Vote Count Response status: {}", resp.status());
 
             let body_bytes_get_voters = resp.collect().await.unwrap().to_bytes();
             let body_str_get_voters = String::from_utf8(body_bytes_get_voters.to_vec()).unwrap();
             let num_voters: VoteCountRequest = serde_json::from_str(&body_str_get_voters).expect("JSON was not well-formatted");
 
+            info!("VoteCountRequest: {:?}", num_voters);
+
             let votes_collected = get_votes_contract(state.block_start, state.voting_address.clone(), state.chain_id).await;
-            println!("All votes collected? {:?}", num_voters.vote_count == votes_collected.len() as u32);
+            info!("Votes Collected Len: {:?}", votes_collected.len());
+            info!("All votes collected? {:?}", num_voters.vote_count == votes_collected.len() as u32);
 
             if votes_collected.len() == 0 {
-                println!("Vote result = {} / {}", 0, num_voters.vote_count);
+                info!("Vote result = {} / {}", 0, num_voters.vote_count);
 
                 let response_report = ReportTallyRequest {
                        round_id: state.id,
@@ -548,12 +579,13 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
                 let mut url_report = config.enclave_address.clone();
                 url_report.push_str("/report_tally");
                 let req = Request::builder()
+                .header("Content-Type", "application/json")
                     .method(Method::POST)
                     .uri(url_report)
                     .body(out).unwrap();
 
                 let resp = client.request(req).await.unwrap();
-                println!("Tally Reported Response status: {}", resp.status());
+                info!("Tally Reported Response status: {}", resp.status());
                 break;
             }
 
@@ -588,12 +620,13 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
             let mut url_register_sks = config.enclave_address.clone();
             url_register_sks.push_str("/register_sks_share");
             let req = Request::builder()
+            .header("Content-Type", "application/json")
                 .method(Method::POST)
                 .uri(url_register_sks)
                 .body(out).unwrap();
 
             let mut resp = client.request(req).await.unwrap();
-            println!("Register SKS Response status: {}", resp.status());
+            info!("Register SKS Response status: {}", resp.status());
 
             // Stream the body, writing each frame to stdout as it arrives
             while let Some(next) = resp.frame().await {
@@ -614,15 +647,16 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
                 let mut url_register_get_sks = config.enclave_address.clone();
                 url_register_get_sks.push_str("/get_sks_shares");
                 let req = Request::builder()
+                .header("Content-Type", "application/json")
                     .method(Method::POST)
                     .uri(url_register_get_sks)
                     .body(out).unwrap();
 
                 let resp = client.request(req).await.unwrap();
-                println!("Get All SKS Response status: {}", resp.status());
+                info!("Get All SKS Response status: {}", resp.status());
 
                 if resp.status().to_string() == "500 Internal Server Error" {
-                    println!("enclave resource failed, trying to poll for sks shares again...");
+                    info!("enclave resource failed, trying to poll for sks shares again...");
                     continue;
                 }
 
@@ -632,7 +666,7 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
 
                 if shares.response == "final" {
                     // do decrypt
-                    println!("collected all of the decrypt shares!");
+                    info!("collected all of the decrypt shares!");
                     for i in 0..state.ciphernode_total {
                         decryption_shares.push(DecryptionShare::deserialize(&shares.sks_shares[i as usize], &params, tally.clone()));
                     }
@@ -647,13 +681,13 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
                     let tally_result = tally_vec[0];
 
                     // Show vote result
-                    println!("Vote result = {} / {}", tally_result, num_voters.vote_count);
+                    info!("Vote result = {} / {}", tally_result, num_voters.vote_count);
 
                     // report result to server
                     let option_1_total = tally_result;
                     let option_2_total = num_voters.vote_count - tally_result as u32;
-                    println!("option 1 total {:?}", option_1_total);
-                    println!("option 2 total {:?}", option_2_total);
+                    info!("option 1 total {:?}", option_1_total);
+                    info!("option 2 total {:?}", option_2_total);
 
                     let response_report = ReportTallyRequest {
                            round_id: state.id,
@@ -664,12 +698,13 @@ async fn start_contract_watch(state: &StateLite, node_id: u32, config: &Cipherno
                     let mut url_report = config.enclave_address.clone();
                     url_report.push_str("/report_tally");
                     let req = Request::builder()
+                    .header("Content-Type", "application/json")
                         .method(Method::POST)
                         .uri(url_report)
                         .body(out).unwrap();
 
                     let resp = client.request(req).await.unwrap();
-                    println!("Tally Reported Response status: {}", resp.status());
+                    info!("Tally Reported Response status: {}", resp.status());
                     break;
                 }
 
