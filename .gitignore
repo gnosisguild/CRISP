@@ -13,3 +13,6 @@ database
 .pnp.*
 package-lock.json
 .DS_Store
+
+
+packages/evm
