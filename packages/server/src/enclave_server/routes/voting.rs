@@ -26,45 +26,42 @@ pub fn setup_routes(config: &mut web::ServiceConfig) {
 
 async fn broadcast_enc_vote(
     data: web::Json<EncryptedVote>,
-    state: web::Data<AppState>,  // Access shared state
+    state: web::Data<AppState>,
 ) -> impl Responder {
-    let incoming = data.into_inner();
-    let mut response_str = "";
-    let mut converter = "".to_string();
-    let (mut state_data, key) = get_state(incoming.round_id);
+    let vote = data.into_inner();
+    let (mut state_data, key) = get_state(vote.round_id);
 
-    for voted in &state_data.has_voted {
-        if *voted == incoming.postId {
-            response_str = "User Has Already Voted";
-            break;
+    if state_data.has_voted.contains(&vote.postId) {
+        return HttpResponse::BadRequest().json(JsonResponseTxHash {
+            response: "User has already voted".to_string(),
+            tx_hash: "".to_string(),
+        });
+    }
+
+    let sol_vote = Bytes::from(vote.enc_vote_bytes);
+    let tx_hash = match call_contract(sol_vote, state_data.voting_address.clone()).await {
+        Ok(hash) => hash.to_string(),
+        Err(e) => {
+            info!("Error while sending vote transaction: {:?}", e);
+            return HttpResponse::InternalServerError().body("Failed to broadcast vote");
         }
-    }
-
-    if response_str == "" {
-        response_str = "Vote Successful";
-        let sol_vote = Bytes::from(incoming.enc_vote_bytes);
-        let tx_hash = match call_contract(sol_vote, state_data.voting_address.clone()).await {
-            Ok(hash) => hash,
-            Err(e) => {
-                info!("Error while sending vote transaction: {:?}", e);
-                return HttpResponse::InternalServerError().body("Failed to broadcast vote");
-            }
-        };
-        converter = tx_hash.to_string();
-        state_data.vote_count += 1;
-        state_data.has_voted.push(incoming.postId.clone());
-        let state_str = serde_json::to_string(&state_data).unwrap();
-        state.db.insert(key, state_str.into_bytes()).unwrap();
-    }
-
-    let response = JsonResponseTxHash {
-        response: response_str.to_string(),
-        tx_hash: converter,
     };
 
-    info!("Request for round {:?} send vote tx", incoming.round_id);
-    HttpResponse::Ok().json(response)
+    state_data.vote_count += 1;
+    state_data.has_voted.push(vote.postId);
+    
+    if let Err(e) = state.db.insert(key, serde_json::to_vec(&state_data).unwrap()) {
+        info!("Error updating state: {:?}", e);
+        return HttpResponse::InternalServerError().body("Failed to update state");
+    }
+
+    info!("Vote broadcast for round {}: tx_hash {}", vote.round_id, tx_hash);
+    HttpResponse::Ok().json(JsonResponseTxHash {
+        response: "Vote successful".to_string(),
+        tx_hash,
+    })
 }
+
 
 // Get Emojis by Round Handler
 async fn get_emojis_by_round(

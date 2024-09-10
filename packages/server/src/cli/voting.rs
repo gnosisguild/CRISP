@@ -1,11 +1,16 @@
 use std::{thread, time::Duration};
-use bytes::Bytes;
 use dialoguer::{theme::ColorfulTheme, FuzzySelect, Input};
 use http_body_util::{BodyExt, Empty};
 use hyper::{body::Incoming, Method, Request, Response};
 use serde::{Deserialize, Serialize};
 use tokio::io::{self, AsyncWriteExt};
 use log::{info, error};
+use std::env;
+use chrono::Utc;
+
+use alloy::primitives::{Bytes, U256};
+
+use crate::enclave_server::blockchain::relayer::CRISPVotingContract;
 
 use crate::cli::{AuthenticationResponse, HyperClientGet, HyperClientPost};
 use crate::util::timeit::timeit;
@@ -43,6 +48,7 @@ struct JsonResponseTxHash {
     tx_hash: String,
 }
 
+
 async fn get_response_body(resp: Response<Incoming>) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let body_bytes = resp.collect().await?.to_bytes();
     Ok(String::from_utf8(body_bytes.to_vec())?)
@@ -55,6 +61,18 @@ pub async fn initialize_crisp_round(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     info!("Starting new CRISP round!");
     info!("Initializing Keyshare nodes...");
+    
+    // let private_key = env::var("PRIVATEKEY").expect("PRIVATEKEY must be set in the environment");
+    // let rpc_url = "http://0.0.0.0:8545";
+    // let contract = CRISPVotingContract::new(rpc_url, &config.voting_address, &private_key).await?;
+    // // Current time as start time
+    // let start_time = U256::from(Utc::now().timestamp());
+    // let e3_params = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    // let duration = U256::from(config.poll_length);
+    // let res = contract.request_e3(start_time,duration, e3_params).await?;
+
+    // println!("E3 request sent. TxHash: {:?}", res.transaction_hash);
+
 
     let url_id = format!("{}/get_rounds", config.enclave_address);
     let req = Request::builder()

@@ -1,6 +1,7 @@
 mod database;
 mod models;
 mod routes;
+pub mod blockchain;
 
 use actix_cors::Cors;
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
@@ -11,6 +12,7 @@ use sled::Db;
 
 use models::AppState;
 use database::GLOBAL_DB;
+use blockchain::listener::start_listener;
 
 use env_logger::{Builder, Target};
 use log::info;
@@ -38,19 +40,25 @@ fn init_logger() {
 pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logger();
 
+    tokio::spawn(async {
+        if let Err(e) = start_listener("0x5FbDB2315678afecb367f032d93F642f64180aa3").await {
+            eprintln!("Listener failed: {:?}", e);
+        }
+    });
+
     let _ = HttpServer::new(|| {
         let cors =  Cors::default()
-        .allow_any_origin()  // Allow all origins
+        .allow_any_origin()  
         .allowed_methods(vec!["GET", "POST", "OPTIONS"])
-        .allow_any_header()  // Allow any custom headers
+        .allow_any_header()  
         .supports_credentials()
-        .max_age(3600);  // Cache preflight requests for an hour
+        .max_age(3600); 
         App::new()
             .wrap(cors)
             .app_data(web::Data::new(AppState {
                 db: GLOBAL_DB.clone(),
             }))
-            .configure(routes::setup_routes)  // Modularized Actix routes
+            .configure(routes::setup_routes)
     })
     .bind("0.0.0.0:4000")?
     .run().await;

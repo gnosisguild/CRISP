@@ -173,39 +173,31 @@ async fn get_pk_share_count(
 }
 
 // Get Round Eligibility
-async fn get_round_eligibility(
-    data: web::Json<GetEligibilityRequest>,
-) -> impl Responder {
-    let mut incoming = data.into_inner();
-    info!("Request node eligibility for round {:?}", incoming.round_id);
+async fn get_round_eligibility(data: web::Json<GetEligibilityRequest>) -> impl Responder {
+    let mut request = data.into_inner();
+    info!("Checking node eligibility for round {}", request.round_id);
 
-    let (state_data, _) = get_state(incoming.round_id);
-
-    for i in 1..state_data.ciphernodes.len() {
-        info!("checking ciphernode {:?}", i);
-        if state_data.ciphernodes[i].id == incoming.node_id {
-            incoming.is_eligible = true;
-            incoming.reason = "Previously Registered".to_string();
-        }
-    }
-
-    if state_data.ciphernode_total == state_data.ciphernode_count && incoming.reason != "Previously Registered" {
-        incoming.is_eligible = false;
-        incoming.reason = "Round Full".to_string();
-    }
-
-    if state_data.ciphernode_total > state_data.ciphernode_count && incoming.reason != "Previously Registered" {
-        incoming.is_eligible = true;
-        incoming.reason = "Open Node Spot".to_string();
-    }
-
+    let (state_data, _) = get_state(request.round_id);
     let timestamp = Utc::now().timestamp();
+
     if timestamp >= (state_data.start_time + state_data.poll_length as i64) {
-        incoming.is_eligible = false;
-        incoming.reason = "Waiting For New Round".to_string();
+        request.is_eligible = false;
+        request.reason = "Waiting For New Round".to_string();
+        return HttpResponse::Ok().json(request);
     }
 
-    HttpResponse::Ok().json(incoming)
+    if let Some(_) = state_data.ciphernodes.iter().find(|&node| node.id == request.node_id) {
+        request.is_eligible = true;
+        request.reason = "Previously Registered".to_string();
+    } else if state_data.ciphernode_total == state_data.ciphernode_count {
+        request.is_eligible = false;
+        request.reason = "Round Full".to_string();
+    } else if state_data.ciphernode_total > state_data.ciphernode_count {
+        request.is_eligible = true;
+        request.reason = "Open Node Spot".to_string();
+    }
+
+    HttpResponse::Ok().json(request)
 }
 
 // Get Node by Round

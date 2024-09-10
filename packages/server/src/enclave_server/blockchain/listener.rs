@@ -12,19 +12,21 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 
+use super::events::{E3Requested, CiphertextSubmitted, PlaintextSubmitted, PublicKeyPublished, VoteCast};
+
 pub trait ContractEvent: Send + Sync + 'static {
     fn process(&self) -> Result<()>;
 }
 
-impl<T> ContractEvent for T
-where
-    T: SolEvent + Debug + Send + Sync + 'static,
-{
-    fn process(&self) -> Result<()> {
-        println!("Processing event: {:?}", self);
-        Ok(())
-    }
-}
+// impl<T> ContractEvent for T
+// where
+//     T: SolEvent + Debug + Send + Sync + 'static,
+// {
+//     fn process(&self) -> Result<()> {
+//         println!("Processing event: {:?}", self);
+//         Ok(())
+//     }
+// }
 
 pub struct EventListener {
     provider: Arc<RootProvider<BoxTransport>>,
@@ -95,26 +97,22 @@ impl ContractManager {
     }
 }
 
-sol! {
-    #[derive(Debug)]
-    event TestingEvent(uint256 e3Id, bytes input);
-}
 
-#[tokio::main]
-async fn start_listener() -> Result<()> {
+pub async fn start_listener(contract_address: &str) -> Result<()> {
     let rpc_url = "ws://127.0.0.1:8545";
 
     let manager = ContractManager::new(rpc_url).await?;
 
-    let address1 = address!("e7f1725E7734CE288F8367e1Bb143E90bb3F0512");
-    let mut listener1 = manager.add_listener(address1);
-    listener1.add_event_handler::<TestingEvent>();
+    let address: Address = contract_address.parse()?;
+    let mut listener = manager.add_listener(address);
+    listener.add_event_handler::<E3Requested>();
+    listener.add_event_handler::<VoteCast>();
+    listener.add_event_handler::<PublicKeyPublished>();
+    listener.add_event_handler::<CiphertextSubmitted>();
+    listener.add_event_handler::<PlaintextSubmitted>();
 
-    let address2 = address!("5aAeb6053F3E94C9b9A09f33669435E7Ef1BeAed");
-    let mut listener2 = manager.add_listener(address2);
-    listener2.add_event_handler::<TestingEvent>();
-
-    tokio::try_join!(listener1.listen(), listener2.listen())?;
+    // Start listening
+    listener.listen().await?;
 
     Ok(())
 }
