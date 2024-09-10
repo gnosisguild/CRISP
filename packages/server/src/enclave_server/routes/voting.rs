@@ -1,13 +1,15 @@
 
 use std::{env, sync::Arc, str};
 use std::io::Read;
-use ethers::{
-    prelude::abigen,
-    providers::{Http, Provider, Middleware},
-    middleware::{SignerMiddleware, MiddlewareBuilder},
-    signers::{LocalWallet, Signer},
-    types::{Address, Bytes, TxHash, BlockNumber},
+use alloy::{
+    network::{AnyNetwork, EthereumWallet},
+    primitives::{Address, Bytes, U256, B256},
+    providers::ProviderBuilder,
+    signers::local::PrivateKeySigner,
+    sol,
 };
+
+use eyre::Result;
 use log::info;
 
 use actix_web::{web, HttpResponse, Responder};
@@ -21,6 +23,7 @@ pub fn setup_routes(config: &mut web::ServiceConfig) {
         .route("/get_vote_count_by_round", web::post().to(get_vote_count_by_round))
         .route("/get_emojis_by_round", web::post().to(get_emojis_by_round));
 }
+
 async fn broadcast_enc_vote(
     data: web::Json<EncryptedVote>,
     state: web::Data<AppState>,  // Access shared state
@@ -40,16 +43,14 @@ async fn broadcast_enc_vote(
     if response_str == "" {
         response_str = "Vote Successful";
         let sol_vote = Bytes::from(incoming.enc_vote_bytes);
-        let tx_hash = call_contract(sol_vote, state_data.voting_address.clone()).await.unwrap();
-
-        converter = "0x".to_string();
-        for i in 0..32 {
-            if tx_hash[i] <= 16 {
-                converter.push_str("0");
+        let tx_hash = match call_contract(sol_vote, state_data.voting_address.clone()).await {
+            Ok(hash) => hash,
+            Err(e) => {
+                info!("Error while sending vote transaction: {:?}", e);
+                return HttpResponse::InternalServerError().body("Failed to broadcast vote");
             }
-            converter.push_str(&format!("{:x}", tx_hash[i]));
-        }
-
+        };
+        converter = tx_hash.to_string();
         state_data.vote_count += 1;
         state_data.has_voted.push(incoming.postId.clone());
         let state_str = serde_json::to_string(&state_data).unwrap();
@@ -91,43 +92,48 @@ async fn get_vote_count_by_round(
     HttpResponse::Ok().json(incoming)
 }
 
-// Call Contract Function
-async fn call_contract(
+sol! {
+    #[allow(missing_docs)]
+    #[sol(rpc)]
+    contract IVOTE {
+        function voteEncrypted(bytes memory _encVote) public;
+        function getVote(address id) public returns (bytes memory);
+        event Transfer(address indexed from, address indexed to, uint256 value);
+    }
+}
+
+pub async fn call_contract(
     enc_vote: Bytes,
     address: String,
-) -> Result<TxHash, Box<dyn std::error::Error + Send + Sync>> {
-    info!("calling voting contract");
+) -> Result<B256, Box<dyn std::error::Error + Send + Sync>> {
+    info!("Calling voting contract");
 
-    let rpc_url = "http://0.0.0.0:8545".to_string();
-    let provider = Provider::<Http>::try_from(rpc_url.clone())?;
+    // Set up the signer from a private key
+    let eth_val = env::var("PRIVATEKEY").expect("PRIVATEKEY must be set in the environment");
+    let signer: PrivateKeySigner = eth_val.parse()?;
+    let wallet = EthereumWallet::from(signer);
 
-    abigen!(
-        IVOTE,
-        r#"[
-            function voteEncrypted(bytes memory _encVote) public
-            function getVote(address id) public returns(bytes memory)
-            event Transfer(address indexed from, address indexed to, uint256 value)
-        ]"#,
-    );
+    // Set up the provider using the Alloy library
+    let rpc_url = "http://0.0.0.0:8545".parse()?;
+    let provider = ProviderBuilder::new()
+        .with_recommended_fillers()
+        .network::<AnyNetwork>()
+        .wallet(wallet)
+        .on_http(rpc_url);
 
-    let vote_address: &str = &address;
-    let eth_val = env!("PRIVATEKEY");
-    let wallet: LocalWallet = eth_val
-        .parse::<LocalWallet>()?
-        .with_chain_id(31337 as u64);
+    // Parse the address of the contract
+    let vote_address: Address = address.parse()?;
 
-    let nonce_manager = provider.clone().nonce_manager(wallet.address());
-    let curr_nonce = nonce_manager
-        .get_transaction_count(wallet.address(), Some(BlockNumber::Pending.into()))
-        .await?
-        .as_u64();
+    // Create the contract instance
+    let contract = IVOTE::new(vote_address, &provider);
 
-    let client = SignerMiddleware::new(provider.clone(), wallet.clone());
-    let address: Address = vote_address.parse()?;
-    let contract = IVOTE::new(address, Arc::new(client.clone()));
+    // Send the voteEncrypted transaction
+    let builder = contract.voteEncrypted(enc_vote);
+    let receipt = builder.send().await?.get_receipt().await?;
 
-    let tx = contract.vote_encrypted(enc_vote).nonce(curr_nonce).send().await?.clone();
-    info!("{:?}", tx);
+    // Log the transaction hash
+    let tx_hash = receipt.transaction_hash;
+    info!("Transaction hash: {:?}", tx_hash);
 
-    Ok(tx)
+    Ok(tx_hash)
 }

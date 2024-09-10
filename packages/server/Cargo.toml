@@ -44,3 +44,9 @@ log = "0.4.22"
 env_logger = "0.11.5"
 actix-web = "4.9.0"
 actix-cors = "0.7.0"
+alloy-primitives = { version = "0.6", default-features = false, features = ["rlp", "serde", "std"] }
+alloy-sol-types = { version = "0.6" }
+alloy = { version = "0.2.1", features = ["full"] }
+futures-util = "0.3"
+eyre = "0.6"
+hex = "0.4"

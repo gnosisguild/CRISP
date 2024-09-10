@@ -36,6 +36,8 @@ fn main() {
             use_docker,
         },
     )]));
+    println!("Current working directory: {:?}", std::env::current_dir());
+
 
     // Generate Solidity source files for use with Forge.
     let solidity_opts = risc0_build_ethereum::Options::default()

@@ -20,15 +20,15 @@ pub async fn authenticate_user(config: &super::CrispConfig, client: &HyperClient
     let user = AuthenticationLogin {
         postId: config.authentication_id.clone(),
     };
-
-    let out = serde_json::to_string(&user).unwrap();
-    let mut url = config.enclave_address.clone();
-    url.push_str("/authentication_login");
+    
+    let body = serde_json::to_string(&user)?;
+    let url = format!("{}/authentication_login", config.enclave_address);
+    
     let req = Request::builder()
-    .header("Content-Type", "application/json")
+        .header("Content-Type", "application/json")
         .method(Method::POST)
         .uri(url)
-        .body(out)?;
+        .body(body)?;
 
     let resp = client.request(req).await?;
     let body_bytes = resp.collect().await?.to_bytes();

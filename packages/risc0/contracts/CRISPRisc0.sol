@@ -16,7 +16,7 @@ contract CRISPRisc0 is CRISPBase {
     /// @notice RISC Zero verifier contract address.
     IRiscZeroVerifier public verifier;
     /// @notice Image ID of the only zkVM binary to accept verification from.
-    bytes32 public constant imageId = ImageID.IS_EVEN_ID; // TODO: update this to the CRISP image ID
+    bytes32 public constant imageId = ImageID.VOTING_ID; // TODO: update this to the CRISP image ID
 
     /// @notice Initialize the contract, binding it to a specified RISC Zero verifier.
     constructor(IEnclave _enclave, IRiscZeroVerifier _verifier) {

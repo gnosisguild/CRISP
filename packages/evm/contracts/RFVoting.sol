@@ -14,41 +14,14 @@ contract RFVoting {
 
     function voteEncrypted(bytes memory _encVote) public {
         id++;
-        //votes[msg.sender] = _encVote;
         emit Voted(msg.sender, _encVote);
     }
 
-    // function getVote(address id) public returns(bytes memory) {
-    //     return votes[id];
-    // }
-
-    //Todo gatekeep modular, ie Bright ID extension
     function register() public {
-        // write custom validation code here
         isValidVoter[msg.sender] = true;
     }
 
     function createPoll() public {
         pollNonce++;
-    }
-
-    function getPoll(uint256 _pollId) public {
-
-    }
-
-    function submitCoordintatiorPKEY(bytes memory _coordPKEY, uint256 _pollId) public {
-
-    }
-
-    function finalizeVote(uint256 _pollId) public {
-
-    }
-
-    function submitFHEResult(bytes memory _fheResult, uint256 _pollId) public {
-
-    }
-
-    function disputeFHEResult() public {
-        // reality.eth
     }
 }

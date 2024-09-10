@@ -48,66 +48,67 @@ struct CrispConfig {
     enclave_address: String,
     authentication_id: String,
 }
-
 #[tokio::main]
 pub async fn run_cli() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logger();
 
     let https = HttpsConnector::new();
-    let client_get: HyperClientGet = HyperClient::builder(TokioExecutor::new()).build(https.clone());
-    let client: HyperClientPost = HyperClient::builder(TokioExecutor::new()).build(https);
+    let client_get = HyperClient::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https.clone());
+    let client = HyperClient::builder(TokioExecutor::new()).build::<_, String>(https);
 
-    let mut auth_res = AuthenticationResponse {
-        response: "".to_string(),
-        jwt_token: "".to_string(),
-    };
+    clear_screen();
 
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-    let selections = &[
-        "CRISP: Voting Protocol (ETH)",
-        "More Coming Soon!"
-    ];
+    let environment = select_environment()?;
+    if environment != 0 {
+        info!("Check back soon!");
+        return Ok(());
+    }
 
-    let selection_1 = FuzzySelect::with_theme(&ColorfulTheme::default())
-        .with_prompt("Enclave (EEEE): Please choose the private execution environment you would like to run!")
-        .default(0)
-        .items(&selections[..])
-        .interact()
-        .unwrap();
+    clear_screen();
 
-    if selection_1 == 0 {
-        print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-        let selections_2 = &[
-            "Initialize new CRISP round.",
-            "Continue Existing CRISP round."
-        ];
+    let config = read_config()?;
+    let action = select_action()?;
 
-        let selection_2 = FuzzySelect::with_theme(&ColorfulTheme::default())
-            .with_prompt("Create a new CRISP round or participate in an existing round.")
-            .default(0)
-            .items(&selections_2[..])
-            .interact()
-            .unwrap();
-
-        // Read configuration
-        let path = env::current_dir().unwrap();
-        let mut pathst = path.display().to_string();
-        pathst.push_str("/example_config.json");
-        let mut file = File::open(pathst).unwrap();
-        let mut data = String::new();
-        file.read_to_string(&mut data).unwrap();
-        let config: CrispConfig = serde_json::from_str(&data).expect("JSON was not well-formatted");
-
-        if selection_2 == 0 {
+    match action {
+        0 => {
             initialize_crisp_round(&config, &client_get, &client).await?;
-        } else if selection_2 == 1 {
-            auth_res = authenticate_user(&config, &client).await?;
+        }
+        1 => {
+            let auth_res = authenticate_user(&config, &client).await?;
             participate_in_existing_round(&config, &client, &auth_res).await?;
         }
-    } else {
-        info!("Check back soon!");
-        std::process::exit(1);
+        _ => unreachable!(),
     }
 
     Ok(())
+}
+
+fn clear_screen() {
+    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
+}
+
+fn select_environment() -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
+    let selections = &["CRISP: Voting Protocol (ETH)", "More Coming Soon!"];
+    Ok(FuzzySelect::with_theme(&ColorfulTheme::default())
+        .with_prompt("Enclave (EEEE): Please choose the private execution environment you would like to run!")
+        .default(0)
+        .items(&selections[..])
+        .interact()?)
+}
+
+fn select_action() -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
+    let selections = &["Initialize new CRISP round.", "Continue Existing CRISP round."];
+    Ok(FuzzySelect::with_theme(&ColorfulTheme::default())
+        .with_prompt("Create a new CRISP round or participate in an existing round.")
+        .default(0)
+        .items(&selections[..])
+        .interact()?)
+}
+
+fn read_config() -> Result<CrispConfig, Box<dyn std::error::Error + Send + Sync>> {
+    let config_path = env::current_dir()?.join("example_config.json");
+    let mut file = File::open(config_path)?;
+    let mut data = String::new();
+    file.read_to_string(&mut data)?;
+    Ok(serde_json::from_str(&data)?)
 }

@@ -1,15 +1,13 @@
+use std::{thread, time::Duration};
 use bytes::Bytes;
 use dialoguer::{theme::ColorfulTheme, FuzzySelect, Input};
-use http_body_util::BodyExt;
-use http_body_util::Empty;
-use hyper::{Method, Request};
+use http_body_util::{BodyExt, Empty};
+use hyper::{body::Incoming, Method, Request, Response};
 use serde::{Deserialize, Serialize};
-use std::{thread, time};
-use tokio::io::{self, AsyncWriteExt as _};
-use log::info;
+use tokio::io::{self, AsyncWriteExt};
+use log::{info, error};
 
-use crate::cli::AuthenticationResponse;
-use crate::cli::{HyperClientGet, HyperClientPost};
+use crate::cli::{AuthenticationResponse, HyperClientGet, HyperClientPost};
 use crate::util::timeit::timeit;
 use fhe::bfv::{BfvParametersBuilder, Encoding, Plaintext, PublicKey};
 use fhe_traits::{DeserializeParametrized, FheEncoder, FheEncrypter, Serialize as FheSerialize};
@@ -35,8 +33,8 @@ struct PKRequest {
 struct EncryptedVote {
     round_id: u32,
     enc_vote_bytes: Vec<u8>,
-    #[allow(non_snake_case)]
-    postId: String,
+    #[serde(rename = "postId")]
+    post_id: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -45,39 +43,35 @@ struct JsonResponseTxHash {
     tx_hash: String,
 }
 
+async fn get_response_body(resp: Response<Incoming>) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
+    let body_bytes = resp.collect().await?.to_bytes();
+    Ok(String::from_utf8(body_bytes.to_vec())?)
+}
+
 pub async fn initialize_crisp_round(
     config: &super::CrispConfig,
     client_get: &HyperClientGet,
     client: &HyperClientPost,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     info!("Starting new CRISP round!");
-
     info!("Initializing Keyshare nodes...");
 
-    let response_id = JsonRequestGetRounds {
-        response: "Test".to_string(),
-    };
-    let _out = serde_json::to_string(&response_id).unwrap();
-    let mut url_id = config.enclave_address.clone();
-    url_id.push_str("/get_rounds");
-
+    let url_id = format!("{}/get_rounds", config.enclave_address);
     let req = Request::builder()
         .method(Method::GET)
         .uri(url_id)
         .body(Empty::<Bytes>::new())?;
 
     let resp = client_get.request(req).await?;
-
     info!("Response status: {}", resp.status());
 
-    let body_bytes = resp.collect().await?.to_bytes();
-    let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-    let count: RoundCount = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+    let body_str = get_response_body(resp).await?;
+    let count: RoundCount = serde_json::from_str(&body_str)?;
     info!("Server Round Count: {:?}", count.round_count);
 
     let round_id = count.round_count + 1;
     let response = super::CrispConfig {
-        round_id: round_id,
+        round_id,
         poll_length: config.poll_length,
         chain_id: config.chain_id,
         voting_address: config.voting_address.clone(),
@@ -85,30 +79,27 @@ pub async fn initialize_crisp_round(
         enclave_address: config.enclave_address.clone(),
         authentication_id: config.authentication_id.clone(),
     };
-    let out = serde_json::to_string(&response).unwrap();
-    let mut url = config.enclave_address.clone();
-    url.push_str("/init_crisp_round");
+
+    let url = format!("{}/init_crisp_round", config.enclave_address);
     let req = Request::builder()
         .header("authorization", "Bearer fpKL54jvWmEGVoRdCNjG")
         .header("Content-Type", "application/json")
         .method(Method::POST)
         .uri(url)
-        .body(out)?;
+        .body(serde_json::to_string(&response)?)?;
 
     let mut resp = client.request(req).await?;
-
     info!("Response status: {}", resp.status());
 
-    while let Some(next) = resp.frame().await {
-        let frame = next?;
-        if let Some(chunk) = frame.data_ref() {
-            tokio::io::stdout().write_all(chunk).await?;
+    while let Some(frame) = resp.frame().await {
+        if let Some(chunk) = frame?.data_ref() {
+            io::stdout().write_all(chunk).await?;
         }
     }
+
     info!("Round Initialized.");
     info!("Gathering Keyshare nodes for execution environment...");
-    let three_seconds = time::Duration::from_millis(1000);
-    thread::sleep(three_seconds);
+    thread::sleep(Duration::from_secs(1));
     info!("\nYou can now vote Encrypted with Round ID: {:?}", round_id);
 
     Ok(())
@@ -121,94 +112,104 @@ pub async fn participate_in_existing_round(
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let input_crisp_id: u32 = Input::with_theme(&ColorfulTheme::default())
         .with_prompt("Enter CRISP round ID.")
-        .interact_text()
-        .unwrap();
+        .interact_text()?;
     info!("Voting state Initialized");
 
-    // get public encrypt key
-    let v: Vec<u8> = vec![0];
+    // Get public encrypt key
     let response_pk = PKRequest {
         round_id: input_crisp_id,
-        pk_bytes: v,
+        pk_bytes: vec![0],
     };
-    let out = serde_json::to_string(&response_pk).unwrap();
-    let mut url = config.enclave_address.clone();
-    url.push_str("/get_pk_by_round");
-    let req = Request::builder().header("Content-Type", "application/json").method(Method::POST).uri(url).body(out)?;
+
+    let url = format!("{}/get_pk_by_round", config.enclave_address);
+    let req = Request::builder()
+        .header("Content-Type", "application/json")
+        .method(Method::POST)
+        .uri(url)
+        .body(serde_json::to_string(&response_pk)?)?;
 
     let resp = client.request(req).await?;
-
     info!("Response status: {}", resp.status());
 
-    let body_bytes = resp.collect().await?.to_bytes();
-    let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-    let pk_res: PKRequest = serde_json::from_str(&body_str).expect("JSON was not well-formatted");
-    info!(
-        "Shared Public Key for CRISP round {:?} collected.",
-        pk_res.round_id
-    );
+    let body_str = get_response_body(resp).await?;
+    let pk_res: PKRequest = serde_json::from_str(&body_str)?;
+    info!("Shared Public Key for CRISP round {:?} collected.", pk_res.round_id);
     info!("Public Key: {:?}", pk_res.pk_bytes);
 
-    let degree = 4096;
-    let plaintext_modulus: u64 = 4096;
-    let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
-    // Let's generate the BFV parameters structure.
     let params = timeit!(
         "Parameters generation",
-        BfvParametersBuilder::new()
-            .set_degree(degree)
-            .set_plaintext_modulus(plaintext_modulus)
-            .set_moduli(&moduli)
-            .build_arc()?
+        generate_bfv_parameters()?
     );
-    let pk_deserialized = PublicKey::from_bytes(&pk_res.pk_bytes, &params).unwrap();
+    let pk_deserialized = PublicKey::from_bytes(&pk_res.pk_bytes, &params)?;
 
-    // Select voting option
-    let selections_3 = &["Abstain.", "Vote yes.", "Vote no."];
-
-    let selection_3 = FuzzySelect::with_theme(&ColorfulTheme::default())
-        .with_prompt("Please select your voting option.")
-        .default(0)
-        .items(&selections_3[..])
-        .interact()
-        .unwrap();
-
-    let mut vote_choice: u64 = 0;
-    if selection_3 == 0 {
+    let vote_choice = get_user_vote()?;
+    if vote_choice.is_none() {
         info!("Exiting voting system. You may choose to vote later.");
         return Ok(());
-    } else if selection_3 == 1 {
-        vote_choice = 1;
-    } else if selection_3 == 2 {
-        vote_choice = 0;
     }
+
     info!("Encrypting vote.");
-    let votes: Vec<u64> = [vote_choice].to_vec();
-    let pt = Plaintext::try_encode(&[votes[0]], Encoding::poly(), &params)?;
-    let ct = pk_deserialized.try_encrypt(&pt, &mut thread_rng())?;
+    let ct = encrypt_vote(vote_choice.unwrap(), &pk_deserialized, &params)?;
     info!("Vote encrypted.");
     info!("Calling voting contract with encrypted vote.");
 
     let request_contract = EncryptedVote {
         round_id: input_crisp_id,
         enc_vote_bytes: ct.to_bytes(),
-        postId: auth_res.jwt_token.clone(),
+        post_id: auth_res.jwt_token.clone(),
     };
-    let out = serde_json::to_string(&request_contract).unwrap();
-    let mut url = config.enclave_address.clone();
-    url.push_str("/broadcast_enc_vote");
-    let req = Request::builder().header("Content-Type", "application/json").method(Method::POST).uri(url).body(out)?;
+
+    let url = format!("{}/broadcast_enc_vote", config.enclave_address);
+    let req = Request::builder()
+        .header("Content-Type", "application/json")
+        .method(Method::POST)
+        .uri(url)
+        .body(serde_json::to_string(&request_contract)?)?;
 
     let resp = client.request(req).await?;
-
     info!("Response status: {}", resp.status());
 
-    let body_bytes = resp.collect().await?.to_bytes();
-    let body_str = String::from_utf8(body_bytes.to_vec()).unwrap();
-    let contract_res: JsonResponseTxHash =
-        serde_json::from_str(&body_str).expect("JSON was not well-formatted");
+    let body_str = get_response_body(resp).await?;
+    let contract_res: JsonResponseTxHash = serde_json::from_str(&body_str)?;
     info!("Contract call: {:?}", contract_res.response);
     info!("TxHash is {:?}", contract_res.tx_hash);
 
     Ok(())
+}
+
+fn generate_bfv_parameters() -> Result<std::sync::Arc<fhe::bfv::BfvParameters>, Box<dyn std::error::Error + Send + Sync>> {
+    let degree = 4096;
+    let plaintext_modulus: u64 = 4096;
+    let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
+    
+    Ok(BfvParametersBuilder::new()
+        .set_degree(degree)
+        .set_plaintext_modulus(plaintext_modulus)
+        .set_moduli(&moduli)
+        .build_arc()?)
+}
+
+fn get_user_vote() -> Result<Option<u64>, Box<dyn std::error::Error + Send + Sync>> {
+    let selections = &["Abstain.", "Vote yes.", "Vote no."];
+    let selection = FuzzySelect::with_theme(&ColorfulTheme::default())
+        .with_prompt("Please select your voting option.")
+        .default(0)
+        .items(&selections[..])
+        .interact()?;
+
+    match selection {
+        0 => Ok(None),
+        1 => Ok(Some(1)),
+        2 => Ok(Some(0)),
+        _ => Err("Invalid selection".into()),
+    }
+}
+
+fn encrypt_vote(
+    vote: u64,
+    public_key: &PublicKey,
+    params: &std::sync::Arc<fhe::bfv::BfvParameters>,
+) -> Result<fhe::bfv::Ciphertext, Box<dyn std::error::Error + Send + Sync>> {
+    let pt = Plaintext::try_encode(&[vote], Encoding::poly(), params)?;
+    Ok(public_key.try_encrypt(&pt, &mut thread_rng())?)
 }

@@ -1,27 +1,23 @@
-use compute_provider_core::{merkle_tree::MerkleTree, ComputationInput, ComputationResult};
-use methods::COMPUTE_PROVIDER_ELF;
+use compute_provider_core::{
+    merkle_tree::MerkleTree, CiphertextInputs, CiphertextProcessor, ComputationInput,
+    ComputationResult,
+};
+use rayon::prelude::*;
 use risc0_ethereum_contracts::groth16;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use std::sync::Arc;
-use rayon::prelude::*;
 
-pub struct ComputeProvider {
-    input: ComputationInput,
+pub struct ComputeProvider<C: CiphertextProcessor + serde::ser::Serialize> {
+    input: ComputationInput<C>,
     use_parallel: bool,
     batch_size: Option<usize>,
 }
 
-impl ComputeProvider {
-    pub fn new(
-        ciphertexts: Vec<Vec<u8>>,
-        params: Vec<u8>,
-        use_parallel: bool,
-        batch_size: Option<usize>,
-    ) -> Self {
+impl<C: CiphertextProcessor + serde::ser::Serialize> ComputeProvider<C> {
+    pub fn new(ciphertexts: C, use_parallel: bool, batch_size: Option<usize>) -> Self {
         Self {
             input: ComputationInput {
                 ciphertexts,
-                params,
                 leaf_hashes: Vec::new(),
                 tree_depth: 10,
                 zero_node: String::from("0"),
@@ -32,25 +28,25 @@ impl ComputeProvider {
         }
     }
 
-    pub fn start(&mut self) -> (ComputationResult, Vec<u8>) {
+    pub fn start(&mut self, elf: &[u8]) -> (ComputationResult, Vec<u8>) {
         tracing_subscriber::fmt()
             .with_env_filter(tracing_subscriber::filter::EnvFilter::from_default_env())
             .init();
 
         if self.use_parallel {
-            self.start_parallel()
+            self.start_parallel(elf)
         } else {
-            self.start_sequential()
+            self.start_sequential(elf)
         }
     }
 
-    fn start_sequential(&mut self) -> (ComputationResult, Vec<u8>) {
+    fn start_sequential(&mut self, elf: &[u8]) -> (ComputationResult, Vec<u8>) {
         let mut tree_handler = MerkleTree::new(
             self.input.tree_depth,
             self.input.zero_node.clone(),
             self.input.arity,
         );
-        tree_handler.compute_leaf_hashes(&self.input.ciphertexts);
+        tree_handler.compute_leaf_hashes(&self.input.get_ciphertexts());
         self.input.leaf_hashes = tree_handler.leaf_hashes.clone();
 
         let env = ExecutorEnv::builder()
@@ -63,7 +59,7 @@ impl ComputeProvider {
             .prove_with_ctx(
                 env,
                 &VerifierContext::default(),
-                COMPUTE_PROVIDER_ELF,
+                elf,
                 &ProverOpts::groth16(),
             )
             .unwrap()
@@ -74,62 +70,79 @@ impl ComputeProvider {
         (receipt.journal.decode().unwrap(), seal)
     }
 
-    fn start_parallel(&self) -> (ComputationResult, Vec<u8>) {
+    fn start_parallel(&self, elf: &[u8]) -> (ComputationResult, Vec<u8>) {
         let batch_size = self.batch_size.unwrap_or(1);
         let parallel_tree_depth = (batch_size as f64).log2().ceil() as usize;
 
-        let ciphertexts = Arc::new(self.input.ciphertexts.clone());
-        let params = Arc::new(self.input.params.clone());
+        let ciphertexts = Arc::new(self.input.get_ciphertexts());
+        let params = Arc::new(self.input.get_params());
 
         let chunks: Vec<Vec<Vec<u8>>> = ciphertexts
             .chunks(batch_size)
             .map(|chunk| chunk.to_vec())
             .collect();
 
-        let tally_results: Vec<ComputationResult> = chunks.into_par_iter().map(|chunk| {
-            let mut tree_handler = MerkleTree::new(parallel_tree_depth, "0".to_string(), 2);
-            tree_handler.compute_leaf_hashes(&chunk);
+        let tally_results: Vec<ComputationResult> = chunks
+            .into_par_iter()
+            .map(|chunk| {
+                let mut tree_handler = MerkleTree::new(parallel_tree_depth, "0".to_string(), 2);
+                tree_handler.compute_leaf_hashes(&chunk);
 
-            let input = ComputationInput {
-                ciphertexts: chunk.clone(),
-                params: params.to_vec(),
-                leaf_hashes: tree_handler.leaf_hashes.clone(),
-                tree_depth: parallel_tree_depth,
-                zero_node: "0".to_string(),
-                arity: 2,
-            };
+                let input = ComputationInput {
+                    ciphertexts: CiphertextInputs {
+                        ciphertexts: chunk.clone(),
+                        params: params.to_vec(), // Params are shared across chunks
+                    },
+                    leaf_hashes: tree_handler.leaf_hashes.clone(),
+                    tree_depth: parallel_tree_depth,
+                    zero_node: "0".to_string(),
+                    arity: 2,
+                };
 
-            let env = ExecutorEnv::builder()
-                .write(&input)
-                .unwrap()
-                .build()
-                .unwrap();
+                let env = ExecutorEnv::builder()
+                    .write(&input)
+                    .unwrap()
+                    .build()
+                    .unwrap();
 
-            let receipt = default_prover()
-                .prove_with_ctx(
-                    env,
-                    &VerifierContext::default(),
-                    COMPUTE_PROVIDER_ELF,
-                    &ProverOpts::groth16(),
-                )
-                .unwrap()
-                .receipt;
+                let receipt = default_prover()
+                    .prove_with_ctx(
+                        env,
+                        &VerifierContext::default(),
+                        elf,
+                        &ProverOpts::groth16(),
+                    )
+                    .unwrap()
+                    .receipt;
 
-            receipt.journal.decode().unwrap()
-        }).collect();
+                receipt.journal.decode().unwrap()
+            })
+            .collect();
 
         // Combine the sorted results for final computation
         let final_depth = self.input.tree_depth - parallel_tree_depth;
         let mut final_input = ComputationInput {
-            ciphertexts: tally_results.iter().map(|result| result.ciphertext.clone()).collect(),
-            params: params.to_vec(),
-            leaf_hashes: tally_results.iter().map(|result| result.merkle_root.clone()).collect(),
+            ciphertexts: CiphertextInputs {
+                ciphertexts: tally_results
+                    .iter()
+                    .map(|result| result.ciphertext.clone())
+                    .collect(),
+                params: params.to_vec(),
+            },
+            leaf_hashes: tally_results
+                .iter()
+                .map(|result| result.merkle_root.clone())
+                .collect(),
             tree_depth: final_depth,
             zero_node: String::from("0"),
             arity: 2,
         };
 
-        let final_tree_handler = MerkleTree::new(final_depth, final_input.zero_node.clone(), final_input.arity);
+        let final_tree_handler = MerkleTree::new(
+            final_depth,
+            final_input.zero_node.clone(),
+            final_input.arity,
+        );
         final_input.zero_node = final_tree_handler.zeroes()[parallel_tree_depth].clone();
 
         let env = ExecutorEnv::builder()
@@ -142,7 +155,7 @@ impl ComputeProvider {
             .prove_with_ctx(
                 env,
                 &VerifierContext::default(),
-                COMPUTE_PROVIDER_ELF,
+                elf,
                 &ProverOpts::groth16(),
             )
             .unwrap()
@@ -153,10 +166,10 @@ impl ComputeProvider {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use compute_provider_methods::COMPUTE_PROVIDER_ELF;
     use fhe::bfv::{
         BfvParameters, BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey,
     };
@@ -173,13 +186,13 @@ mod tests {
         let inputs = vec![1, 1, 0, 1];
         let ciphertexts = encrypt_inputs(&inputs, &pk, &params);
 
-        let mut provider = ComputeProvider::new(
-            ciphertexts.iter().map(|c| c.to_bytes()).collect(),
-            params.to_bytes(),
-            true,
-            Some(2),
-        ); // use_parallel = false, no batch size
-        let (result, _seal) = provider.start();
+        let ciphertext_inputs = CiphertextInputs {
+            ciphertexts: ciphertexts.iter().map(|c| c.to_bytes()).collect(),
+            params: params.to_bytes(),
+        };
+
+        let mut provider = ComputeProvider::new(ciphertext_inputs, false, None);
+        let (result, _seal) = provider.start(COMPUTE_PROVIDER_ELF);
 
         let tally = decrypt_result(&result, &sk, &params);
 
@@ -218,7 +231,11 @@ mod tests {
             .collect()
     }
 
-    fn decrypt_result(result: &ComputationResult, sk: &SecretKey, params: &Arc<BfvParameters>) -> u64 {
+    fn decrypt_result(
+        result: &ComputationResult,
+        sk: &SecretKey,
+        params: &Arc<BfvParameters>,
+    ) -> u64 {
         let ct = Ciphertext::from_bytes(&result.ciphertext, params)
             .expect("Failed to deserialize ciphertext");
         let decrypted = sk.try_decrypt(&ct).expect("Failed to decrypt");
