@@ -27,13 +27,16 @@ pub async fn handle_e3(
     println!("Handling E3 request with id {}", e3_id);
 
     // Fetch E3 from the contract
-    let private_key = env::var("PRIVATEKEY").expect("PRIVATEKEY must be set in the environment");
+    let private_key = env::var("PRIVATE_KEY").expect("PRIVATEKEY must be set in the environment");
     let rpc_url = env::var("RPC_URL").expect("RPC_URL must be set in the environment");
     let contract_address =
         env::var("CONTRACT_ADDRESS").expect("CONTRACT_ADDRESS must be set in the environment");
     let contract = EnclaveContract::new(&rpc_url, &contract_address, &private_key).await?;
 
     let e3 = contract.get_e3(e3_activated.e3Id).await?;
+    println!("Fetched E3 from the contract.");
+    println!("E3: {:?}", e3);
+
     let start_time = Utc::now().timestamp() as u64;
 
     let block_start = match log.block_number {
@@ -84,6 +87,7 @@ pub async fn handle_e3(
 
     // Get All Encrypted Votes
     let (e3, _) = get_e3(e3_id).unwrap();
+    println!("E3 FROM DB: {:?}", e3);
 
     let fhe_inputs = FHEInputs {
         params: e3.e3_params,
@@ -91,25 +95,25 @@ pub async fn handle_e3(
     };
 
     // Call Compute Provider
-    let (compute_result, seal) = run_compute(fhe_inputs).unwrap();
+    // let (compute_result, seal) = run_compute(fhe_inputs).unwrap();
 
-    let data = (
-        compute_result.ciphertext,
-        compute_result.merkle_root,
-        seal,
-    );
+    // let data = (
+    //     compute_result.ciphertext,
+    //     compute_result.merkle_root,
+    //     seal,
+    // );
 
-    let encoded_data = data.abi_encode();
+    // let encoded_data = data.abi_encode();
 
-    // Params will be encoded on chain to create the journal
-    let tx = contract
-        .publish_ciphertext_output(e3_activated.e3Id, encoded_data.into())
-        .await?;
+    // // Params will be encoded on chain to create the journal
+    // let tx = contract
+    //     .publish_ciphertext_output(e3_activated.e3Id, encoded_data.into())
+    //     .await?;
 
-    println!(
-        "CiphertextOutputPublished event published with tx: {:?}",
-        tx
-    );
+    // println!(
+    //     "CiphertextOutputPublished event published with tx: {:?}",
+    //     tx
+    // );
     println!("E3 request handled successfully.");
     Ok(())
 }

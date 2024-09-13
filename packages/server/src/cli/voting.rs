@@ -8,7 +8,7 @@ use log::{info, error};
 use std::env;
 use chrono::Utc;
 
-use alloy::primitives::{Bytes, U256};
+use alloy::primitives::{Address, Bytes, U256, U32};
 
 use crate::enclave_server::blockchain::relayer::EnclaveContract;
 
@@ -62,64 +62,31 @@ pub async fn initialize_crisp_round(
     info!("Starting new CRISP round!");
     info!("Initializing Keyshare nodes...");
     
-    let private_key = env::var("PRIVATEKEY").expect("PRIVATEKEY must be set in the environment");
+    let private_key = env::var("PRIVATE_KEY").expect("PRIVATE_KEY must be set in the environment");
     let rpc_url = "http://0.0.0.0:8545";
     let contract = EnclaveContract::new(rpc_url, &config.voting_address, &private_key).await?;
-    // Current time as start time
-    // let start_time = U256::from(Utc::now().timestamp());
-    // let e3_params = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    // let duration = U256::from(config.poll_length);
-    // let res = contract.request_e3(start_time,duration, e3_params).await?;
+    
+    let filter: Address = "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5".parse()?;
+    let threshold: [u32; 2] = [1, 2];
+    let start_window: [U256; 2] = [U256::from(Utc::now().timestamp()), U256::from(Utc::now().timestamp() + 600)];
+    let duration: U256 = U256::from(10);
+    let e3_program: Address = "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5".parse()?;
+    let e3_params = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    let compute_provider_params = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    let res = contract.request_e3(filter, threshold, start_window, duration, e3_program, e3_params, compute_provider_params).await?;
+    println!("E3 request sent. TxHash: {:?}", res.transaction_hash);
 
-    // println!("E3 request sent. TxHash: {:?}", res.transaction_hash);
 
+    let e3_id = U256::from(3);
+    let res = contract.activate_e3(e3_id).await?;
+    println!("E3 activated. TxHash: {:?}", res.transaction_hash);
 
-    // let url_id = format!("{}/get_rounds", config.enclave_address);
-    // let req = Request::builder()
-    //     .method(Method::GET)
-    //     .uri(url_id)
-    //     .body(Empty::<Bytes>::new())?;
+    let e3 = contract.get_e3(e3_id).await?;
+    println!("E3 data: {:?}", e3);
 
-    // let resp = client_get.request(req).await?;
-    // info!("Response status: {}", resp.status());
-
-    // let body_str = get_response_body(resp).await?;
-    // let count: RoundCount = serde_json::from_str(&body_str)?;
-    // info!("Server Round Count: {:?}", count.round_count);
-
-    // let round_id = count.round_count + 1;
-    // let response = super::CrispConfig {
-    //     round_id,
-    //     poll_length: config.poll_length,
-    //     chain_id: config.chain_id,
-    //     voting_address: config.voting_address.clone(),
-    //     ciphernode_count: config.ciphernode_count,
-    //     enclave_address: config.enclave_address.clone(),
-    //     authentication_id: config.authentication_id.clone(),
-    // };
-
-    // let url = format!("{}/init_crisp_round", config.enclave_address);
-    // let req = Request::builder()
-    //     .header("authorization", "Bearer fpKL54jvWmEGVoRdCNjG")
-    //     .header("Content-Type", "application/json")
-    //     .method(Method::POST)
-    //     .uri(url)
-    //     .body(serde_json::to_string(&response)?)?;
-
-    // let mut resp = client.request(req).await?;
-    // info!("Response status: {}", resp.status());
-
-    // while let Some(frame) = resp.frame().await {
-    //     if let Some(chunk) = frame?.data_ref() {
-    //         io::stdout().write_all(chunk).await?;
-    //     }
-    // }
-
-    // info!("Round Initialized.");
-    // info!("Gathering Keyshare nodes for execution environment...");
-    // thread::sleep(Duration::from_secs(1));
-    // info!("\nYou can now vote Encrypted with Round ID: {:?}", round_id);
-
+    let e3_data = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    let res = contract.publish_input(e3_id, e3_data).await?;
+    println!("E3 data published. TxHash: {:?}", res.transaction_hash);
     Ok(())
 }
 

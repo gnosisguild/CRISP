@@ -65,8 +65,13 @@ impl EventListener {
         while let Some(log) = stream.next().await {
             if let Some(topic0) = log.topic0() {
                 if let Some(decoder) = self.handlers.get(topic0) {
-                    if let Ok(event) = decoder(log.clone()) {
-                        event.process(log)?;
+                    match decoder(log.clone()) {
+                        Ok(event) => {
+                            event.process(log)?;
+                        }
+                        Err(e) => {
+                            println!("Error decoding event 0x{:x}: {:?}", topic0, e);
+                        }
                     }
                 }
             }
@@ -97,8 +102,8 @@ impl ContractManager {
     }
 }
 
-
 pub async fn start_listener(contract_address: &str) -> Result<()> {
+    println!("Starting listener for contract: {}", contract_address);
     let rpc_url = "ws://127.0.0.1:8545";
 
     let manager = ContractManager::new(rpc_url).await?;
