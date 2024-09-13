@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity >=0.8.26;
 
-import {CRISPBase, IComputationModule, IInputValidator, IEnclave} from "evm_base/contracts/CRISPBase.sol";
+import {CRISPBase, IComputationModule, IInputValidator, IEnclave} from "evm_base/CRISPBase.sol";
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 import {ImageID} from "./ImageID.sol";
 
@@ -55,7 +55,6 @@ contract CRISPRisc0 is CRISPBase {
         uint256 e3Id,
         bytes memory data
     ) external view override returns (bytes memory, bool) {
-        require(msg.sender == address(enclave), OnlyEnclave());
         require(params[e3Id].degree != 0, E3DoesNotExist());
         uint256 inputRoot = enclave.getInputRoot(e3Id);
         (bytes memory seal, bytes memory output) = abi.decode(

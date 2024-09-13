@@ -1,5 +1,5 @@
 use compute_provider_core::{
-    merkle_tree::MerkleTree, CiphertextInputs, CiphertextProcessor, ComputationInput,
+    merkle_tree::MerkleTree, FHEInputs, ComputationInput,
     ComputationResult,
 };
 use rayon::prelude::*;
@@ -7,17 +7,17 @@ use risc0_ethereum_contracts::groth16;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use std::sync::Arc;
 
-pub struct ComputeProvider<C: CiphertextProcessor + serde::ser::Serialize> {
-    input: ComputationInput<C>,
+pub struct ComputeProvider {
+    input: ComputationInput,
     use_parallel: bool,
     batch_size: Option<usize>,
 }
 
-impl<C: CiphertextProcessor + serde::ser::Serialize> ComputeProvider<C> {
-    pub fn new(ciphertexts: C, use_parallel: bool, batch_size: Option<usize>) -> Self {
+impl ComputeProvider {
+    pub fn new(fhe_inputs: FHEInputs, use_parallel: bool, batch_size: Option<usize>) -> Self {
         Self {
             input: ComputationInput {
-                ciphertexts,
+                fhe_inputs,
                 leaf_hashes: Vec::new(),
                 tree_depth: 10,
                 zero_node: String::from("0"),
@@ -46,7 +46,7 @@ impl<C: CiphertextProcessor + serde::ser::Serialize> ComputeProvider<C> {
             self.input.zero_node.clone(),
             self.input.arity,
         );
-        tree_handler.compute_leaf_hashes(&self.input.get_ciphertexts());
+        tree_handler.compute_leaf_hashes(&self.input.fhe_inputs.ciphertexts);
         self.input.leaf_hashes = tree_handler.leaf_hashes.clone();
 
         let env = ExecutorEnv::builder()
@@ -74,8 +74,8 @@ impl<C: CiphertextProcessor + serde::ser::Serialize> ComputeProvider<C> {
         let batch_size = self.batch_size.unwrap_or(1);
         let parallel_tree_depth = (batch_size as f64).log2().ceil() as usize;
 
-        let ciphertexts = Arc::new(self.input.get_ciphertexts());
-        let params = Arc::new(self.input.get_params());
+        let ciphertexts = Arc::new(self.input.fhe_inputs.ciphertexts.clone());
+        let params = Arc::new(self.input.fhe_inputs.params.clone());
 
         let chunks: Vec<Vec<Vec<u8>>> = ciphertexts
             .chunks(batch_size)
@@ -89,7 +89,7 @@ impl<C: CiphertextProcessor + serde::ser::Serialize> ComputeProvider<C> {
                 tree_handler.compute_leaf_hashes(&chunk);
 
                 let input = ComputationInput {
-                    ciphertexts: CiphertextInputs {
+                    fhe_inputs: FHEInputs {
                         ciphertexts: chunk.clone(),
                         params: params.to_vec(), // Params are shared across chunks
                     },
@@ -122,7 +122,7 @@ impl<C: CiphertextProcessor + serde::ser::Serialize> ComputeProvider<C> {
         // Combine the sorted results for final computation
         let final_depth = self.input.tree_depth - parallel_tree_depth;
         let mut final_input = ComputationInput {
-            ciphertexts: CiphertextInputs {
+            fhe_inputs: FHEInputs {
                 ciphertexts: tally_results
                     .iter()
                     .map(|result| result.ciphertext.clone())
@@ -186,7 +186,7 @@ mod tests {
         let inputs = vec![1, 1, 0, 1];
         let ciphertexts = encrypt_inputs(&inputs, &pk, &params);
 
-        let ciphertext_inputs = CiphertextInputs {
+        let ciphertext_inputs = FHEInputs {
             ciphertexts: ciphertexts.iter().map(|c| c.to_bytes()).collect(),
             params: params.to_bytes(),
         };

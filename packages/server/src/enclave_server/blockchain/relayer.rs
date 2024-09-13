@@ -1,10 +1,11 @@
 use alloy::{
-    network::{EthereumWallet, Ethereum},
+    network::{Ethereum, EthereumWallet},
     primitives::{address, Address, Bytes, U256},
     providers::fillers::{
-        ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller, WalletFiller
+        ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller, WalletFiller,
     },
-    providers::{Provider, ProviderBuilder, RootProvider, Identity},
+    providers::{Identity, Provider, ProviderBuilder, RootProvider},
+    rpc::types::Filter,
     rpc::types::TransactionReceipt,
     signers::local::PrivateKeySigner,
     sol,
@@ -18,27 +19,35 @@ use tokio::sync::Mutex;
 
 sol! {
     #[derive(Debug)]
+    struct E3 {
+        uint256 seed;
+        uint32[2] threshold;
+        uint256[2] startWindow;
+        uint256 duration;
+        uint256 expiration;
+        address e3Program;
+        bytes e3ProgramParams;
+        address inputValidator;
+        address decryptionVerifier;
+        bytes committeePublicKey;
+        bytes ciphertextOutput;
+        bytes plaintextOutput;
+    }
+
+    #[derive(Debug)]
     #[sol(rpc)]
-    contract CRISPVoting {
-        function requestE3(
-            uint256 startWindowStart,
-            uint256 duration,
-            bytes memory e3Params
-        ) public;
+    contract Enclave {
+        function request(address filter, uint32[2] calldata threshold, uint256[2] calldata startWindow, uint256 duration, address e3Program, bytes memory e3ProgramParams, bytes memory computeProviderParams) external payable returns (uint256 e3Id, E3 memory e3);
 
-        function publishPublicKey(uint256 e3Id, bytes memory committeePublicKey) public;
+        function activate(uint256 e3Id) external returns (bool success);
 
-        function castVote(uint256 e3Id, bytes memory vote) public;
+        function publishInput(uint256 e3Id, bytes memory data ) external returns (bool success);
 
-        function submitCiphertext(uint256 e3Id, bytes memory ciphertextOutput) public;
+        function publishCiphertextOutput(uint256 e3Id, bytes memory data ) external returns (bool success);
 
-        function submitPlaintext(uint256 e3Id, bytes memory plaintextOutput) public;
+        function publishPlaintextOutput(uint256 e3Id, bytes memory data) external returns (bool success);
 
-        function getPublicKey(uint256 e3Id) public view returns (bytes memory);
-
-        function getCiphertextOutput(uint256 e3Id) public view returns (bytes memory);
-
-        function getPlaintextOutput(uint256 e3Id) public view returns (bytes memory);
+        function getE3(uint256 e3Id) external view returns (E3 memory e3);
     }
 }
 
@@ -52,13 +61,13 @@ type CRISPProvider = FillProvider<
     Ethereum,
 >;
 
-pub struct CRISPVotingContract {
+pub struct EnclaveContract {
     provider: Arc<CRISPProvider>,
     contract_address: Address,
     wallet: PrivateKeySigner,
 }
 
-impl CRISPVotingContract {
+impl EnclaveContract {
     pub async fn new(rpc_url: &str, contract_address: &str, private_key: &str) -> Result<Self> {
         let signer: PrivateKeySigner = private_key.parse()?;
         let wallet = EthereumWallet::from(signer.clone());
@@ -77,71 +86,72 @@ impl CRISPVotingContract {
 
     pub async fn request_e3(
         &self,
-        start_window_start: U256,
+        filter: Address,
+        threshold: [u32; 2],
+        start_window: [U256; 2],
         duration: U256,
+        e3_program: Address,
         e3_params: Bytes,
+        compute_provider_params: Bytes,
     ) -> Result<TransactionReceipt> {
-        let contract = CRISPVoting::new(self.contract_address, &self.provider);
-        let builder = contract.requestE3(start_window_start, duration, e3_params);
+        let contract = Enclave::new(self.contract_address, &self.provider);
+        let builder = contract.request(
+            filter,
+            threshold,
+            start_window,
+            duration,
+            e3_program,
+            e3_params,
+            compute_provider_params,
+        );
         let receipt = builder.send().await?.get_receipt().await?;
         Ok(receipt)
     }
 
-    pub async fn publish_public_key(
+    pub async fn activate_e3(&self, e3_id: U256) -> Result<TransactionReceipt> {
+        let contract = Enclave::new(self.contract_address, &self.provider);
+        let builder = contract.activate(e3_id);
+        let receipt = builder.send().await?.get_receipt().await?;
+        Ok(receipt)
+    }
+
+    pub async fn publish_input(&self, e3_id: U256, data: Bytes) -> Result<TransactionReceipt> {
+        let contract = Enclave::new(self.contract_address, &self.provider);
+        let builder = contract.publishInput(e3_id, data);
+        let receipt = builder.send().await?.get_receipt().await?;
+        Ok(receipt)
+    }
+
+    pub async fn publish_ciphertext_output(
         &self,
         e3_id: U256,
-        committee_public_key: Bytes,
+        data: Bytes,
     ) -> Result<TransactionReceipt> {
-        let contract = CRISPVoting::new(self.contract_address, &self.provider);
-        let builder = contract.publishPublicKey(e3_id, committee_public_key);
+        let contract = Enclave::new(self.contract_address, &self.provider);
+        let builder = contract.publishCiphertextOutput(e3_id, data);
         let receipt = builder.send().await?.get_receipt().await?;
         Ok(receipt)
     }
 
-    pub async fn cast_vote(&self, e3_id: U256, vote: Bytes) -> Result<TransactionReceipt> {
-        let contract = CRISPVoting::new(self.contract_address, &self.provider);
-        let builder = contract.castVote(e3_id, vote);
-        let receipt = builder.send().await?.get_receipt().await?;
-        Ok(receipt)
-    }
-
-    pub async fn submit_ciphertext(
+    pub async fn publish_plaintext_output(
         &self,
         e3_id: U256,
-        ciphertext_output: Bytes,
+        data: Bytes,
     ) -> Result<TransactionReceipt> {
-        let contract = CRISPVoting::new(self.contract_address, &self.provider);
-        let builder = contract.submitCiphertext(e3_id, ciphertext_output);
+        let contract = Enclave::new(self.contract_address, &self.provider);
+        let builder = contract.publishPlaintextOutput(e3_id, data);
         let receipt = builder.send().await?.get_receipt().await?;
         Ok(receipt)
     }
 
-    pub async fn submit_plaintext(
-        &self,
-        e3_id: U256,
-        plaintext_output: Bytes,
-    ) -> Result<TransactionReceipt> {
-        let contract = CRISPVoting::new(self.contract_address, &self.provider);
-        let builder = contract.submitPlaintext(e3_id, plaintext_output);
-        let receipt = builder.send().await?.get_receipt().await?;
-        Ok(receipt)
+    pub async fn get_e3(&self, e3_id: U256) -> Result<E3> {
+        let contract = Enclave::new(self.contract_address, &self.provider);
+        let e3_return = contract.getE3(e3_id).call().await?;
+        Ok(e3_return.e3)
     }
 
-    pub async fn get_public_key(&self, e3_id: U256) -> Result<Bytes> {
-        let contract = CRISPVoting::new(self.contract_address, &self.provider);
-        let public_key = contract.getPublicKey(e3_id).call().await?;
-        Ok(public_key._0)
-    }
-
-    pub async fn get_ciphertext_output(&self, e3_id: U256) -> Result<Bytes> {
-        let contract = CRISPVoting::new(self.contract_address, &self.provider);
-        let ciphertext_output = contract.getCiphertextOutput(e3_id).call().await?;
-        Ok(ciphertext_output._0)
-    }
-
-    pub async fn get_plaintext_output(&self, e3_id: U256) -> Result<Bytes> {
-        let contract = CRISPVoting::new(self.contract_address, &self.provider);
-        let plaintext_output = contract.getPlaintextOutput(e3_id).call().await?;
-        Ok(plaintext_output._0)
+    pub async fn get_latest_block(&self) -> Result<u64> {
+        let block = self.provider.get_block_number().await?;
+        Ok(block)
     }
 }

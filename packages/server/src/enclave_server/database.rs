@@ -1,15 +1,30 @@
 
-use std::{env, str, sync::Arc};
+use std::{env, str, sync::Arc, error::Error};
 use once_cell::sync::Lazy;
 use sled::Db;
 use rand::Rng;
 use log::info;
-use super::models::Round;
+use super::models::{CrispConfig, Round, E3};
 
 pub static GLOBAL_DB: Lazy<Arc<Db>> = Lazy::new(|| {
     let pathdb = std::env::current_dir().unwrap().join("database/enclave_server");
     Arc::new(sled::open(pathdb).unwrap())
 });
+
+pub fn get_e3(e3_id: u64) -> Result<(E3, String), Box<dyn Error>> {
+    let key = format!("e3:{}", e3_id);
+
+    let value = match GLOBAL_DB.get(key.clone()) {
+        Ok(Some(v)) => v,                 
+        Ok(None) => return Err("E3 not found".into()), 
+        Err(e) => return Err(format!("Database error: {}", e).into()),
+    };
+
+    let e3: E3 = serde_json::from_slice(&value)
+        .map_err(|e| format!("Failed to deserialize E3: {}", e))?;
+
+    Ok((e3, key))
+}
 
 pub fn get_state(round_id: u32) -> (Round, String) {
     let mut round_key = round_id.to_string();
@@ -31,7 +46,6 @@ pub fn get_round_count() -> u32 {
     let round_str = std::str::from_utf8(round_db.unwrap().as_ref()).unwrap().to_string();
     round_str.parse::<u32>().unwrap()
 }
-
 
 pub fn generate_emoji() -> (String, String) {
     let emojis = [

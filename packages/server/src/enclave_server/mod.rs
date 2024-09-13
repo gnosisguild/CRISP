@@ -53,6 +53,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
         .allow_any_header()  
         .supports_credentials()
         .max_age(3600); 
+    
         App::new()
             .wrap(cors)
             .app_data(web::Data::new(AppState {

@@ -19,15 +19,14 @@ abstract contract CRISPBase is IComputationModule {
 
     error E3AlreadyInitialized();
     error E3DoesNotExist();
-    error OnlyEnclave();
-
-    modifier onlyEnclave() {
-        require(msg.sender == address(enclave), OnlyEnclave());
-        _;
-    }
 
     function initialize(IEnclave _enclave) public {
         enclave = _enclave;
+    }
+
+    function getParamsHash(uint256 e3Id) public view returns (bytes32) {
+        require(params[e3Id].degree != 0, E3DoesNotExist());
+        return keccak256(abi.encode(params[e3Id].degree, params[e3Id].plaintextModulus, params[e3Id].ciphertextModuli));
     }
 
     function getParams(uint256 e3Id) public view returns (Params memory) {

@@ -12,10 +12,10 @@ use std::collections::HashMap;
 use std::fmt::Debug;
 use std::sync::Arc;
 
-use super::events::{E3Requested, CiphertextSubmitted, PlaintextSubmitted, PublicKeyPublished, VoteCast};
+use super::events::{E3Activated, InputPublished, PlaintextOutputPublished};
 
 pub trait ContractEvent: Send + Sync + 'static {
-    fn process(&self) -> Result<()>;
+    fn process(&self, log: Log) -> Result<()>;
 }
 
 // impl<T> ContractEvent for T
@@ -66,7 +66,7 @@ impl EventListener {
             if let Some(topic0) = log.topic0() {
                 if let Some(decoder) = self.handlers.get(topic0) {
                     if let Ok(event) = decoder(log.clone()) {
-                        event.process()?;
+                        event.process(log)?;
                     }
                 }
             }
@@ -105,11 +105,9 @@ pub async fn start_listener(contract_address: &str) -> Result<()> {
 
     let address: Address = contract_address.parse()?;
     let mut listener = manager.add_listener(address);
-    listener.add_event_handler::<E3Requested>();
-    listener.add_event_handler::<VoteCast>();
-    listener.add_event_handler::<PublicKeyPublished>();
-    listener.add_event_handler::<CiphertextSubmitted>();
-    listener.add_event_handler::<PlaintextSubmitted>();
+    listener.add_event_handler::<E3Activated>();
+    listener.add_event_handler::<InputPublished>();
+    listener.add_event_handler::<PlaintextOutputPublished>();
 
     // Start listening
     listener.listen().await?;

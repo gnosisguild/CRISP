@@ -10,7 +10,7 @@ use chrono::Utc;
 
 use alloy::primitives::{Bytes, U256};
 
-use crate::enclave_server::blockchain::relayer::CRISPVotingContract;
+use crate::enclave_server::blockchain::relayer::EnclaveContract;
 
 use crate::cli::{AuthenticationResponse, HyperClientGet, HyperClientPost};
 use crate::util::timeit::timeit;
@@ -62,10 +62,10 @@ pub async fn initialize_crisp_round(
     info!("Starting new CRISP round!");
     info!("Initializing Keyshare nodes...");
     
-    // let private_key = env::var("PRIVATEKEY").expect("PRIVATEKEY must be set in the environment");
-    // let rpc_url = "http://0.0.0.0:8545";
-    // let contract = CRISPVotingContract::new(rpc_url, &config.voting_address, &private_key).await?;
-    // // Current time as start time
+    let private_key = env::var("PRIVATEKEY").expect("PRIVATEKEY must be set in the environment");
+    let rpc_url = "http://0.0.0.0:8545";
+    let contract = EnclaveContract::new(rpc_url, &config.voting_address, &private_key).await?;
+    // Current time as start time
     // let start_time = U256::from(Utc::now().timestamp());
     // let e3_params = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     // let duration = U256::from(config.poll_length);
@@ -74,51 +74,51 @@ pub async fn initialize_crisp_round(
     // println!("E3 request sent. TxHash: {:?}", res.transaction_hash);
 
 
-    let url_id = format!("{}/get_rounds", config.enclave_address);
-    let req = Request::builder()
-        .method(Method::GET)
-        .uri(url_id)
-        .body(Empty::<Bytes>::new())?;
+    // let url_id = format!("{}/get_rounds", config.enclave_address);
+    // let req = Request::builder()
+    //     .method(Method::GET)
+    //     .uri(url_id)
+    //     .body(Empty::<Bytes>::new())?;
 
-    let resp = client_get.request(req).await?;
-    info!("Response status: {}", resp.status());
+    // let resp = client_get.request(req).await?;
+    // info!("Response status: {}", resp.status());
 
-    let body_str = get_response_body(resp).await?;
-    let count: RoundCount = serde_json::from_str(&body_str)?;
-    info!("Server Round Count: {:?}", count.round_count);
+    // let body_str = get_response_body(resp).await?;
+    // let count: RoundCount = serde_json::from_str(&body_str)?;
+    // info!("Server Round Count: {:?}", count.round_count);
 
-    let round_id = count.round_count + 1;
-    let response = super::CrispConfig {
-        round_id,
-        poll_length: config.poll_length,
-        chain_id: config.chain_id,
-        voting_address: config.voting_address.clone(),
-        ciphernode_count: config.ciphernode_count,
-        enclave_address: config.enclave_address.clone(),
-        authentication_id: config.authentication_id.clone(),
-    };
+    // let round_id = count.round_count + 1;
+    // let response = super::CrispConfig {
+    //     round_id,
+    //     poll_length: config.poll_length,
+    //     chain_id: config.chain_id,
+    //     voting_address: config.voting_address.clone(),
+    //     ciphernode_count: config.ciphernode_count,
+    //     enclave_address: config.enclave_address.clone(),
+    //     authentication_id: config.authentication_id.clone(),
+    // };
 
-    let url = format!("{}/init_crisp_round", config.enclave_address);
-    let req = Request::builder()
-        .header("authorization", "Bearer fpKL54jvWmEGVoRdCNjG")
-        .header("Content-Type", "application/json")
-        .method(Method::POST)
-        .uri(url)
-        .body(serde_json::to_string(&response)?)?;
+    // let url = format!("{}/init_crisp_round", config.enclave_address);
+    // let req = Request::builder()
+    //     .header("authorization", "Bearer fpKL54jvWmEGVoRdCNjG")
+    //     .header("Content-Type", "application/json")
+    //     .method(Method::POST)
+    //     .uri(url)
+    //     .body(serde_json::to_string(&response)?)?;
 
-    let mut resp = client.request(req).await?;
-    info!("Response status: {}", resp.status());
+    // let mut resp = client.request(req).await?;
+    // info!("Response status: {}", resp.status());
 
-    while let Some(frame) = resp.frame().await {
-        if let Some(chunk) = frame?.data_ref() {
-            io::stdout().write_all(chunk).await?;
-        }
-    }
+    // while let Some(frame) = resp.frame().await {
+    //     if let Some(chunk) = frame?.data_ref() {
+    //         io::stdout().write_all(chunk).await?;
+    //     }
+    // }
 
-    info!("Round Initialized.");
-    info!("Gathering Keyshare nodes for execution environment...");
-    thread::sleep(Duration::from_secs(1));
-    info!("\nYou can now vote Encrypted with Round ID: {:?}", round_id);
+    // info!("Round Initialized.");
+    // info!("Gathering Keyshare nodes for execution environment...");
+    // thread::sleep(Duration::from_secs(1));
+    // info!("\nYou can now vote Encrypted with Round ID: {:?}", round_id);
 
     Ok(())
 }

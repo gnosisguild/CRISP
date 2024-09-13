@@ -1,5 +1,5 @@
 [package]
-name = "apps"
+name = "voting-risc0"
 version = { workspace = true }
 edition = { workspace = true }
 
@@ -17,3 +17,6 @@ risc0-zkvm = { workspace = true, features = ["client"] }
 tokio = { version = "1.35", features = ["full"] }
 compute-provider-host = { workspace = true }
 compute-provider-core = { workspace = true }
+fhe = { workspace = true }
+fhe-traits = { workspace = true }
+fhe-util = { workspace = true }
