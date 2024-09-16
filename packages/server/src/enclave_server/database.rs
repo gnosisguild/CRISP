@@ -1,22 +1,21 @@
 
-use std::{env, str, sync::Arc, error::Error};
+use std::{str, sync::Arc, error::Error};
 use once_cell::sync::Lazy;
-use sled::Db;
+use sled::{Db, IVec};
 use rand::Rng;
 use log::info;
-use super::models::{CrispConfig, Round, E3};
+use super::models::{Round, E3};
 
 pub static GLOBAL_DB: Lazy<Arc<Db>> = Lazy::new(|| {
     let pathdb = std::env::current_dir().unwrap().join("database/enclave_server");
     Arc::new(sled::open(pathdb).unwrap())
 });
-
 pub fn get_e3(e3_id: u64) -> Result<(E3, String), Box<dyn Error>> {
     let key = format!("e3:{}", e3_id);
 
     let value = match GLOBAL_DB.get(key.clone()) {
         Ok(Some(v)) => v,                 
-        Ok(None) => return Err("E3 not found".into()), 
+        Ok(None) => return Err(format!("E3 not found: {}", key).into()), 
         Err(e) => return Err(format!("Database error: {}", e).into()),
     };
 
@@ -24,6 +23,56 @@ pub fn get_e3(e3_id: u64) -> Result<(E3, String), Box<dyn Error>> {
         .map_err(|e| format!("Failed to deserialize E3: {}", e))?;
 
     Ok((e3, key))
+}
+
+pub fn get_e3_round() -> Result<u64, Box<dyn Error>> {
+    let key = "e3:round";
+
+    let round_count: u64 = match GLOBAL_DB.get(key) {
+        Ok(Some(bytes)) => {
+            match bincode::deserialize::<u64>(&bytes) {
+                Ok(count) => count,
+                Err(e) => {
+                    info!("Failed to deserialize round count: {}", e);
+                    return Err(format!("Failed to retrieve round count").into());
+                }
+            }
+        }
+        Ok(None) => {
+            info!("Initializing first round in db");
+            let initial_count = 0u64;
+            let encoded = bincode::serialize(&initial_count).unwrap();
+            if let Err(e) = GLOBAL_DB.insert(key, IVec::from(encoded)) {
+                info!("Failed to initialize first round in db: {}", e);
+                return Err(format!("Failed to initialize round count").into());
+            }
+            initial_count
+        }
+        Err(e) => {
+            info!("Database error: {}", e);
+            return Err(format!("Database error").into());
+        }
+    };
+
+    Ok(round_count)
+}
+
+
+pub fn increment_e3_round() -> Result<(), Box<dyn Error>> {
+    let key = "e3:round";
+
+    match get_e3_round() {
+        Ok(round_count) => {
+            let new_round_count = round_count + 1;
+            let encoded = bincode::serialize(&new_round_count).unwrap();
+            GLOBAL_DB.insert(key, IVec::from(encoded))?;
+        }
+        Err(e) => {
+            return Err(e);
+        }
+    }
+
+    Ok(())
 }
 
 pub fn get_state(round_id: u32) -> (Round, String) {

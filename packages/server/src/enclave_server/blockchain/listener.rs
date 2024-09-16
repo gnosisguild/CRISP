@@ -1,16 +1,17 @@
 use alloy::{
-    primitives::{address, Address, B256},
+    primitives::{Address, B256},
     providers::{Provider, ProviderBuilder, RootProvider},
     rpc::types::{BlockNumberOrTag, Filter, Log},
-    sol,
     sol_types::SolEvent,
     transports::BoxTransport,
 };
 use eyre::Result;
 use futures_util::stream::StreamExt;
 use std::collections::HashMap;
-use std::fmt::Debug;
 use std::sync::Arc;
+use std::time::Duration;
+use tokio::time::sleep;
+use log::{info, error};
 
 use super::events::{E3Activated, InputPublished, PlaintextOutputPublished};
 
@@ -101,21 +102,43 @@ impl ContractManager {
         EventListener::new(self.provider.clone(), filter)
     }
 }
-
 pub async fn start_listener(contract_address: &str) -> Result<()> {
-    println!("Starting listener for contract: {}", contract_address);
     let rpc_url = "ws://127.0.0.1:8545";
-
-    let manager = ContractManager::new(rpc_url).await?;
-
     let address: Address = contract_address.parse()?;
-    let mut listener = manager.add_listener(address);
+    
+    loop {
+        match run_listener(rpc_url, address).await {
+            Ok(_) => {
+                info!("Listener finished successfully. Checking for reconnection...");
+            },
+            Err(e) => {
+                error!("Error occurred in listener: {}. Reconnecting after delay...", e);
+            }
+        }
+        sleep(Duration::from_secs(5)).await;
+    }
+}
+
+// Separate function to encapsulate listener logic
+async fn run_listener(rpc_url: &str, contract_address: Address) -> Result<()> {
+    let manager = ContractManager::new(rpc_url).await?;
+    
+    let mut listener = manager.add_listener(contract_address);
     listener.add_event_handler::<E3Activated>();
     listener.add_event_handler::<InputPublished>();
     listener.add_event_handler::<PlaintextOutputPublished>();
 
-    // Start listening
-    listener.listen().await?;
-
+    loop {
+        match listener.listen().await {
+            Ok(_) => {
+                info!("Listener is still active...");
+            }
+            Err(e) => {
+                error!("Connection lost or error occurred: {}. Attempting to reconnect...", e);
+                break;
+            }
+        }
+    }
+    
     Ok(())
 }

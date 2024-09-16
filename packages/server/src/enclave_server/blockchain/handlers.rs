@@ -2,29 +2,28 @@ use super::{
     events::{E3Activated, InputPublished, PlaintextOutputPublished},
     relayer::EnclaveContract,
 };
-use crate::enclave_server::database::{generate_emoji, get_e3, GLOBAL_DB};
+use crate::enclave_server::database::{generate_emoji, get_e3, GLOBAL_DB, increment_e3_round};
 use crate::enclave_server::models::E3;
 use alloy::{
-    primitives::{Address, Bytes, U256, FixedBytes},
-    providers::Provider,
     rpc::types::Log,
-    sol,
     sol_types::{SolCall, SolEvent},
 };
 use chrono::Utc;
-use compute_provider_core::FHEInputs;
+use compute_provider::FHEInputs;
 use std::env;
 use std::error::Error;
 use tokio::time::{sleep, Duration};
 use voting_risc0::run_compute;
 use alloy_sol_types::SolValue;
 
+use log::info;
+
 pub async fn handle_e3(
     e3_activated: E3Activated,
     log: Log,
 ) -> Result<(), Box<dyn Error + Send + Sync>> {
     let e3_id = e3_activated.e3Id.to::<u64>();
-    println!("Handling E3 request with id {}", e3_id);
+    info!("Handling E3 request with id {}", e3_id);
 
     // Fetch E3 from the contract
     let private_key = env::var("PRIVATE_KEY").expect("PRIVATEKEY must be set in the environment");
@@ -34,8 +33,8 @@ pub async fn handle_e3(
     let contract = EnclaveContract::new(&rpc_url, &contract_address, &private_key).await?;
 
     let e3 = contract.get_e3(e3_activated.e3Id).await?;
-    println!("Fetched E3 from the contract.");
-    println!("E3: {:?}", e3);
+    info!("Fetched E3 from the contract.");
+    info!("E3: {:?}", e3);
 
     let start_time = Utc::now().timestamp() as u64;
 
@@ -49,11 +48,15 @@ pub async fn handle_e3(
     let e3_obj = E3 {
         // Identifiers
         id: e3_id,
+        chain_id: 31337 as u64, // Hardcoded for testing
+        enclave_address: contract_address,
 
         // Status-related
         status: "Active".to_string(),
         has_voted: vec!["".to_string()],
         vote_count: 0,
+        votes_option_1: 0,
+        votes_option_2: 0,
 
         // Timing-related
         start_time,
@@ -63,7 +66,7 @@ pub async fn handle_e3(
 
         // Parameters
         e3_params: e3.e3ProgramParams.to_vec(),
-        committee_public_key: e3.committeePublicKey.to_vec(),
+        committee_public_key: e3_activated.committeePublicKey.to_vec(),
 
         // Outputs
         ciphertext_output: vec![],
@@ -82,12 +85,15 @@ pub async fn handle_e3(
         .insert(key, serde_json::to_vec(&e3_obj).unwrap())
         .unwrap();
 
+    increment_e3_round().unwrap();
+
     // Sleep till the E3 expires
     sleep(Duration::from_secs(e3.duration.to::<u64>())).await;
 
     // Get All Encrypted Votes
     let (e3, _) = get_e3(e3_id).unwrap();
-    println!("E3 FROM DB: {:?}", e3);
+    info!("E3 FROM DB");
+    info!("Vote Count: {:?}", e3.vote_count);
 
     let fhe_inputs = FHEInputs {
         params: e3.e3_params,
@@ -95,31 +101,31 @@ pub async fn handle_e3(
     };
 
     // Call Compute Provider
-    // let (compute_result, seal) = run_compute(fhe_inputs).unwrap();
+    let (compute_result, seal) = run_compute(fhe_inputs).unwrap();
 
-    // let data = (
-    //     compute_result.ciphertext,
-    //     compute_result.merkle_root,
-    //     seal,
-    // );
+    let data = (
+        compute_result.ciphertext,
+        compute_result.merkle_root,
+        seal,
+    );
 
-    // let encoded_data = data.abi_encode();
+    let encoded_data = data.abi_encode();
 
-    // // Params will be encoded on chain to create the journal
-    // let tx = contract
-    //     .publish_ciphertext_output(e3_activated.e3Id, encoded_data.into())
-    //     .await?;
+    // Params will be encoded on chain to create the journal
+    let tx = contract
+        .publish_ciphertext_output(e3_activated.e3Id, encoded_data.into())
+        .await?;
 
-    // println!(
-    //     "CiphertextOutputPublished event published with tx: {:?}",
-    //     tx
-    // );
-    println!("E3 request handled successfully.");
+    info!(
+        "CiphertextOutputPublished event published with tx: {:?}",
+        tx
+    );
+    info!("E3 request handled successfully.");
     Ok(())
 }
 
 pub fn handle_input_published(input: InputPublished) -> Result<(), Box<dyn Error + Send + Sync>> {
-    println!("Handling VoteCast event...");
+    info!("Handling VoteCast event...");
 
     let e3_id = input.e3Id.to::<u64>();
     let data = input.data.to_vec();
@@ -131,14 +137,14 @@ pub fn handle_input_published(input: InputPublished) -> Result<(), Box<dyn Error
         .insert(key, serde_json::to_vec(&e3).unwrap())
         .unwrap();
 
-    println!("Saved Input with Hash: {:?}", input.inputHash);
+    info!("Saved Input with Hash: {:?}", input.inputHash);
     Ok(())
 }
 
 pub fn handle_plaintext_output_published(
     plaintext_output: PlaintextOutputPublished,
 ) -> Result<(), Box<dyn Error>> {
-    println!("Handling PlaintextOutputPublished event...");
+    info!("Handling PlaintextOutputPublished event...");
 
     let e3_id = plaintext_output.e3Id.to::<u64>();
     let (mut e3, key) = get_e3(e3_id).unwrap();
@@ -147,6 +153,6 @@ pub fn handle_plaintext_output_published(
     GLOBAL_DB
         .insert(key, serde_json::to_vec(&e3).unwrap())
         .unwrap();
-    println!("PlaintextOutputPublished event handled.");
+    info!("PlaintextOutputPublished event handled.");
     Ok(())
 }

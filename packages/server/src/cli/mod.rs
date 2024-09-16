@@ -11,7 +11,7 @@ use std::io::Read;
 use http_body_util::Empty;
 
 use auth::{authenticate_user, AuthenticationResponse};
-use voting::{initialize_crisp_round, participate_in_existing_round};
+use voting::{initialize_crisp_round, participate_in_existing_round, activate_e3_round};
 use serde::{Deserialize, Serialize};
 use env_logger::{Builder, Target};
 use log::LevelFilter;
@@ -71,9 +71,13 @@ pub async fn run_cli() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     match action {
         0 => {
-            initialize_crisp_round(&config, &client_get, &client).await?;
+            initialize_crisp_round(&config).await?;
         }
         1 => {
+            let auth_res = authenticate_user(&config, &client).await?;
+            activate_e3_round(&config).await?;
+        }
+        2 => {
             let auth_res = authenticate_user(&config, &client).await?;
             participate_in_existing_round(&config, &client, &auth_res).await?;
         }
@@ -97,7 +101,7 @@ fn select_environment() -> Result<usize, Box<dyn std::error::Error + Send + Sync
 }
 
 fn select_action() -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
-    let selections = &["Initialize new CRISP round.", "Continue Existing CRISP round."];
+    let selections = &["Initialize new E3 round.", "Activate an E3 round.", "Continue Existing E3 round."];
     Ok(FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt("Create a new CRISP round or participate in an existing round.")
         .default(0)

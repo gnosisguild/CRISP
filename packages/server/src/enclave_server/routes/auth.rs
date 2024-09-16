@@ -1,4 +1,3 @@
-use std::io::Read;
 use jwt::SignWithKey;
 use sha2::Sha256;
 use std::collections::BTreeMap;
@@ -7,8 +6,7 @@ use log::info;
 
 use actix_web::{web, HttpResponse, Responder};
 
-use crate::enclave_server::models::{JsonResponse, AppState, AuthenticationLogin, AuthenticationDB, AuthenticationResponse};
-use crate::enclave_server::database::{GLOBAL_DB, pick_response};
+use crate::enclave_server::models::{AppState, AuthenticationLogin, AuthenticationDB, AuthenticationResponse};
 
 pub fn setup_routes(config: &mut web::ServiceConfig) {
     config
@@ -30,7 +28,7 @@ async fn authentication_login(state: web::Data<AppState>, data: web::Json<Authen
     let mut is_new = false; // Track if it's a new login
 
     // Perform DB update and fetch the current state
-    let updated = db.update_and_fetch(key, |old| {
+    db.update_and_fetch(key, |old| {
         let mut auth_db = old
             .map(|existing| serde_json::from_slice::<AuthenticationDB>(&existing).unwrap())
             .unwrap_or_else(|| AuthenticationDB { jwt_tokens: Vec::new() });

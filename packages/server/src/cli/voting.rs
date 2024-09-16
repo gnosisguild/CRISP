@@ -1,21 +1,19 @@
-use std::{thread, time::Duration};
+use std::{env, sync::Arc};
 use dialoguer::{theme::ColorfulTheme, FuzzySelect, Input};
-use http_body_util::{BodyExt, Empty};
+use http_body_util::BodyExt;
 use hyper::{body::Incoming, Method, Request, Response};
 use serde::{Deserialize, Serialize};
-use tokio::io::{self, AsyncWriteExt};
-use log::{info, error};
-use std::env;
+use log::info;
 use chrono::Utc;
 
-use alloy::primitives::{Address, Bytes, U256, U32};
+use alloy::primitives::{Address, Bytes, U256};
 
 use crate::enclave_server::blockchain::relayer::EnclaveContract;
 
-use crate::cli::{AuthenticationResponse, HyperClientGet, HyperClientPost};
+use crate::cli::{AuthenticationResponse, HyperClientPost};
 use crate::util::timeit::timeit;
-use fhe::bfv::{BfvParametersBuilder, Encoding, Plaintext, PublicKey};
-use fhe_traits::{DeserializeParametrized, FheEncoder, FheEncrypter, Serialize as FheSerialize};
+use fhe::bfv::{BfvParametersBuilder, Encoding, Plaintext, PublicKey, BfvParameters, SecretKey};
+use fhe_traits::{DeserializeParametrized, Deserialize as FheDeserialize, FheEncoder, FheEncrypter, Serialize as FheSerialize};
 use rand::thread_rng;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -55,12 +53,12 @@ async fn get_response_body(resp: Response<Incoming>) -> Result<String, Box<dyn s
 }
 
 pub async fn initialize_crisp_round(
-    config: &super::CrispConfig,
-    client_get: &HyperClientGet,
-    client: &HyperClientPost,
+    config: &super::CrispConfig
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     info!("Starting new CRISP round!");
     info!("Initializing Keyshare nodes...");
+
+    let params = generate_bfv_parameters().unwrap().to_bytes();
     
     let private_key = env::var("PRIVATE_KEY").expect("PRIVATE_KEY must be set in the environment");
     let rpc_url = "http://0.0.0.0:8545";
@@ -69,26 +67,43 @@ pub async fn initialize_crisp_round(
     let filter: Address = "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5".parse()?;
     let threshold: [u32; 2] = [1, 2];
     let start_window: [U256; 2] = [U256::from(Utc::now().timestamp()), U256::from(Utc::now().timestamp() + 600)];
-    let duration: U256 = U256::from(10);
+    let duration: U256 = U256::from(40);
     let e3_program: Address = "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5".parse()?;
-    let e3_params = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    let e3_params = Bytes::from(params);
     let compute_provider_params = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
     let res = contract.request_e3(filter, threshold, start_window, duration, e3_program, e3_params, compute_provider_params).await?;
     println!("E3 request sent. TxHash: {:?}", res.transaction_hash);
 
 
-    let e3_id = U256::from(3);
-    let res = contract.activate_e3(e3_id).await?;
-    println!("E3 activated. TxHash: {:?}", res.transaction_hash);
-
-    let e3 = contract.get_e3(e3_id).await?;
-    println!("E3 data: {:?}", e3);
-
-    let e3_data = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    let res = contract.publish_input(e3_id, e3_data).await?;
-    println!("E3 data published. TxHash: {:?}", res.transaction_hash);
+    // let e3_data = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    // let res = contract.publish_input(e3_id, e3_data).await?;
+    // println!("E3 data published. TxHash: {:?}", res.transaction_hash);
     Ok(())
 }
+
+pub async fn activate_e3_round(config: &super::CrispConfig) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let input_e3_id: u64 = Input::with_theme(&ColorfulTheme::default())
+        .with_prompt("Enter CRISP round ID.")
+        .interact_text()?;
+    info!("Voting state Initialized");
+
+    let params = generate_bfv_parameters().unwrap();
+    let (sk, pk) = generate_keys(&params);
+
+    let private_key = env::var("PRIVATE_KEY").expect("PRIVATE_KEY must be set in the environment");
+    let rpc_url = "http://0.0.0.0:8545";
+    let contract = EnclaveContract::new(rpc_url, &config.voting_address, &private_key).await?;
+
+    let pk_bytes = Bytes::from(pk.to_bytes());
+    // Print how many bytes are in the public key
+    println!("Public key bytes: {:?}", pk_bytes.len());
+    let e3_id = U256::from(input_e3_id);
+    let res = contract.activate_e3(e3_id, pk_bytes).await?;
+    println!("E3 activated. TxHash: {:?}", res.transaction_hash);
+
+    Ok(())
+}
+
 
 pub async fn participate_in_existing_round(
     config: &super::CrispConfig,
@@ -172,6 +187,12 @@ fn generate_bfv_parameters() -> Result<std::sync::Arc<fhe::bfv::BfvParameters>, 
         .set_plaintext_modulus(plaintext_modulus)
         .set_moduli(&moduli)
         .build_arc()?)
+}
+fn generate_keys(params: &Arc<BfvParameters>) -> (SecretKey, PublicKey) {
+    let mut rng = thread_rng();
+    let sk = SecretKey::random(params, &mut rng);
+    let pk = PublicKey::new(&sk, &mut rng);
+    (sk, pk)
 }
 
 fn get_user_vote() -> Result<Option<u64>, Box<dyn std::error::Error + Send + Sync>> {

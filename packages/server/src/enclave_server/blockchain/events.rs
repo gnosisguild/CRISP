@@ -1,5 +1,5 @@
 use alloy::{
-    primitives::{Address, Bytes, U256}, providers::Provider, sol, sol_types::{SolCall, SolEvent},
+    sol, sol_types::{SolCall, SolEvent},
     rpc::types::Log
 };
 
@@ -23,9 +23,7 @@ sol! {
 impl ContractEvent for E3Activated {
     fn process(&self, log: Log) -> Result<()> {
         println!("Processing E3 request: {:?}", self);
-
         let event_clone = self.clone();
-
         tokio::spawn(async move {
             if let Err(e) = handle_e3(event_clone, log).await {
                 eprintln!("Error handling E3 request: {:?}", e);
@@ -38,24 +36,21 @@ impl ContractEvent for E3Activated {
 }
 
 impl ContractEvent for InputPublished {
-    fn process(&self, log: Log) -> Result<()> {
-        println!("Processing input published: {:?}", self);
-        // let event_clone = self.clone();
-        // if let Err(e) = handle_input_published(event_clone) {
-        //     eprintln!("Error handling input published: {:?}", e);
-        // }
+    fn process(&self, _log: Log) -> Result<()> {
+        let event_clone = self.clone();
+        if let Err(e) = handle_input_published(event_clone) {
+            eprintln!("Error handling input published: {:?}", e);
+        }
         Ok(())
     }
 }
 
 impl ContractEvent for PlaintextOutputPublished {
-    fn process(&self, log: Log) -> Result<()> {
-        println!("Processing public key published: {:?}", self);
-
-        // let event_clone = self.clone();
-        // if let Err(e) = handle_plaintext_output_published(event_clone) {
-        //     eprintln!("Error handling public key published: {:?}", e);
-        // }
+    fn process(&self, _log: Log) -> Result<()> {
+        let event_clone = self.clone();
+        if let Err(e) = handle_plaintext_output_published(event_clone) {
+            eprintln!("Error handling public key published: {:?}", e);
+        }
 
         Ok(())
     }

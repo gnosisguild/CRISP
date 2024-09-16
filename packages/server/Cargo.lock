@@ -1901,7 +1901,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3fd119d74b830634cea2a0f58bbd0d54540518a14397557951e79340abc28c0"
 
 [[package]]
-name = "compute-provider-core"
+name = "compute-provider"
 version = "0.1.0"
 dependencies = [
  "ark-bn254",
@@ -1912,36 +1912,12 @@ dependencies = [
  "light-poseidon",
  "num-bigint",
  "num-traits",
- "risc0-zkp",
- "risc0-zkvm",
- "serde",
- "sha3",
- "zk-kit-imt",
-]
-
-[[package]]
-name = "compute-provider-host"
-version = "0.1.0"
-dependencies = [
- "compute-provider-core",
- "compute-provider-methods",
- "fhe",
- "fhe-traits",
  "rand 0.8.5",
  "rayon",
- "risc0-build-ethereum",
- "risc0-ethereum-contracts",
- "risc0-zkvm",
  "serde",
+ "sha3",
  "tracing-subscriber 0.3.18",
-]
-
-[[package]]
-name = "compute-provider-methods"
-version = "0.1.0"
-dependencies = [
- "risc0-build",
- "risc0-build-ethereum",
+ "zk-kit-imt",
 ]
 
 [[package]]
@@ -5430,7 +5406,7 @@ dependencies = [
  "bincode",
  "bytes",
  "chrono",
- "compute-provider-core",
+ "compute-provider",
  "console",
  "dialoguer",
  "env_logger 0.11.5",
@@ -7149,8 +7125,7 @@ dependencies = [
  "alloy-sol-types 0.6.4",
  "anyhow",
  "clap",
- "compute-provider-core",
- "compute-provider-host",
+ "compute-provider",
  "env_logger 0.10.2",
  "ethers",
  "fhe",

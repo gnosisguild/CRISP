@@ -1,11 +1,3 @@
-use std::str;
-use std::io::Read;
-use jwt::SignWithKey;
-use sha2::Sha256;
-use std::collections::BTreeMap;
-use hmac::{Hmac, Mac};
-use log::info;
-
 use actix_web::{web, HttpResponse, Responder};
 
 use crate::enclave_server::models::JsonResponse;

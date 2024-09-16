@@ -27,17 +27,16 @@ export interface BroadcastVoteResponse {
 
 export interface VoteStateLite {
   id: number
-  status: string
-  poll_length: number
-  voting_address: string
   chain_id: number
-  ciphernode_count: number
-  pk_share_count: number
-  sks_share_count: number
+  enclave_address: string
+
+  status: string
   vote_count: number
-  crp: number[]
-  pk: number[]
+
   start_time: number
-  ciphernode_total: number
+  duration: number
+  expiration: number
+
+  committee_public_key: number[]
   emojis: [string, string]
 }

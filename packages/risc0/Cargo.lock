@@ -258,28 +258,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3d1d046238990b9cf5bcde22a3fb3584ee5cf65fb2765f454ed428c7a0063da"
 
 [[package]]
-name = "apps"
-version = "0.1.0"
-dependencies = [
- "alloy-primitives 0.6.4",
- "alloy-sol-types 0.6.4",
- "anyhow",
- "clap",
- "compute-provider-core",
- "compute-provider-host",
- "env_logger",
- "ethers",
- "fhe",
- "fhe-traits",
- "fhe-util",
- "log",
- "methods",
- "risc0-ethereum-contracts",
- "risc0-zkvm",
- "tokio",
-]
-
-[[package]]
 name = "ark-bn254"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -943,7 +921,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b6a852b24ab71dffc585bcb46eaf7959d175cb865a7152e35b348d1b2960422"
 
 [[package]]
-name = "compute-provider-core"
+name = "compute-provider"
 version = "0.1.0"
 dependencies = [
  "ark-bn254",
@@ -954,36 +932,12 @@ dependencies = [
  "light-poseidon",
  "num-bigint",
  "num-traits",
- "risc0-zkp",
- "risc0-zkvm",
- "serde",
- "sha3",
- "zk-kit-imt",
-]
-
-[[package]]
-name = "compute-provider-host"
-version = "0.1.0"
-dependencies = [
- "compute-provider-core",
- "compute-provider-methods",
- "fhe",
- "fhe-traits",
  "rand",
  "rayon",
- "risc0-build-ethereum",
- "risc0-ethereum-contracts",
- "risc0-zkvm",
  "serde",
+ "sha3",
  "tracing-subscriber 0.3.18",
-]
-
-[[package]]
-name = "compute-provider-methods"
-version = "0.1.0"
-dependencies = [
- "risc0-build",
- "risc0-build-ethereum",
+ "zk-kit-imt",
 ]
 
 [[package]]
@@ -4885,6 +4839,27 @@ name = "version_check"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
+
+[[package]]
+name = "voting-risc0"
+version = "0.1.0"
+dependencies = [
+ "alloy-primitives 0.6.4",
+ "alloy-sol-types 0.6.4",
+ "anyhow",
+ "clap",
+ "compute-provider",
+ "env_logger",
+ "ethers",
+ "fhe",
+ "fhe-traits",
+ "fhe-util",
+ "log",
+ "methods",
+ "risc0-ethereum-contracts",
+ "risc0-zkvm",
+ "tokio",
+]
 
 [[package]]
 name = "wait-timeout"

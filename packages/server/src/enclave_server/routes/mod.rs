@@ -3,9 +3,8 @@ mod auth;
 mod state;
 mod voting;
 mod rounds;
-mod ciphernode;
 
-use actix_web::{web, HttpResponse, Responder};
+use actix_web::web;
 
 pub fn setup_routes(config: &mut web::ServiceConfig) {
     index::setup_routes(config);
@@ -13,6 +12,4 @@ pub fn setup_routes(config: &mut web::ServiceConfig) {
     state::setup_routes(config);
     voting::setup_routes(config);
     rounds::setup_routes(config);
-    ciphernode::setup_routes(config);
-
 }

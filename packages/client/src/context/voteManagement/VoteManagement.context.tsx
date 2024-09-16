@@ -65,7 +65,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   const getRoundStateLite = async (roundCount: number) => {
     const roundState = await getRoundStateLiteRequest(roundCount)
 
-    if (roundState?.pk.length === 1 && roundState.pk[0] === 0) {
+    if (roundState?.committee_public_key.length === 1 && roundState.committee_public_key[0] === 0) {
       handleGenericError('getRoundStateLite', {
         message: 'Enclave server failed generating the necessary pk bytes',
         name: 'getRoundStateLite',
@@ -73,9 +73,9 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
     }
     if (roundState) {
       setRoundState(roundState)
-      setVotingRound({ round_id: roundState.id, pk_bytes: roundState.pk })
+      setVotingRound({ round_id: roundState.id, pk_bytes: roundState.committee_public_key })
       setPollOptions(generatePoll({ round_id: roundState.id, emojis: roundState.emojis }))
-      setRoundEndDate(convertTimestampToDate(roundState.start_time, roundState.poll_length))
+      setRoundEndDate(convertTimestampToDate(roundState.start_time, roundState.duration))
     }
   }
 

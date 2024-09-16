@@ -4,18 +4,13 @@ mod routes;
 pub mod blockchain;
 
 use actix_cors::Cors;
-use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-
-use tokio::task;
-use std::sync::Mutex;
-use sled::Db;
+use actix_web::{web, App, HttpServer};
 
 use models::AppState;
 use database::GLOBAL_DB;
 use blockchain::listener::start_listener;
 
 use env_logger::{Builder, Target};
-use log::info;
 use log::LevelFilter;
 use std::io::Write;
 

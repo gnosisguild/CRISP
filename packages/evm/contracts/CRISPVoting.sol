@@ -37,11 +37,6 @@ contract CRISPVoting {
 
     uint256 public e3Counter = 0; // Counter for E3 IDs
 
-    // function that emits bytes
-    function emitBytes() external {
-        emit E3Activated(1, 20, "");
-    }
-
     // Request a new E3 computation
     function request(
         address filter,
@@ -75,14 +70,14 @@ contract CRISPVoting {
     }
 
     // Activate the poll
-    function activate(uint256 e3Id) external returns (bool success) {
+    function activate(uint256 e3Id, bytes calldata pubKey) external returns (bool success) {
         require(e3Polls[e3Id].seed > 0, "E3 ID does not exist.");
         require(e3Polls[e3Id].expiration == 0, "Poll already activated.");
 
         e3Polls[e3Id].expiration = block.timestamp + e3Polls[e3Id].duration;
-        e3Polls[e3Id].committeePublicKey = bytes("hamza");
+        // e3Polls[e3Id].committeePublicKey = ;
 
-        emit E3Activated(e3Id, e3Polls[e3Id].expiration, e3Polls[e3Id].committeePublicKey);
+        emit E3Activated(e3Id, e3Polls[e3Id].expiration, pubKey);
         return true;
     }
 

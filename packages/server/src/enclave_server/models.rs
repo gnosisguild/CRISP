@@ -1,6 +1,4 @@
 use ethers::types::U64;
-// use alloy::primitives::U64;
-use alloy_primitives::U256;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use sled::Db;
@@ -136,13 +134,13 @@ pub struct ReportTallyRequest {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct WebResultRequest {
-    pub round_id: u32,
-    pub option_1_tally: u32,
-    pub option_2_tally: u32,
-    pub total_votes: u32,
+    pub round_id: u64,
+    pub option_1_tally: u64,
+    pub option_2_tally: u64,
+    pub total_votes: u64,
     pub option_1_emoji: String,
     pub option_2_emoji: String,
-    pub end_time: i64,
+    pub end_time: u64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -211,11 +209,15 @@ pub struct Round {
 pub struct E3 {
     // Identifiers
     pub id: u64,
+    pub chain_id: u64,
+    pub enclave_address: String,
     
     // Status-related
     pub status: String,
-    pub vote_count: u64,
     pub has_voted: Vec<String>,
+    pub vote_count: u64,
+    pub votes_option_1: u64,
+    pub votes_option_2: u64,
 
     // Timing-related
     pub start_time: u64,
@@ -235,6 +237,23 @@ pub struct E3 {
     pub ciphertext_inputs: Vec<Vec<u8>>,
 
     // Emojis
+    pub emojis: [String; 2],
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct E3StateLite {
+    pub id: u64,
+    pub chain_id: u64,
+    pub enclave_address: String,
+  
+    pub status: String,
+    pub vote_count: u64,
+  
+    pub start_time: u64,
+    pub duration: u64,
+    pub expiration: u64,
+  
+    pub committee_public_key: Vec<u8>,
     pub emojis: [String; 2],
 }
 

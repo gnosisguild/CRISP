@@ -1,21 +1,17 @@
 use alloy::{
     network::{Ethereum, EthereumWallet},
-    primitives::{address, Address, Bytes, U256},
+    primitives::{Address, Bytes, U256},
     providers::fillers::{
         ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller, WalletFiller,
     },
     providers::{Identity, Provider, ProviderBuilder, RootProvider},
-    rpc::types::Filter,
     rpc::types::TransactionReceipt,
     signers::local::PrivateKeySigner,
     sol,
-    sol_types::SolCall,
     transports::BoxTransport,
 };
 use eyre::Result;
-use log::info;
 use std::sync::Arc;
-use tokio::sync::Mutex;
 
 sol! {
     #[derive(Debug)]
@@ -39,7 +35,7 @@ sol! {
     contract Enclave {
         function request(address filter, uint32[2] calldata threshold, uint256[2] calldata startWindow, uint256 duration, address e3Program, bytes memory e3ProgramParams, bytes memory computeProviderParams) external payable returns (uint256 e3Id, E3 memory e3);
 
-        function activate(uint256 e3Id) external returns (bool success);
+        function activate(uint256 e3Id, bytes memory pubKey) external returns (bool success);
 
         function publishInput(uint256 e3Id, bytes memory data ) external returns (bool success);
 
@@ -64,7 +60,6 @@ type CRISPProvider = FillProvider<
 pub struct EnclaveContract {
     provider: Arc<CRISPProvider>,
     contract_address: Address,
-    wallet: PrivateKeySigner,
 }
 
 impl EnclaveContract {
@@ -80,7 +75,6 @@ impl EnclaveContract {
         Ok(Self {
             provider: Arc::new(provider),
             contract_address: contract_address.parse()?,
-            wallet: signer,
         })
     }
 
@@ -108,9 +102,9 @@ impl EnclaveContract {
         Ok(receipt)
     }
 
-    pub async fn activate_e3(&self, e3_id: U256) -> Result<TransactionReceipt> {
+    pub async fn activate_e3(&self, e3_id: U256, pub_key: Bytes) -> Result<TransactionReceipt> {
         let contract = Enclave::new(self.contract_address, &self.provider);
-        let builder = contract.activate(e3_id);
+        let builder = contract.activate(e3_id, pub_key);
         let receipt = builder.send().await?.get_receipt().await?;
         Ok(receipt)
     }
