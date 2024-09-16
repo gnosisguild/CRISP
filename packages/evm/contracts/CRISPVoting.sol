@@ -103,15 +103,12 @@ contract CRISPVoting {
         uint256 e3Id,
         bytes memory data
     ) external returns (bool success) {
-        E3 storage e3 = e3Polls[e3Id];
-        require(e3.expiration > 0, "Poll not activated.");
-        require(e3.expiration > block.timestamp, "Poll has expired.");
         require(
-            e3.ciphertextOutput.length == 0,
+            e3Polls[e3Id].ciphertextOutput.length == 0,
             "Ciphertext already published."
         );
 
-        e3.ciphertextOutput = data;
+        e3Polls[e3Id].ciphertextOutput = data;
         return true;
     }
 

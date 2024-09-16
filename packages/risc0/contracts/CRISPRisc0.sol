@@ -5,13 +5,6 @@ import {CRISPBase, IComputationModule, IInputValidator, IEnclave} from "evm_base
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 import {ImageID} from "./ImageID.sol";
 
-struct Params {
-    uint64 degree;
-    uint64 plaintextModulus;
-    uint64[] ciphertextModuli;
-    IInputValidator inputValidator;
-}
-
 contract CRISPRisc0 is CRISPBase {
     /// @notice RISC Zero verifier contract address.
     IRiscZeroVerifier public verifier;
@@ -33,20 +26,13 @@ contract CRISPRisc0 is CRISPBase {
         uint256 seed,
         bytes memory data
     ) external override returns (IInputValidator) {
-        require(params[e3Id].degree == 0, E3AlreadyInitialized());
+        require(paramsHashes[e3Id] == bytes32(0), E3AlreadyInitialized());
         (
-            uint64 degree,
-            uint64 plaintextModulus,
-            uint64[] memory ciphertextModuli,
+            bytes memory params,
             IInputValidator inputValidator
-        ) = abi.decode(data, (uint64, uint64, uint64[], IInputValidator));
-        // TODO: require that params are valid
+        ) = abi.decode(data, (bytes, IInputValidator));
 
-        params[e3Id].degree = degree;
-        params[e3Id].plaintextModulus = plaintextModulus;
-        params[e3Id].ciphertextModuli = ciphertextModuli;
-        params[e3Id].seed = seed;
-        params[e3Id].inputValidator = inputValidator;
+        paramsHashes[e3Id] = keccak256(params);
 
         return inputValidator;
     }
@@ -55,14 +41,14 @@ contract CRISPRisc0 is CRISPBase {
         uint256 e3Id,
         bytes memory data
     ) external view override returns (bytes memory, bool) {
-        require(params[e3Id].degree != 0, E3DoesNotExist());
+        require(paramsHashes[e3Id] != bytes32(0), E3DoesNotExist());
         uint256 inputRoot = enclave.getInputRoot(e3Id);
-        (bytes memory seal, bytes memory output) = abi.decode(
+        (bytes memory ciphertext, bytes memory seal) = abi.decode(
             data,
             (bytes, bytes)
         );
-        bytes memory journal = abi.encode(inputRoot, output);
+        bytes memory journal = abi.encode(ciphertext, inputRoot, paramsHashes[e3id]);
         verifier.verify(seal, imageId, sha256(journal));
-        return (output, true);
+        return (ciphertext, true);
     }
 }

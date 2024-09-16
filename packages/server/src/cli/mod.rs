@@ -101,7 +101,7 @@ fn select_environment() -> Result<usize, Box<dyn std::error::Error + Send + Sync
 }
 
 fn select_action() -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
-    let selections = &["Initialize new E3 round.", "Activate an E3 round.", "Continue Existing E3 round."];
+    let selections = &["Initialize new E3 round.", "Activate an E3 round.", "Participate in an E3 round."];
     Ok(FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt("Create a new CRISP round or participate in an existing round.")
         .default(0)

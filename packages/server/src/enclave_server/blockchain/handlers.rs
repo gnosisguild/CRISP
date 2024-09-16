@@ -2,19 +2,20 @@ use super::{
     events::{E3Activated, InputPublished, PlaintextOutputPublished},
     relayer::EnclaveContract,
 };
-use crate::enclave_server::database::{generate_emoji, get_e3, GLOBAL_DB, increment_e3_round};
+use crate::enclave_server::database::{generate_emoji, get_e3, increment_e3_round, GLOBAL_DB};
 use crate::enclave_server::models::E3;
 use alloy::{
     rpc::types::Log,
     sol_types::{SolCall, SolEvent},
 };
+use alloy_sol_types::SolValue;
 use chrono::Utc;
 use compute_provider::FHEInputs;
 use std::env;
 use std::error::Error;
 use tokio::time::{sleep, Duration};
+use tokio::task;
 use voting_risc0::run_compute;
-use alloy_sol_types::SolValue;
 
 use log::info;
 
@@ -92,34 +93,35 @@ pub async fn handle_e3(
 
     // Get All Encrypted Votes
     let (e3, _) = get_e3(e3_id).unwrap();
-    info!("E3 FROM DB");
-    info!("Vote Count: {:?}", e3.vote_count);
+    if e3.vote_count > 0 {
+        info!("E3 FROM DB");
+        info!("Vote Count: {:?}", e3.vote_count);
 
-    let fhe_inputs = FHEInputs {
-        params: e3.e3_params,
-        ciphertexts: e3.ciphertext_inputs,
-    };
+        let fhe_inputs = FHEInputs {
+            params: e3.e3_params,
+            ciphertexts: e3.ciphertext_inputs,
+        };
 
-    // Call Compute Provider
-    let (compute_result, seal) = run_compute(fhe_inputs).unwrap();
+        // Call Compute Provider in a separate thread
+        let (compute_result, seal) = tokio::task::spawn_blocking(move || {
+            run_compute(fhe_inputs).unwrap() 
+        }).await.unwrap();
+        
+        let data = (compute_result.ciphertext, seal);
 
-    let data = (
-        compute_result.ciphertext,
-        compute_result.merkle_root,
-        seal,
-    );
+        let encoded_data = data.abi_encode();
 
-    let encoded_data = data.abi_encode();
+        // Params will be encoded on chain to create the journal
+        let tx = contract
+            .publish_ciphertext_output(e3_activated.e3Id, encoded_data.into())
+            .await?;
 
-    // Params will be encoded on chain to create the journal
-    let tx = contract
-        .publish_ciphertext_output(e3_activated.e3Id, encoded_data.into())
-        .await?;
+        info!(
+            "CiphertextOutputPublished event published with tx: {:?}",
+            tx
+        );
+    }
 
-    info!(
-        "CiphertextOutputPublished event published with tx: {:?}",
-        tx
-    );
     info!("E3 request handled successfully.");
     Ok(())
 }

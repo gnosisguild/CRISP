@@ -71,7 +71,7 @@ where
             .map(|chunk| {
                 let mut tree_handler = MerkleTree::new(parallel_tree_depth, "0".to_string(), 2);
                 tree_handler.compute_leaf_hashes(&chunk);
-
+                
                 let input = ComputeInput {
                     fhe_inputs: FHEInputs {
                         ciphertexts: chunk.clone(),

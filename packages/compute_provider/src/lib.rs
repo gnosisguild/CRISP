@@ -11,8 +11,7 @@ use fhe::bfv::{BfvParameters, Ciphertext};
 use fhe_traits::{Deserialize, DeserializeParametrized, Serialize};
 use std::sync::Arc;
 
-
-// Example Implementation of the CiphertextProcessor function
+/// Example Implementation of the CiphertextProcessor function
 pub fn default_fhe_processor(fhe_inputs: &FHEInputs) -> Vec<u8> {
     let params = Arc::new(BfvParameters::try_deserialize(&fhe_inputs.params).unwrap());
 
