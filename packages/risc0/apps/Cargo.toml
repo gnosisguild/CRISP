@@ -19,3 +19,4 @@ compute-provider = { workspace = true }
 fhe = { workspace = true }
 fhe-traits = { workspace = true }
 fhe-util = { workspace = true }
+voting-core = { path = "../core" }

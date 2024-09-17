@@ -1,7 +1,7 @@
-// src/lib.rs
+use voting_core::fhe_processor;
 use anyhow::Result;
 use compute_provider::{
-    ComputeInput, ComputeManager, ComputeOutput, ComputeProvider, ComputeResult, FHEInputs,
+    ComputeInput, ComputeManager, ComputeProvider, ComputeResult, FHEInputs,
 };
 use methods::VOTING_ELF;
 use risc0_ethereum_contracts::groth16;
@@ -11,20 +11,6 @@ pub struct Risc0Provider;
 pub struct Risc0Output {
     pub result: ComputeResult,
     pub seal: Vec<u8>,
-}
-
-impl ComputeOutput for Risc0Output {
-    fn ciphertext(&self) -> &Vec<u8> {
-        &self.result.ciphertext
-    }
-
-    fn merkle_root(&self) -> String {
-        self.result.merkle_root.clone()
-    }
-
-    fn params_hash(&self) -> String {
-        self.result.params_hash.clone()
-    }
 }
 
 impl ComputeProvider for Risc0Provider {
@@ -59,12 +45,12 @@ impl ComputeProvider for Risc0Provider {
     }
 }
 
-pub fn run_compute(params: FHEInputs) -> Result<(ComputeResult, Vec<u8>)> {
+pub fn run_compute(params: FHEInputs) -> Result<(Risc0Output, Vec<u8>)> {
     let risc0_provider = Risc0Provider;
 
-    let mut provider = ComputeManager::new(risc0_provider, params, false, None);
+    let mut provider = ComputeManager::new(risc0_provider, params, fhe_processor, false, None);
 
     let output = provider.start();
 
-    Ok((output.result, output.seal))
+    Ok(output)
 }

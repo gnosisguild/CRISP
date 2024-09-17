@@ -1906,8 +1906,6 @@ version = "0.1.0"
 dependencies = [
  "ark-bn254",
  "ark-ff 0.4.2",
- "fhe",
- "fhe-traits",
  "hex",
  "light-poseidon",
  "num-bigint",
@@ -7118,6 +7116,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49874b5167b65d7193b8aba1567f5c7d93d001cafc34600cee003eda787e483f"
 
 [[package]]
+name = "voting-core"
+version = "0.1.0"
+dependencies = [
+ "compute-provider",
+ "fhe",
+ "fhe-traits",
+]
+
+[[package]]
 name = "voting-risc0"
 version = "0.1.0"
 dependencies = [
@@ -7136,6 +7143,7 @@ dependencies = [
  "risc0-ethereum-contracts",
  "risc0-zkvm",
  "tokio",
+ "voting-core",
 ]
 
 [[package]]

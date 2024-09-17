@@ -6,6 +6,7 @@ use crate::enclave_server::database::{generate_emoji, get_e3, increment_e3_round
 use crate::enclave_server::models::E3;
 use alloy::{
     rpc::types::Log,
+    primitives::B256,
     sol_types::{SolCall, SolEvent},
 };
 use alloy_sol_types::SolValue;
@@ -103,11 +104,11 @@ pub async fn handle_e3(
         };
 
         // Call Compute Provider in a separate thread
-        let (compute_result, seal) = tokio::task::spawn_blocking(move || {
+        let (risc0_output, ciphertext) = tokio::task::spawn_blocking(move || {
             run_compute(fhe_inputs).unwrap() 
         }).await.unwrap();
         
-        let data = (compute_result.ciphertext, seal);
+        let data = ((risc0_output.result.ciphertext_hash, risc0_output.seal), ciphertext);
 
         let encoded_data = data.abi_encode();
 

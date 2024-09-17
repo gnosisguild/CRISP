@@ -43,11 +43,11 @@ contract CRISPRisc0 is CRISPBase {
     ) external view override returns (bytes memory, bool) {
         require(paramsHashes[e3Id] != bytes32(0), E3DoesNotExist());
         uint256 inputRoot = enclave.getInputRoot(e3Id);
-        (bytes memory ciphertext, bytes memory seal) = abi.decode(
+        (bytes memory ciphertext_hash, bytes memory seal) = abi.decode(
             data,
             (bytes, bytes)
         );
-        bytes memory journal = abi.encode(ciphertext, inputRoot, paramsHashes[e3id]);
+        bytes memory journal = abi.encode(ciphertext_hash, bytes(inputRoot), bytes(paramsHashes[e3id]));
         verifier.verify(seal, imageId, sha256(journal));
         return (ciphertext, true);
     }
