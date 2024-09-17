@@ -1,10 +1,4 @@
-use alloy::{
-    network::{AnyNetwork, EthereumWallet},
-    primitives::{Address, Bytes, B256, U256},
-    providers::ProviderBuilder,
-    signers::local::PrivateKeySigner,
-    sol,
-};
+use alloy::primitives::{Bytes, B256, U256};
 use std::{env, str};
 
 use eyre::Result;
@@ -12,7 +6,7 @@ use log::info;
 
 use actix_web::{web, HttpResponse, Responder};
 
-use crate::enclave_server::database::{get_e3, get_state};
+use crate::enclave_server::database::get_e3;
 use crate::enclave_server::{
     blockchain::relayer::EnclaveContract,
     models::{AppState, EncryptedVote, GetEmojisRequest, JsonResponseTxHash, VoteCountRequest},
@@ -33,8 +27,8 @@ async fn broadcast_enc_vote(
     state: web::Data<AppState>,
 ) -> impl Responder {
     let vote: EncryptedVote = data.into_inner();
-    let (mut state_data, key) = get_e3(vote.round_id as u64).unwrap();
-    println!("Has Voted: {:?}", state_data.has_voted);
+    let (mut state_data, key) = get_e3(vote.round_id as u64).await.unwrap();
+
     if state_data.has_voted.contains(&vote.postId) {
         return HttpResponse::BadRequest().json(JsonResponseTxHash {
             response: "User has already voted".to_string(),
@@ -53,11 +47,8 @@ async fn broadcast_enc_vote(
     };
 
     state_data.has_voted.push(vote.postId);
-
-    if let Err(e) = state
-        .db
-        .insert(key, serde_json::to_vec(&state_data).unwrap())
-    {
+    let db = state.db.write().await;
+    if let Err(e) = db.insert(key, serde_json::to_vec(&state_data).unwrap()) {
         info!("Error updating state: {:?}", e);
     }
 
@@ -76,7 +67,7 @@ async fn get_emojis_by_round(data: web::Json<GetEmojisRequest>) -> impl Responde
     let mut incoming = data.into_inner();
     info!("Request emojis for round {:?}", incoming.round_id);
 
-    let (state_data, _) = get_state(incoming.round_id);
+    let (state_data, _) = get_e3(incoming.round_id as u64).await.unwrap();
     incoming.emojis = state_data.emojis;
 
     HttpResponse::Ok().json(incoming)
@@ -87,20 +78,10 @@ async fn get_vote_count_by_round(data: web::Json<VoteCountRequest>) -> impl Resp
     let mut incoming = data.into_inner();
     info!("Request vote count for round {:?}", incoming.round_id);
 
-    let (state_data, _) = get_state(incoming.round_id);
-    incoming.vote_count = state_data.vote_count;
+    let (state_data, _) = get_e3(incoming.round_id as u64).await.unwrap();
+    incoming.vote_count = state_data.vote_count as u32;
 
     HttpResponse::Ok().json(incoming)
-}
-
-sol! {
-    #[allow(missing_docs)]
-    #[sol(rpc)]
-    contract IVOTE {
-        function voteEncrypted(bytes memory _encVote) public;
-        function getVote(address id) public returns (bytes memory);
-        event Transfer(address indexed from, address indexed to, uint256 value);
-    }
 }
 
 pub async fn call_contract(

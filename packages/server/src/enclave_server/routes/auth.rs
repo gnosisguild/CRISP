@@ -24,7 +24,7 @@ async fn authentication_login(state: web::Data<AppState>, data: web::Json<Authen
     let token = claims.sign_with_key(&hmac_key).unwrap();
 
     let key = "authentication";
-    let db = &state.db;
+    let db = &state.db.write().await;
     let mut is_new = false; // Track if it's a new login
 
     // Perform DB update and fetch the current state

@@ -1,10 +1,10 @@
-use ethers::types::U64;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use sled::Db;
+use tokio::sync::RwLock;
 
 pub struct AppState {
-    pub db: Arc<Db>,
+    pub db: Arc<RwLock<Db>>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -93,10 +93,10 @@ pub struct SKSShareRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(non_snake_case)]
 pub struct EncryptedVote {
     pub round_id: u32,
     pub enc_vote_bytes: Vec<u8>,
-    #[allow(non_snake_case)]
     pub postId: String,
 }
 
@@ -146,64 +146,6 @@ pub struct WebResultRequest {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AllWebStates {
     pub states: Vec<WebResultRequest>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct StateWeb {
-    pub id: u32,
-    pub status: String,
-    pub poll_length: u32,
-    pub voting_address: String,
-    pub chain_id: u32,
-    pub ciphernode_count: u32,
-    pub pk_share_count: u32,
-    pub sks_share_count: u32,
-    pub vote_count: u32,
-    pub start_time: i64,
-    pub ciphernode_total: u32,
-    pub emojis: [String; 2],
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct StateLite {
-    pub id: u32,
-    pub status: String,
-    pub poll_length: u32,
-    pub voting_address: String,
-    pub chain_id: u32,
-    pub ciphernode_count: u32,
-    pub pk_share_count: u32,
-    pub sks_share_count: u32,
-    pub vote_count: u32,
-    pub crp: Vec<u8>,
-    pub pk: Vec<u8>,
-    pub start_time: i64,
-    pub block_start: U64,
-    pub ciphernode_total: u32,
-    pub emojis: [String; 2],
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct Round {
-    pub id: u32,
-    pub status: String,
-    pub poll_length: u32,
-    pub voting_address: String,
-    pub chain_id: u32,
-    pub ciphernode_count: u32,
-    pub pk_share_count: u32,
-    pub sks_share_count: u32,
-    pub vote_count: u32,
-    pub crp: Vec<u8>,
-    pub pk: Vec<u8>,
-    pub start_time: i64,
-    pub block_start: U64,
-    pub ciphernode_total: u32,
-    pub emojis: [String; 2],
-    pub votes_option_1: u32,
-    pub votes_option_2: u32,
-    pub ciphernodes: Vec<Ciphernode>,
-    pub has_voted: Vec<String>,
 }
 #[derive(Debug, Deserialize, Serialize)]
 pub struct E3 {
@@ -284,8 +226,8 @@ pub struct AuthenticationDB {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(non_snake_case)]
 pub struct AuthenticationLogin {
-    #[allow(non_snake_case)]
     pub postId: String,
 }
 

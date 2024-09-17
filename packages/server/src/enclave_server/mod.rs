@@ -4,14 +4,15 @@ mod routes;
 pub mod blockchain;
 
 use actix_cors::Cors;
-use actix_web::{web, App, HttpServer};
+use actix_web::{web, App, HttpServer, middleware::Logger};
 
 use models::AppState;
 use database::GLOBAL_DB;
 use blockchain::listener::start_listener;
 
 use env_logger::{Builder, Target};
-use log::LevelFilter;
+use log::{LevelFilter, Record};
+use std::path::Path;
 use std::io::Write;
 
 fn init_logger() {
@@ -19,11 +20,14 @@ fn init_logger() {
     builder
         .target(Target::Stdout) 
         .filter(None, LevelFilter::Info) 
-        .format(|buf, record| {
+        .format(|buf, record: &Record| {
+            let file = record.file().unwrap_or("unknown");
+            let filename = Path::new(file).file_name().unwrap_or_else(|| file.as_ref());
+
             writeln!(
                 buf,
                 "[{}:{}] - {}",
-                record.file().unwrap_or("unknown"),
+                filename.to_string_lossy(),
                 record.line().unwrap_or(0),
                 record.args()
             )
@@ -51,6 +55,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     
         App::new()
             .wrap(cors)
+            .wrap(Logger::new(r#"%a "%r" %s %b %T"#))
             .app_data(web::Data::new(AppState {
                 db: GLOBAL_DB.clone(),
             }))

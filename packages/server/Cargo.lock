@@ -5441,6 +5441,7 @@ dependencies = [
  "serde_json",
  "sha2",
  "sled",
+ "termcolor",
  "tokio",
  "voting-risc0",
  "walkdir",

@@ -5,8 +5,8 @@ use log::info;
 use crate::cli::HyperClientPost;
 
 #[derive(Debug, Deserialize, Serialize)]
+#[allow(non_snake_case)]
 pub struct AuthenticationLogin {
-    #[allow(non_snake_case)]
     pub postId: String,
 }
 

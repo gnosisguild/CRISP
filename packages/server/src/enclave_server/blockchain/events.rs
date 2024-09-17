@@ -1,12 +1,13 @@
 use alloy::{
-    sol, sol_types::{SolCall, SolEvent},
-    rpc::types::Log
+    rpc::types::Log,
+    sol,
+    sol_types::{SolCall, SolEvent},
 };
 
 use eyre::Result;
 
-use super::listener::ContractEvent;
 use super::handlers::{handle_e3, handle_input_published, handle_plaintext_output_published};
+use super::listener::ContractEvent;
 
 sol! {
     #[derive(Debug)]
@@ -19,17 +20,14 @@ sol! {
     event PlaintextOutputPublished(uint256 indexed e3Id, bytes plaintextOutput);
 }
 
-
 impl ContractEvent for E3Activated {
     fn process(&self, log: Log) -> Result<()> {
-        println!("Processing E3 request: {:?}", self);
         let event_clone = self.clone();
         tokio::spawn(async move {
             if let Err(e) = handle_e3(event_clone, log).await {
                 eprintln!("Error handling E3 request: {:?}", e);
             }
         });
-
 
         Ok(())
     }
@@ -38,9 +36,12 @@ impl ContractEvent for E3Activated {
 impl ContractEvent for InputPublished {
     fn process(&self, _log: Log) -> Result<()> {
         let event_clone = self.clone();
-        if let Err(e) = handle_input_published(event_clone) {
-            eprintln!("Error handling input published: {:?}", e);
-        }
+        tokio::spawn(async move {
+            if let Err(e) = handle_input_published(event_clone).await {
+                eprintln!("Error handling input published: {:?}", e);
+            }
+        });
+
         Ok(())
     }
 }
@@ -48,9 +49,12 @@ impl ContractEvent for InputPublished {
 impl ContractEvent for PlaintextOutputPublished {
     fn process(&self, _log: Log) -> Result<()> {
         let event_clone = self.clone();
-        if let Err(e) = handle_plaintext_output_published(event_clone) {
-            eprintln!("Error handling public key published: {:?}", e);
-        }
+
+        tokio::spawn(async move {
+            if let Err(e) = handle_plaintext_output_published(event_clone).await {
+                eprintln!("Error handling public key published: {:?}", e);
+            }
+        });
 
         Ok(())
     }
