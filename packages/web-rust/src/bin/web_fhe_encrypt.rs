@@ -1,13 +1,19 @@
+mod greco;
 mod util;
 
+use fhe_math::zq::Modulus;
+use greco::greco::compute_input_validation_vectors;
 use wasm_bindgen::prelude::*;
 
 use serde::Deserialize;
 use std::{env, sync::Arc, thread, time};
 
 use fhe::{
-    bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
+    bfv::{
+        BfvParameters, BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey,
+    },
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
+    proto::bfv::Parameters,
 };
 use fhe_traits::{DeserializeParametrized, FheDecoder, FheEncoder, FheEncrypter, Serialize};
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
@@ -46,9 +52,31 @@ impl Encrypt {
         let pt = Plaintext::try_encode(&votes, Encoding::poly(), &params)
             .map_err(|e| JsValue::from_str(&format!("Error encoding plaintext: {}", e)))?;
 
-        let ct = pk_deserialized
-            .try_encrypt(&pt, &mut thread_rng())
+        let (ct, u_rns, e0_rns, e1_rns) = pk_deserialized
+            .try_encrypt_extended(&pt, &mut thread_rng())
             .map_err(|e| JsValue::from_str(&format!("Error encrypting vote: {}", e)))?;
+
+        // Create Greco input validation ZKP proof
+        // todo: create function that modularizes this
+        let ctx = params
+            .ctx_at_level(pt.level())
+            .map_err(|e| JsValue::from_str(&format!("Error extracting context: {}", e)))?;
+        let t = Modulus::new(params.plaintext()).map_err(|e| {
+            JsValue::from_str(&format!(
+                "Error constructing plaintext modulus object: {}",
+                e
+            ))
+        })?;
+        let input_val_vectors = compute_input_validation_vectors(
+            ctx,
+            &t,
+            &pt,
+            &u_rns,
+            &e0_rns,
+            &e1_rns,
+            &ct,
+            &pk_deserialized,
+        );
 
         self.encrypted_vote = ct.to_bytes();
         Ok(self.encrypted_vote.clone())

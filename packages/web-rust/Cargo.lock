@@ -466,10 +466,16 @@ dependencies = [
  "console",
  "ethers",
  "fhe",
+ "fhe-math",
  "fhe-traits",
  "fhe-util",
  "getrandom",
+ "itertools 0.13.0",
+ "ndarray",
+ "num-bigint",
+ "num-traits",
  "rand",
+ "rayon",
  "serde",
  "serde_json",
  "wasm-bindgen",
@@ -1090,6 +1096,7 @@ dependencies = [
 [[package]]
 name = "fhe"
 version = "0.1.0-beta.7"
+source = "git+https://github.com/gnosisguild/fhe.rs.git?branch=feature/greco-integration#26e5f2ff6c860d47a1c88a777936bc68eaedb129"
 dependencies = [
  "doc-comment",
  "fhe-math",
@@ -1112,6 +1119,7 @@ dependencies = [
 [[package]]
 name = "fhe-math"
 version = "0.1.0-beta.7"
+source = "git+https://github.com/gnosisguild/fhe.rs.git?branch=feature/greco-integration#26e5f2ff6c860d47a1c88a777936bc68eaedb129"
 dependencies = [
  "ethnum",
  "fhe-traits",
@@ -1133,6 +1141,7 @@ dependencies = [
 [[package]]
 name = "fhe-traits"
 version = "0.1.0-beta.7"
+source = "git+https://github.com/gnosisguild/fhe.rs.git?branch=feature/greco-integration#26e5f2ff6c860d47a1c88a777936bc68eaedb129"
 dependencies = [
  "rand",
 ]
@@ -1140,6 +1149,7 @@ dependencies = [
 [[package]]
 name = "fhe-util"
 version = "0.1.0-beta.7"
+source = "git+https://github.com/gnosisguild/fhe.rs.git?branch=feature/greco-integration#26e5f2ff6c860d47a1c88a777936bc68eaedb129"
 dependencies = [
  "itertools 0.12.1",
  "num-bigint-dig",
@@ -1638,6 +1648,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1860,11 +1879,10 @@ checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
 
 [[package]]
 name = "num-bigint"
-version = "0.4.4"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "608e7659b5c3d7cba262d894801b9ec9d00de989e8a82bd4bef91d08da45cdc0"
+checksum = "a5e44f723f1133c9deac646763579fdb3ac745e418f2a7af9cd0c431da1f20b9"
 dependencies = [
- "autocfg",
  "num-integer",
  "num-traits",
 ]
