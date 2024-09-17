@@ -234,7 +234,7 @@ pub struct E3 {
     pub plaintext_output: Vec<u8>,
 
     // Ciphertext Inputs
-    pub ciphertext_inputs: Vec<Vec<u8>>,
+    pub ciphertext_inputs: Vec<(Vec<u8>, u64)>,
 
     // Emojis
     pub emojis: [String; 2],

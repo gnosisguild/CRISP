@@ -9,7 +9,7 @@ pub fn fhe_processor(fhe_inputs: &FHEInputs) -> Vec<u8> {
 
     let mut sum = Ciphertext::zero(&params);
     for ciphertext_bytes in &fhe_inputs.ciphertexts {
-        let ciphertext = Ciphertext::from_bytes(ciphertext_bytes, &params).unwrap();
+        let ciphertext = Ciphertext::from_bytes(&ciphertext_bytes.0, &params).unwrap();
         sum += &ciphertext;
     }
 

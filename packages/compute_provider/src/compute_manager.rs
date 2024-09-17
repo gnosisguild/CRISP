@@ -34,9 +34,6 @@ where
                 fhe_inputs,
                 ciphertext_hash: Vec::new(),
                 leaf_hashes: Vec::new(),
-                tree_depth: 10,
-                zero_node: String::from("0"),
-                arity: 2,
             },
             processor: fhe_processor,
             use_parallel,
@@ -53,11 +50,7 @@ where
     }
 
     fn start_sequential(&mut self) -> (P::Output, Vec<u8>) {
-        let mut tree_handler = MerkleTree::new(
-            self.input.tree_depth,
-            self.input.zero_node.clone(),
-            self.input.arity,
-        );
+        let mut tree_handler = MerkleTree::new();
         tree_handler.compute_leaf_hashes(&self.input.fhe_inputs.ciphertexts);
         self.input.leaf_hashes = tree_handler.leaf_hashes.clone();
 
@@ -71,13 +64,12 @@ where
     }
 
     fn start_parallel(&self) -> (P::Output, Vec<u8>) {
-        let batch_size = self.batch_size.unwrap_or(1);
-        let parallel_tree_depth = (batch_size as f64).log2().ceil() as usize;
+        let batch_size = self.batch_size.unwrap_or(2);
 
         let ciphertexts = Arc::new(self.input.fhe_inputs.ciphertexts.clone());
         let params = Arc::new(self.input.fhe_inputs.params.clone());
 
-        let chunks: Vec<Vec<Vec<u8>>> = ciphertexts
+        let chunks: Vec<Vec<(Vec<u8>, u64)>> = ciphertexts
             .chunks(batch_size)
             .map(|chunk| chunk.to_vec())
             .collect();
@@ -85,7 +77,7 @@ where
         let tally_results: Vec<(P::Output, Vec<u8>, String)> = chunks
             .into_par_iter()
             .map(|chunk| {
-                let mut tree_handler = MerkleTree::new(parallel_tree_depth, "0".to_string(), 2);
+                let mut tree_handler = MerkleTree::new();
                 tree_handler.compute_leaf_hashes(&chunk);
                 let merkle_root = tree_handler.build_tree().root().unwrap();
 
@@ -101,29 +93,22 @@ where
                     fhe_inputs,
                     ciphertext_hash,
                     leaf_hashes: tree_handler.leaf_hashes.clone(),
-                    tree_depth: parallel_tree_depth,
-                    zero_node: "0".to_string(),
-                    arity: 2,
                 };
 
                 (self.provider.prove(&input), ciphertext, merkle_root)
             })
             .collect();
 
-        // Combine the sorted results for final computation
-        // The final depth is the input tree depth minus the parallel tree depth
-        let final_depth = self.input.tree_depth - parallel_tree_depth;
         // The leaf hashes are the hashes of the merkle roots of the parallel trees
         let leaf_hashes: Vec<String> = tally_results
             .iter()
             .map(|result| result.2.clone())
             .collect();
-        // The params are the same for all parallel trees
+
         let fhe_inputs = FHEInputs {
-            // The ciphertexts are the final ciphertexts of the parallel trees
             ciphertexts: tally_results
                 .iter()
-                .map(|result| result.1.clone())
+                .map(|result| (result.1.clone(), 0 as u64)) // The index is not used for the final computation in the parallel case
                 .collect(),
             params: params.to_vec(),
         };
@@ -131,21 +116,11 @@ where
         let ciphertext = (self.processor)(&fhe_inputs);
         let ciphertext_hash = Keccak256::digest(&ciphertext).to_vec();
 
-        let mut final_input = ComputeInput {
+        let final_input = ComputeInput {
             fhe_inputs,
             ciphertext_hash,
             leaf_hashes: leaf_hashes.clone(),
-            tree_depth: final_depth,
-            zero_node: String::from("0"),
-            arity: 2,
         };
-
-        let final_tree_handler = MerkleTree::new(
-            final_depth,
-            final_input.zero_node.clone(),
-            final_input.arity,
-        );
-        final_input.zero_node = final_tree_handler.zeroes()[parallel_tree_depth].clone();
 
         (self.provider.prove(&final_input), ciphertext)
     }

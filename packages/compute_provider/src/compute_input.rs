@@ -6,7 +6,7 @@ pub type FHEProcessor = fn(&FHEInputs) -> Vec<u8>;
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize)]
 pub struct FHEInputs {
-    pub ciphertexts: Vec<Vec<u8>>,
+    pub ciphertexts: Vec<(Vec<u8>, u64)>,
     pub params: Vec<u8>,
 }
 
@@ -15,9 +15,6 @@ pub struct ComputeInput {
     pub fhe_inputs: FHEInputs,
     pub ciphertext_hash: Vec<u8>,
     pub leaf_hashes: Vec<String>,
-    pub tree_depth: usize,
-    pub zero_node: String,
-    pub arity: usize,
 }
 
 impl ComputeInput {
@@ -30,9 +27,6 @@ impl ComputeInput {
 
         let merkle_root = MerkleTree {
             leaf_hashes: self.leaf_hashes.clone(),
-            tree_depth: self.tree_depth,
-            zero_node: self.zero_node.clone(),
-            arity: self.arity,
         }
         .build_tree()
         .root()

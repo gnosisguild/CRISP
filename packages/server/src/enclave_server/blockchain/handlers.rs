@@ -132,8 +132,9 @@ pub fn handle_input_published(input: InputPublished) -> Result<(), Box<dyn Error
 
     let e3_id = input.e3Id.to::<u64>();
     let data = input.data.to_vec();
+    let input_count = input.index.to::<u64>();
     let (mut e3, key) = get_e3(e3_id).unwrap();
-    e3.ciphertext_inputs.push(data);
+    e3.ciphertext_inputs.push((data,input_count));
     e3.vote_count += 1;
 
     GLOBAL_DB
