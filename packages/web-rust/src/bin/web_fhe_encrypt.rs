@@ -2,7 +2,7 @@ mod greco;
 mod util;
 
 use fhe_math::zq::Modulus;
-use greco::greco::compute_input_validation_vectors;
+use greco::greco::*;
 use wasm_bindgen::prelude::*;
 
 use serde::Deserialize;
@@ -45,14 +45,14 @@ impl Encrypt {
             .build_arc()
             .map_err(|e| JsValue::from_str(&format!("Error generating parameters: {}", e)))?;
 
-        let pk_deserialized = PublicKey::from_bytes(&public_key, &params)
+        let pk = PublicKey::from_bytes(&public_key, &params)
             .map_err(|e| JsValue::from_str(&format!("Error deserializing public key: {}", e)))?;
 
         let votes = vec![vote];
         let pt = Plaintext::try_encode(&votes, Encoding::poly(), &params)
             .map_err(|e| JsValue::from_str(&format!("Error encoding plaintext: {}", e)))?;
 
-        let (ct, u_rns, e0_rns, e1_rns) = pk_deserialized
+        let (ct, u_rns, e0_rns, e1_rns) = pk
             .try_encrypt_extended(&pt, &mut thread_rng())
             .map_err(|e| JsValue::from_str(&format!("Error encrypting vote: {}", e)))?;
 
@@ -67,16 +67,8 @@ impl Encrypt {
                 e
             ))
         })?;
-        let input_val_vectors = compute_input_validation_vectors(
-            ctx,
-            &t,
-            &pt,
-            &u_rns,
-            &e0_rns,
-            &e1_rns,
-            &ct,
-            &pk_deserialized,
-        );
+        let input_val_vectors =
+            compute_input_validation_vectors(&ctx, &t, &pt, &u_rns, &e0_rns, &e1_rns, &ct, &pk);
 
         self.encrypted_vote = ct.to_bytes();
         Ok(self.encrypted_vote.clone())

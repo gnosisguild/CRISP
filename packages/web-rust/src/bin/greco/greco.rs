@@ -4,74 +4,117 @@ use std::sync::Arc;
 use fhe::bfv::{Ciphertext, Plaintext, PublicKey};
 use fhe_math::rq::{Poly, Representation};
 use fhe_math::{rq::Context, zq::Modulus};
+use serde_json::json;
 
+use crate::greco::poly::*;
 use itertools::izip;
 use num_bigint::BigInt;
 use num_traits::*;
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
+use rayon::iter::{ParallelBridge, ParallelIterator};
 
-use crate::greco::poly::*;
+/// Set of vectors for input validation of a ciphertext
+#[derive(Clone, Debug)]
+pub struct InputValidationVectors {
+    pk0is: Vec<Vec<BigInt>>,
+    pk1is: Vec<Vec<BigInt>>,
+    ct0is: Vec<Vec<BigInt>>,
+    ct1is: Vec<Vec<BigInt>>,
+    r1is: Vec<Vec<BigInt>>,
+    r2is: Vec<Vec<BigInt>>,
+    p1is: Vec<Vec<BigInt>>,
+    p2is: Vec<Vec<BigInt>>,
+    k0is: Vec<BigInt>,
+    u: Vec<BigInt>,
+    e0: Vec<BigInt>,
+    e1: Vec<BigInt>,
+    k1: Vec<BigInt>,
+}
 
-/// Assign and return all of the centered input validation vectors to the ZKP modulus `p`.
-///
-/// # Arguments
-///
-/// * `pk0is` - Centered coefficients of first public key object for each RNS modulus
-/// * `pk1is` - Centered coefficients of second public key object for each RNS modulus
-/// * `r2is` - Centered coefficients of r2 for each RNS modulus
-/// * `r1is` - Centered coefficients of r1 for each RNS modulus
-/// * `p2is` - Centered coefficients of p2 for each RNS modulus
-/// * `p1is` - Centered coefficients of p1 for each RNS modulus
-/// * `ct0is` - Centered coefficients of first ciphertext object for each RNS modulus
-/// * `ct1is` - Centered coefficients of second ciphertext object for each RNS modulus
-/// * `u` - Centered coefficients of secret polynomial used during encryption (sampled from secret key distribution)
-/// * `e0` - Centered coefficients of error polynomial used during encryption (sampled from error distribution)
-/// * `e1` - Centered coefficients of error polynomial used during encryption (sampled from error distribution)
-/// * `k1` - Centered coefficients of [Q*m] mod t
-/// * `p` - ZKP modulus
-///
-pub fn input_validation_vectors_standard_form(
-    pk0is: &[Vec<BigInt>],
-    pk1is: &[Vec<BigInt>],
-    r2is: &[Vec<BigInt>],
-    r1is: &[Vec<BigInt>],
-    p2is: &[Vec<BigInt>],
-    p1is: &[Vec<BigInt>],
-    ct0is: &[Vec<BigInt>],
-    ct1is: &[Vec<BigInt>],
-    u: &[BigInt],
-    e0: &[BigInt],
-    e1: &[BigInt],
-    k1: &[BigInt],
-    p: &BigInt,
-) -> (
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<BigInt>,
-    Vec<BigInt>,
-    Vec<BigInt>,
-    Vec<BigInt>,
-) {
-    (
-        reduce_coefficients_2d(pk0is, p),
-        reduce_coefficients_2d(pk1is, p),
-        reduce_coefficients_2d(r2is, p),
-        reduce_coefficients_2d(r1is, p),
-        reduce_coefficients_2d(p2is, p),
-        reduce_coefficients_2d(p1is, p),
-        reduce_coefficients_2d(ct0is, p),
-        reduce_coefficients_2d(ct1is, p),
-        reduce_coefficients(u, p),
-        reduce_coefficients(e0, p),
-        reduce_coefficients(e1, p),
-        reduce_coefficients(k1, p),
-    )
+impl InputValidationVectors {
+    /// Create a new `InputValidationVectors` with the given number of moduli and degree.
+    ///
+    /// # Arguments
+    ///
+    /// * `num_moduli` - The number of moduli, which determines the number of inner vectors in 2D vectors.
+    /// * `degree` - The size of each inner vector in the 2D vectors.
+    ///
+    /// # Returns
+    ///
+    /// Returns a new instance of `InputValidationVectors` with all fields initialized to zero.
+    pub fn new(num_moduli: usize, degree: usize) -> Self {
+        InputValidationVectors {
+            pk0is: vec![vec![BigInt::zero(); degree]; num_moduli],
+            pk1is: vec![vec![BigInt::zero(); degree]; num_moduli],
+            ct0is: vec![vec![BigInt::zero(); degree]; num_moduli],
+            ct1is: vec![vec![BigInt::zero(); degree]; num_moduli],
+            r1is: vec![vec![BigInt::zero(); 2 * (degree - 1)]; num_moduli],
+            r2is: vec![vec![BigInt::zero(); degree - 2]; num_moduli],
+            p1is: vec![vec![BigInt::zero(); 2 * (degree - 1)]; num_moduli],
+            p2is: vec![vec![BigInt::zero(); degree - 2]; num_moduli],
+            k0is: vec![BigInt::zero(); num_moduli],
+            u: vec![BigInt::zero(); degree],
+            e0: vec![BigInt::zero(); degree],
+            e1: vec![BigInt::zero(); degree],
+            k1: vec![BigInt::zero(); degree],
+        }
+    }
+
+    /// Assign and return all of the centered input validation vectors to the ZKP modulus `p`.
+    ///
+    /// # Arguments
+    ///
+    /// * `p` - ZKP modulus
+    ///
+    /// # Returns
+    ///
+    /// Returns a new `InputValidationVectors` struct with all coefficients reduced modulo `p`.
+    pub fn standard_form(&self, p: &BigInt) -> Self {
+        InputValidationVectors {
+            pk0is: reduce_coefficients_2d(&self.pk0is, p),
+            pk1is: reduce_coefficients_2d(&self.pk1is, p),
+            ct0is: reduce_coefficients_2d(&self.ct0is, p),
+            ct1is: reduce_coefficients_2d(&self.ct1is, p),
+            r1is: reduce_coefficients_2d(&self.r1is, p),
+            r2is: reduce_coefficients_2d(&self.r2is, p),
+            p1is: reduce_coefficients_2d(&self.p1is, p),
+            p2is: reduce_coefficients_2d(&self.p2is, p),
+            k0is: self.k0is.clone(),
+            u: reduce_coefficients(&self.u, p),
+            e0: reduce_coefficients(&self.e0, p),
+            e1: reduce_coefficients(&self.e1, p),
+            k1: reduce_coefficients(&self.k1, p),
+        }
+    }
+
+    /// Convert the `InputValidationVectors` to a JSON object.
+    ///
+    /// # Returns
+    ///
+    /// Returns a `serde_json::Value` representing the JSON serialization of the `InputValidationVectors`.
+    pub fn to_json(&self) -> serde_json::Value {
+        json!({
+            "pk0i": to_string_2d_vec(&self.pk0is),
+            "pk1i": to_string_2d_vec(&self.pk1is),
+            "u": to_string_1d_vec(&self.u),
+            "e0": to_string_1d_vec(&self.e0),
+            "e1": to_string_1d_vec(&self.e1),
+            "k1": to_string_1d_vec(&self.k1),
+            "r2is": to_string_2d_vec(&self.r2is),
+            "r1is": to_string_2d_vec(&self.r1is),
+            "p2is": to_string_2d_vec(&self.p2is),
+            "p1is": to_string_2d_vec(&self.p1is),
+            "ct0is": to_string_2d_vec(&self.ct0is),
+            "ct1is": to_string_2d_vec(&self.ct1is),
+        })
+    }
+}
+
+fn to_string_1d_vec(poly: &Vec<BigInt>) -> Vec<String> {
+    poly.iter().map(|coef| coef.to_string()).collect()
+}
+
+fn to_string_2d_vec(poly: &Vec<Vec<BigInt>>) -> Vec<Vec<String>> {
+    poly.iter().map(|row| to_string_1d_vec(row)).collect()
 }
 
 /// Create the centered validation vectors necessary for creating an input validation proof according to Greco.
@@ -97,21 +140,7 @@ pub fn compute_input_validation_vectors(
     e1_rns: &Poly,
     ct: &Ciphertext,
     pk: &PublicKey,
-) -> (
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<BigInt>,
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<Vec<BigInt>>,
-    Vec<BigInt>,
-    Vec<BigInt>,
-    Vec<BigInt>,
-    Vec<BigInt>,
-) {
+) -> InputValidationVectors {
     let N: u64 = ctx.degree as u64;
 
     // Calculate k1 (independent of qi), center and reverse
@@ -125,15 +154,17 @@ pub fn compute_input_validation_vectors(
     let mut u_rns_copy = u_rns.clone();
     let mut e0_rns_copy = e0_rns.clone();
     let mut e1_rns_copy = e1_rns.clone();
+
     u_rns_copy.change_representation(Representation::PowerBasis);
     e0_rns_copy.change_representation(Representation::PowerBasis);
     e1_rns_copy.change_representation(Representation::PowerBasis);
+
     let u: Vec<BigInt> = unsafe {
         ctx.moduli_operators()[0]
             .center_vec_vt(u_rns_copy.coefficients().row(0).as_slice().unwrap())
             .iter()
-            .map(|&x| BigInt::from(x))
             .rev()
+            .map(|&x| BigInt::from(x))
             .collect()
     };
 
@@ -141,8 +172,8 @@ pub fn compute_input_validation_vectors(
         ctx.moduli_operators()[0]
             .center_vec_vt(e0_rns_copy.coefficients().row(0).as_slice().unwrap())
             .iter()
-            .map(|&x| BigInt::from(x))
             .rev()
+            .map(|&x| BigInt::from(x))
             .collect()
     };
 
@@ -150,8 +181,8 @@ pub fn compute_input_validation_vectors(
         ctx.moduli_operators()[0]
             .center_vec_vt(e1_rns_copy.coefficients().row(0).as_slice().unwrap())
             .iter()
-            .map(|&x| BigInt::from(x))
             .rev()
+            .map(|&x| BigInt::from(x))
             .collect()
     };
 
@@ -182,32 +213,7 @@ pub fn compute_input_validation_vectors(
 
     // Initialize matrices to store results
     let num_moduli = ctx.moduli().len();
-    let mut r2is: Vec<Vec<BigInt>> = vec![Vec::new(); num_moduli];
-    let mut r1is: Vec<Vec<BigInt>> = vec![Vec::new(); num_moduli];
-    let mut k0is: Vec<BigInt> = vec![BigInt::zero(); num_moduli];
-    let mut ct0is: Vec<Vec<BigInt>> = vec![Vec::new(); num_moduli];
-    let mut ct0is_hat: Vec<Vec<BigInt>> = vec![Vec::new(); num_moduli];
-    let mut ct1is: Vec<Vec<BigInt>> = vec![Vec::new(); num_moduli];
-    let mut ct1is_hat: Vec<Vec<BigInt>> = vec![Vec::new(); num_moduli];
-    let mut pk0is: Vec<Vec<BigInt>> = vec![Vec::new(); num_moduli];
-    let mut pk1is: Vec<Vec<BigInt>> = vec![Vec::new(); num_moduli];
-    let mut p1is: Vec<Vec<BigInt>> = vec![Vec::new(); num_moduli];
-    let mut p2is: Vec<Vec<BigInt>> = vec![Vec::new(); num_moduli];
-
-    // Initialize iterators for results calculation
-    let moduli_operators = ctx.moduli_operators();
-    let ct0_iter = ct0.coefficients();
-    let ct1_iter = ct1.coefficients();
-    let pk0_iter = pk0.coefficients();
-    let pk1_iter = pk1.coefficients();
-    let zipped: Vec<_> = izip!(
-        moduli_operators,
-        ct0_iter.rows(),
-        ct1_iter.rows(),
-        pk0_iter.rows(),
-        pk1_iter.rows()
-    )
-    .collect();
+    let mut res = InputValidationVectors::new(num_moduli, N as usize);
 
     // Perform the main computation logic
     let results: Vec<(
@@ -221,188 +227,186 @@ pub fn compute_input_validation_vectors(
         Vec<BigInt>,
         Vec<BigInt>,
         Vec<BigInt>,
-        Vec<BigInt>,
-        Vec<BigInt>,
-    )> = zipped
-        .into_par_iter()
-        .enumerate()
-        .map(
-            |(i, (qi, ct0_coeffs, ct1_coeffs, pk0_coeffs, pk1_coeffs))| {
-                // --------------------------------------------------- ct0i ---------------------------------------------------
+    )> = izip!(
+        ctx.moduli_operators(),
+        ct0.coefficients().rows(),
+        ct1.coefficients().rows(),
+        pk0.coefficients().rows(),
+        pk1.coefficients().rows()
+    )
+    .enumerate()
+    .par_bridge()
+    .map(
+        |(i, (qi, ct0_coeffs, ct1_coeffs, pk0_coeffs, pk1_coeffs))| {
+            // --------------------------------------------------- ct0i ---------------------------------------------------
 
-                // Convert to vectors of bigint, center, and reverse order.
-                let mut ct0i: Vec<BigInt> =
-                    ct0_coeffs.iter().map(|&x| BigInt::from(x)).rev().collect();
-                let mut ct1i: Vec<BigInt> =
-                    ct1_coeffs.iter().map(|&x| BigInt::from(x)).rev().collect();
-                let mut pk0i: Vec<BigInt> =
-                    pk0_coeffs.iter().map(|&x| BigInt::from(x)).rev().collect();
-                let mut pk1i: Vec<BigInt> =
-                    pk1_coeffs.iter().map(|&x| BigInt::from(x)).rev().collect();
+            // Convert to vectors of bigint, center, and reverse order.
+            let mut ct0i: Vec<BigInt> = ct0_coeffs.iter().rev().map(|&x| BigInt::from(x)).collect();
+            let mut ct1i: Vec<BigInt> = ct1_coeffs.iter().rev().map(|&x| BigInt::from(x)).collect();
+            let mut pk0i: Vec<BigInt> = pk0_coeffs.iter().rev().map(|&x| BigInt::from(x)).collect();
+            let mut pk1i: Vec<BigInt> = pk1_coeffs.iter().rev().map(|&x| BigInt::from(x)).collect();
 
-                let qi_bigint = BigInt::from(qi.modulus());
+            let qi_bigint = BigInt::from(qi.modulus());
 
-                reduce_and_center_coefficients_mut(&mut ct0i, &qi_bigint);
-                reduce_and_center_coefficients_mut(&mut ct1i, &qi_bigint);
-                reduce_and_center_coefficients_mut(&mut pk0i, &qi_bigint);
-                reduce_and_center_coefficients_mut(&mut pk1i, &qi_bigint);
+            reduce_and_center_coefficients_mut(&mut ct0i, &qi_bigint);
+            reduce_and_center_coefficients_mut(&mut ct1i, &qi_bigint);
+            reduce_and_center_coefficients_mut(&mut pk0i, &qi_bigint);
+            reduce_and_center_coefficients_mut(&mut pk1i, &qi_bigint);
 
-                // k0qi = -t^{-1} mod qi
-                let koqi_u64 = qi.inv(qi.neg(t.modulus())).unwrap();
-                let k0qi = BigInt::from(koqi_u64); // Do not need to center this
+            // k0qi = -t^{-1} mod qi
+            let koqi_u64 = qi.inv(qi.neg(t.modulus())).unwrap();
+            let k0qi = BigInt::from(koqi_u64); // Do not need to center this
 
-                // ki = k1 * k0qi
-                let ki = poly_scalar_mul(&k1, &k0qi);
+            // ki = k1 * k0qi
+            let ki = poly_scalar_mul(&k1, &k0qi);
 
-                // Calculate ct0i_hat = pk0 * ui + e0i + ki
-                let ct0i_hat = {
-                    let pk0i_times_u = poly_mul(&pk0i, &u);
-                    assert_eq!((pk0i_times_u.len() as u64) - 1, 2 * (N - 1));
+            // Calculate ct0i_hat = pk0 * ui + e0i + ki
+            let ct0i_hat = {
+                let pk0i_times_u = poly_mul(&pk0i, &u);
+                assert_eq!((pk0i_times_u.len() as u64) - 1, 2 * (N - 1));
 
-                    let e0_plus_ki = poly_add(&e0, &ki);
-                    assert_eq!((e0_plus_ki.len() as u64) - 1, N - 1);
+                let e0_plus_ki = poly_add(&e0, &ki);
+                assert_eq!((e0_plus_ki.len() as u64) - 1, N - 1);
 
-                    poly_add(&pk0i_times_u, &e0_plus_ki)
-                };
-                assert_eq!((ct0i_hat.len() as u64) - 1, 2 * (N - 1));
+                poly_add(&pk0i_times_u, &e0_plus_ki)
+            };
+            assert_eq!((ct0i_hat.len() as u64) - 1, 2 * (N - 1));
 
-                // Check whether ct0i_hat mod R_qi (the ring) is equal to ct0i
-                let mut ct0i_hat_mod_rqi = ct0i_hat.clone();
-                reduce_in_ring(&mut ct0i_hat_mod_rqi, &cyclo, &qi_bigint);
-                assert_eq!(&ct0i, &ct0i_hat_mod_rqi);
+            // Check whether ct0i_hat mod R_qi (the ring) is equal to ct0i
+            let mut ct0i_hat_mod_rqi = ct0i_hat.clone();
+            reduce_in_ring(&mut ct0i_hat_mod_rqi, &cyclo, &qi_bigint);
+            assert_eq!(&ct0i, &ct0i_hat_mod_rqi);
 
-                // Compute r2i numerator = ct0i - ct0i_hat and reduce/center the polynomial
-                let ct0i_minus_ct0i_hat = poly_sub(&ct0i, &ct0i_hat);
-                assert_eq!((ct0i_minus_ct0i_hat.len() as u64) - 1, 2 * (N - 1));
-                let mut ct0i_minus_ct0i_hat_mod_zqi = ct0i_minus_ct0i_hat.clone();
-                reduce_and_center_coefficients_mut(&mut ct0i_minus_ct0i_hat_mod_zqi, &qi_bigint);
+            // Compute r2i numerator = ct0i - ct0i_hat and reduce/center the polynomial
+            let ct0i_minus_ct0i_hat = poly_sub(&ct0i, &ct0i_hat);
+            assert_eq!((ct0i_minus_ct0i_hat.len() as u64) - 1, 2 * (N - 1));
+            let mut ct0i_minus_ct0i_hat_mod_zqi = ct0i_minus_ct0i_hat.clone();
+            reduce_and_center_coefficients_mut(&mut ct0i_minus_ct0i_hat_mod_zqi, &qi_bigint);
 
-                // Compute r2i as the quotient of numerator divided by the cyclotomic polynomial
-                // to produce: (ct0i - ct0i_hat) / (x^N + 1) mod Z_qi. Remainder should be empty.
-                let (r2i, r2i_rem) = poly_div(&ct0i_minus_ct0i_hat_mod_zqi, &cyclo);
-                assert!(r2i_rem.is_empty());
-                assert_eq!((r2i.len() as u64) - 1, N - 2); // Order(r2i) = N - 2
+            // Compute r2i as the quotient of numerator divided by the cyclotomic polynomial
+            // to produce: (ct0i - ct0i_hat) / (x^N + 1) mod Z_qi. Remainder should be empty.
+            let (r2i, r2i_rem) = poly_div(&ct0i_minus_ct0i_hat_mod_zqi, &cyclo);
+            assert!(r2i_rem.is_empty());
+            assert_eq!((r2i.len() as u64) - 1, N - 2); // Order(r2i) = N - 2
 
-                // Assert that (ct0i - ct0i_hat) = (r2i * cyclo) mod Z_qi
-                let r2i_times_cyclo = poly_mul(&r2i, &cyclo);
-                let mut r2i_times_cyclo_mod_zqi = r2i_times_cyclo.clone();
-                reduce_and_center_coefficients_mut(&mut r2i_times_cyclo_mod_zqi, &qi_bigint);
-                assert_eq!(&ct0i_minus_ct0i_hat_mod_zqi, &r2i_times_cyclo_mod_zqi);
-                assert_eq!((r2i_times_cyclo.len() as u64) - 1, 2 * (N - 1));
+            // Assert that (ct0i - ct0i_hat) = (r2i * cyclo) mod Z_qi
+            let r2i_times_cyclo = poly_mul(&r2i, &cyclo);
+            let mut r2i_times_cyclo_mod_zqi = r2i_times_cyclo.clone();
+            reduce_and_center_coefficients_mut(&mut r2i_times_cyclo_mod_zqi, &qi_bigint);
+            assert_eq!(&ct0i_minus_ct0i_hat_mod_zqi, &r2i_times_cyclo_mod_zqi);
+            assert_eq!((r2i_times_cyclo.len() as u64) - 1, 2 * (N - 1));
 
-                // Calculate r1i = (ct0i - ct0i_hat - r2i * cyclo) / qi mod Z_p. Remainder should be empty.
-                let r1i_num = poly_sub(&ct0i_minus_ct0i_hat, &r2i_times_cyclo);
-                assert_eq!((r1i_num.len() as u64) - 1, 2 * (N - 1));
+            // Calculate r1i = (ct0i - ct0i_hat - r2i * cyclo) / qi mod Z_p. Remainder should be empty.
+            let r1i_num = poly_sub(&ct0i_minus_ct0i_hat, &r2i_times_cyclo);
+            assert_eq!((r1i_num.len() as u64) - 1, 2 * (N - 1));
 
-                let (r1i, r1i_rem) = poly_div(&r1i_num, &[qi_bigint.clone()]);
-                assert!(r1i_rem.is_empty());
-                assert_eq!((r1i.len() as u64) - 1, 2 * (N - 1)); // Order(r1i) = 2*(N-1)
-                assert_eq!(&r1i_num, &poly_mul(&r1i, &[qi_bigint.clone()]));
+            let (r1i, r1i_rem) = poly_div(&r1i_num, &[qi_bigint.clone()]);
+            assert!(r1i_rem.is_empty());
+            assert_eq!((r1i.len() as u64) - 1, 2 * (N - 1)); // Order(r1i) = 2*(N-1)
+            assert_eq!(&r1i_num, &poly_mul(&r1i, &[qi_bigint.clone()]));
 
-                // Assert that ct0i = ct0i_hat + r1i * qi + r2i * cyclo mod Z_p
-                let r1i_times_qi = poly_scalar_mul(&r1i, &qi_bigint);
-                let mut ct0i_calculated =
-                    poly_add(&poly_add(&ct0i_hat, &r1i_times_qi), &r2i_times_cyclo);
+            // Assert that ct0i = ct0i_hat + r1i * qi + r2i * cyclo mod Z_p
+            let r1i_times_qi = poly_scalar_mul(&r1i, &qi_bigint);
+            let mut ct0i_calculated =
+                poly_add(&poly_add(&ct0i_hat, &r1i_times_qi), &r2i_times_cyclo);
 
-                while ct0i_calculated.len() > 0 && ct0i_calculated[0].is_zero() {
-                    ct0i_calculated.remove(0);
-                }
+            while ct0i_calculated.len() > 0 && ct0i_calculated[0].is_zero() {
+                ct0i_calculated.remove(0);
+            }
 
-                assert_eq!(&ct0i, &ct0i_calculated);
+            assert_eq!(&ct0i, &ct0i_calculated);
 
-                // --------------------------------------------------- ct1i ---------------------------------------------------
+            // --------------------------------------------------- ct1i ---------------------------------------------------
 
-                // Calculate ct1i_hat = pk1i * ui + e1i
-                let ct1i_hat = {
-                    let pk1i_times_u = poly_mul(&pk1i, &u);
-                    assert_eq!((pk1i_times_u.len() as u64) - 1, 2 * (N - 1));
+            // Calculate ct1i_hat = pk1i * ui + e1i
+            let ct1i_hat = {
+                let pk1i_times_u = poly_mul(&pk1i, &u);
+                assert_eq!((pk1i_times_u.len() as u64) - 1, 2 * (N - 1));
 
-                    poly_add(&pk1i_times_u, &e1)
-                };
-                assert_eq!((ct1i_hat.len() as u64) - 1, 2 * (N - 1));
+                poly_add(&pk1i_times_u, &e1)
+            };
+            assert_eq!((ct1i_hat.len() as u64) - 1, 2 * (N - 1));
 
-                // Check whether ct1i_hat mod R_qi (the ring) is equal to ct1i
-                let mut ct1i_hat_mod_rqi = ct1i_hat.clone();
-                reduce_in_ring(&mut ct1i_hat_mod_rqi, &cyclo, &qi_bigint);
-                assert_eq!(&ct1i, &ct1i_hat_mod_rqi);
+            // Check whether ct1i_hat mod R_qi (the ring) is equal to ct1i
+            let mut ct1i_hat_mod_rqi = ct1i_hat.clone();
+            reduce_in_ring(&mut ct1i_hat_mod_rqi, &cyclo, &qi_bigint);
+            assert_eq!(&ct1i, &ct1i_hat_mod_rqi);
 
-                // Compute p2i numerator = ct1i - ct1i_hat
-                let ct1i_minus_ct1i_hat = poly_sub(&ct1i, &ct1i_hat);
-                assert_eq!((ct1i_minus_ct1i_hat.len() as u64) - 1, 2 * (N - 1));
-                let mut ct1i_minus_ct1i_hat_mod_zqi = ct1i_minus_ct1i_hat.clone();
-                reduce_and_center_coefficients_mut(&mut ct1i_minus_ct1i_hat_mod_zqi, &qi_bigint);
+            // Compute p2i numerator = ct1i - ct1i_hat
+            let ct1i_minus_ct1i_hat = poly_sub(&ct1i, &ct1i_hat);
+            assert_eq!((ct1i_minus_ct1i_hat.len() as u64) - 1, 2 * (N - 1));
+            let mut ct1i_minus_ct1i_hat_mod_zqi = ct1i_minus_ct1i_hat.clone();
+            reduce_and_center_coefficients_mut(&mut ct1i_minus_ct1i_hat_mod_zqi, &qi_bigint);
 
-                // Compute p2i as the quotient of numerator divided by the cyclotomic polynomial,
-                // and reduce/center the resulting coefficients to produce:
-                // (ct1i - ct1i_hat) / (x^N + 1) mod Z_qi. Remainder should be empty.
-                let (p2i, p2i_rem) = poly_div(&ct1i_minus_ct1i_hat_mod_zqi, &cyclo.clone());
-                assert!(p2i_rem.is_empty());
-                assert_eq!((p2i.len() as u64) - 1, N - 2); // Order(p2i) = N - 2
+            // Compute p2i as the quotient of numerator divided by the cyclotomic polynomial,
+            // and reduce/center the resulting coefficients to produce:
+            // (ct1i - ct1i_hat) / (x^N + 1) mod Z_qi. Remainder should be empty.
+            let (p2i, p2i_rem) = poly_div(&ct1i_minus_ct1i_hat_mod_zqi, &cyclo.clone());
+            assert!(p2i_rem.is_empty());
+            assert_eq!((p2i.len() as u64) - 1, N - 2); // Order(p2i) = N - 2
 
-                // Assert that (ct1i - ct1i_hat) = (p2i * cyclo) mod Z_qi
-                let p2i_times_cyclo: Vec<BigInt> = poly_mul(&p2i, &cyclo);
-                let mut p2i_times_cyclo_mod_zqi = p2i_times_cyclo.clone();
-                reduce_and_center_coefficients_mut(&mut p2i_times_cyclo_mod_zqi, &qi_bigint);
-                assert_eq!(&ct1i_minus_ct1i_hat_mod_zqi, &p2i_times_cyclo_mod_zqi);
-                assert_eq!((p2i_times_cyclo.len() as u64) - 1, 2 * (N - 1));
+            // Assert that (ct1i - ct1i_hat) = (p2i * cyclo) mod Z_qi
+            let p2i_times_cyclo: Vec<BigInt> = poly_mul(&p2i, &cyclo);
+            let mut p2i_times_cyclo_mod_zqi = p2i_times_cyclo.clone();
+            reduce_and_center_coefficients_mut(&mut p2i_times_cyclo_mod_zqi, &qi_bigint);
+            assert_eq!(&ct1i_minus_ct1i_hat_mod_zqi, &p2i_times_cyclo_mod_zqi);
+            assert_eq!((p2i_times_cyclo.len() as u64) - 1, 2 * (N - 1));
 
-                // Calculate p1i = (ct1i - ct1i_hat - p2i * cyclo) / qi mod Z_p. Remainder should be empty.
-                let p1i_num = poly_sub(&ct1i_minus_ct1i_hat, &p2i_times_cyclo);
-                assert_eq!((p1i_num.len() as u64) - 1, 2 * (N - 1));
+            // Calculate p1i = (ct1i - ct1i_hat - p2i * cyclo) / qi mod Z_p. Remainder should be empty.
+            let p1i_num = poly_sub(&ct1i_minus_ct1i_hat, &p2i_times_cyclo);
+            assert_eq!((p1i_num.len() as u64) - 1, 2 * (N - 1));
 
-                let (p1i, p1i_rem) = poly_div(&p1i_num, &[BigInt::from(qi.modulus())]);
-                assert!(p1i_rem.is_empty());
-                assert_eq!((p1i.len() as u64) - 1, 2 * (N - 1)); // Order(p1i) = 2*(N-1)
-                assert_eq!(&p1i_num, &poly_mul(&p1i, &[qi_bigint.clone()]));
+            let (p1i, p1i_rem) = poly_div(&p1i_num, &[BigInt::from(qi.modulus())]);
+            assert!(p1i_rem.is_empty());
+            assert_eq!((p1i.len() as u64) - 1, 2 * (N - 1)); // Order(p1i) = 2*(N-1)
+            assert_eq!(&p1i_num, &poly_mul(&p1i, &[qi_bigint.clone()]));
 
-                // Assert that ct1i = ct1i_hat + p1i * qi + p2i * cyclo mod Z_p
-                let p1i_times_qi = poly_scalar_mul(&p1i, &qi_bigint);
-                let mut ct1i_calculated =
-                    poly_add(&poly_add(&ct1i_hat, &p1i_times_qi), &p2i_times_cyclo);
+            // Assert that ct1i = ct1i_hat + p1i * qi + p2i * cyclo mod Z_p
+            let p1i_times_qi = poly_scalar_mul(&p1i, &qi_bigint);
+            let mut ct1i_calculated =
+                poly_add(&poly_add(&ct1i_hat, &p1i_times_qi), &p2i_times_cyclo);
 
-                while ct1i_calculated.len() > 0 && ct1i_calculated[0].is_zero() {
-                    ct1i_calculated.remove(0);
-                }
+            while ct1i_calculated.len() > 0 && ct1i_calculated[0].is_zero() {
+                ct1i_calculated.remove(0);
+            }
 
-                assert_eq!(&ct1i, &ct1i_calculated);
+            assert_eq!(&ct1i, &ct1i_calculated);
 
-                /*
-                println!("qi = {:?}\n", &qi_bigint);
-                println!("ct0i = {:?}\n", &ct0i);
-                println!("k0qi = {:?}\n", &k0qi);
-                println!("pk0 = Polynomial({:?})\n", &pk0i);
-                println!("pk1 = Polynomial({:?})\n", &pk1i);
-                println!("ki = {:?}\n", &ki);
-                println!("ct0i_hat_mod_rqi = {:?}\n", &ct0i_hat_mod_rqi);
-                */
+            /*
+            println!("qi = {:?}\n", &qi_bigint);
+            println!("ct0i = {:?}\n", &ct0i);
+            println!("k0qi = {:?}\n", &k0qi);
+            println!("pk0 = Polynomial({:?})\n", &pk0i);
+            println!("pk1 = Polynomial({:?})\n", &pk1i);
+            println!("ki = {:?}\n", &ki);
+            println!("ct0i_hat_mod_rqi = {:?}\n", &ct0i_hat_mod_rqi);
+            */
 
-                (
-                    i, r2i, r1i, k0qi, ct0i, ct0i_hat, ct1i, ct1i_hat, pk0i, pk1i, p1i, p2i,
-                )
-            },
-        )
-        .collect();
+            (i, r2i, r1i, k0qi, ct0i, ct1i, pk0i, pk1i, p1i, p2i)
+        },
+    )
+    .collect();
 
     // println!("Completed creation of polynomials!");
 
-    // Aggregate results into global vectors
-    for (i, r2i, r1i, k0i, ct0i, ct0i_hat, ct1i, ct1i_hat, pk0i, pk1i, p1i, p2i) in
-        results.into_iter()
-    {
-        r2is[i] = r2i;
-        r1is[i] = r1i;
-        k0is[i] = k0i;
-        ct0is[i] = ct0i;
-        ct0is_hat[i] = ct0i_hat;
-        ct1is[i] = ct1i;
-        ct1is_hat[i] = ct1i_hat;
-        pk0is[i] = pk0i;
-        pk1is[i] = pk1i;
-        p1is[i] = p1i;
-        p2is[i] = p2i;
+    // Merge results into the `res` structure after parallel execution
+    for (i, r2i, r1i, k0i, ct0i, ct1i, pk0i, pk1i, p1i, p2i) in results.into_iter() {
+        res.r2is[i] = r2i;
+        res.r1is[i] = r1i;
+        res.k0is[i] = k0i;
+        res.ct0is[i] = ct0i;
+        res.ct1is[i] = ct1i;
+        res.pk0is[i] = pk0i;
+        res.pk1is[i] = pk1i;
+        res.p1is[i] = p1i;
+        res.p2is[i] = p2i;
     }
 
-    (
-        r2is, r1is, k0is, ct0is, ct1is, pk0is, pk1is, p1is, p2is, u, e0, e1, k1,
-    )
+    // Set final result vectors
+    res.u = u;
+    res.e0 = e0;
+    res.e1 = e1;
+    res.k1 = k1;
+
+    res
 }
