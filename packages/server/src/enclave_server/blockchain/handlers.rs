@@ -2,8 +2,11 @@ use super::{
     events::{CiphertextOutputPublished, E3Activated, InputPublished, PlaintextOutputPublished},
     relayer::EnclaveContract,
 };
-use crate::enclave_server::{config::CONFIG, database::{generate_emoji, get_e3, increment_e3_round, GLOBAL_DB}};
 use crate::enclave_server::models::E3;
+use crate::enclave_server::{
+    config::CONFIG,
+    database::{generate_emoji, get_e3, increment_e3_round, GLOBAL_DB},
+};
 use alloy::{
     rpc::types::Log,
     sol_types::{SolCall, SolEvent},
@@ -11,8 +14,8 @@ use alloy::{
 use alloy_sol_types::SolValue;
 use chrono::Utc;
 use compute_provider::FHEInputs;
-use std::error::Error;
 use std::env;
+use std::error::Error;
 use tokio::time::{sleep, Duration};
 use voting_risc0::run_compute;
 
@@ -105,21 +108,18 @@ pub async fn handle_e3(
                 .await
                 .unwrap();
 
-        let data = (
-            (risc0_output.result.ciphertext_hash, risc0_output.seal),
-            ciphertext,
-        );
-
-        let encoded_data = data.abi_encode();
+        let proof = (
+            risc0_output.result.ciphertext_hash, risc0_output.seal
+        ).abi_encode();
 
         // Params will be encoded on chain to create the journal
         let tx = contract
-            .publish_ciphertext_output(e3_activated.e3Id, encoded_data.into())
+            .publish_ciphertext_output(e3_activated.e3Id, ciphertext.into(), proof.into())
             .await?;
 
         info!(
             "CiphertextOutputPublished event published with tx: {:?}",
-            tx
+            tx.transaction_hash
         );
     }
 
@@ -145,8 +145,6 @@ pub async fn handle_input_published(
     Ok(())
 }
 
-
-
 pub async fn handle_ciphertext_output_published(
     ciphertext_output: CiphertextOutputPublished,
 ) -> Result<(), Box<dyn Error>> {
@@ -169,6 +167,7 @@ pub async fn handle_plaintext_output_published(
     info!("Handling PlaintextOutputPublished event...");
 
     let e3_id = plaintext_output.e3Id.to::<u64>();
+   
     let (mut e3, key) = get_e3(e3_id).await.unwrap();
     e3.plaintext_output = plaintext_output.plaintextOutput.to_vec();
 

@@ -108,22 +108,19 @@ contract CRISPVoting {
     // Publish ciphertext output
     function publishCiphertextOutput(
         uint256 e3Id,
-        bytes memory data
+        bytes calldata data,
+        bytes memory proof
     ) external returns (bool success) {
         require(
             e3Polls[e3Id].ciphertextOutput.length == 0,
             "Ciphertext already published."
         );
-
-        (
-            bytes memory verification,
-            bytes memory ciphertext
-        ) = abi.decode(data, (bytes, bytes));
+        require(proof.length > 0, "Proof is Invalid.");
 
         e3Polls[e3Id].ciphertextOutput = abi.encodePacked(
-            keccak256(ciphertext)
+            keccak256(data)
         );
-        emit CiphertextOutputPublished(e3Id, ciphertext);
+        emit CiphertextOutputPublished(e3Id, data);
         return true;
     }
 

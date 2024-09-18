@@ -13,7 +13,7 @@ use std::time::Duration;
 use tokio::time::sleep;
 use log::{info, error};
 
-use super::events::{E3Activated, InputPublished, PlaintextOutputPublished};
+use super::events::{E3Activated, InputPublished, PlaintextOutputPublished, CiphertextOutputPublished};
 
 pub trait ContractEvent: Send + Sync + 'static {
     fn process(&self, log: Log) -> Result<()>;
@@ -126,6 +126,7 @@ async fn run_listener(rpc_url: &str, contract_address: Address) -> Result<()> {
     listener.add_event_handler::<E3Activated>();
     listener.add_event_handler::<InputPublished>();
     listener.add_event_handler::<PlaintextOutputPublished>();
+    listener.add_event_handler::<CiphertextOutputPublished>();
 
     loop {
         match listener.listen().await {

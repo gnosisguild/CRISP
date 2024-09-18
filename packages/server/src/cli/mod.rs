@@ -12,7 +12,7 @@ use std::io::Read;
 use http_body_util::Empty;
 
 use auth::{authenticate_user, AuthenticationResponse};
-use voting::{initialize_crisp_round, participate_in_existing_round, activate_e3_round};
+use voting::{initialize_crisp_round, participate_in_existing_round, activate_e3_round, decrypt_and_publish_result};
 use serde::{Deserialize, Serialize};
 use env_logger::{Builder, Target};
 use log::LevelFilter;
@@ -88,12 +88,14 @@ pub async fn run_cli() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             initialize_crisp_round(&config).await?;
         }
         1 => {
-            let auth_res = authenticate_user(&config, &client).await?;
             activate_e3_round(&config).await?;
         }
         2 => {
+            participate_in_existing_round(&config).await?;
+        }
+        3 => {
             let auth_res = authenticate_user(&config, &client).await?;
-            participate_in_existing_round(&config, &client, &auth_res).await?;
+            decrypt_and_publish_result(&config, &client, &auth_res).await?;
         }
         _ => unreachable!(),
     }

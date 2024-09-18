@@ -1,11 +1,10 @@
-use voting_core::fhe_processor;
 use anyhow::Result;
-use compute_provider::{
-    ComputeInput, ComputeManager, ComputeProvider, ComputeResult, FHEInputs,
-};
+use compute_provider::{ComputeInput, ComputeManager, ComputeProvider, ComputeResult, FHEInputs};
 use methods::VOTING_ELF;
 use risc0_ethereum_contracts::groth16;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
+use voting_core::fhe_processor;
+use std::env;
 pub struct Risc0Provider;
 
 pub struct Risc0Output {
@@ -18,6 +17,13 @@ impl ComputeProvider for Risc0Provider {
 
     fn prove(&self, input: &ComputeInput) -> Self::Output {
         println!("Proving with RISC0 provider");
+        let var_name = "BONSAI_API_URL";
+
+        match env::var(var_name) {
+            Ok(value) => println!("{}: {}", var_name, value),
+            Err(e) => println!("Couldn't read {}: {}", var_name, e),
+        }
+        
         let env = ExecutorEnv::builder()
             .write(input)
             .unwrap()

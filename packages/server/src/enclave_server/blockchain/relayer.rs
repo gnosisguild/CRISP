@@ -40,7 +40,7 @@ sol! {
 
         function publishInput(uint256 e3Id, bytes memory data ) external returns (bool success);
 
-        function publishCiphertextOutput(uint256 e3Id, bytes memory data ) external returns (bool success);
+        function publishCiphertextOutput(uint256 e3Id, bytes calldata data, bytes memory proof) external returns (bool success);
 
         function publishPlaintextOutput(uint256 e3Id, bytes memory data) external returns (bool success);
 
@@ -121,9 +121,10 @@ impl EnclaveContract {
         &self,
         e3_id: U256,
         data: Bytes,
+        proof: Bytes,
     ) -> Result<TransactionReceipt> {
         let contract = Enclave::new(self.contract_address, &self.provider);
-        let builder = contract.publishCiphertextOutput(e3_id, data);
+        let builder = contract.publishCiphertextOutput(e3_id, data, proof);
         let receipt = builder.send().await?.get_receipt().await?;
         Ok(receipt)
     }
