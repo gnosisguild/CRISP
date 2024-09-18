@@ -34,6 +34,10 @@ contract CRISPVoting {
     );
 
     event PlaintextOutputPublished(uint256 indexed e3Id, bytes plaintextOutput);
+    event CiphertextOutputPublished(
+        uint256 indexed e3Id,
+        bytes ciphertextOutput
+    );
 
     uint256 public e3Counter = 0; // Counter for E3 IDs
 
@@ -70,12 +74,15 @@ contract CRISPVoting {
     }
 
     // Activate the poll
-    function activate(uint256 e3Id, bytes calldata pubKey) external returns (bool success) {
+    function activate(
+        uint256 e3Id,
+        bytes calldata pubKey
+    ) external returns (bool success) {
         require(e3Polls[e3Id].seed > 0, "E3 ID does not exist.");
         require(e3Polls[e3Id].expiration == 0, "Poll already activated.");
 
         e3Polls[e3Id].expiration = block.timestamp + e3Polls[e3Id].duration;
-        // e3Polls[e3Id].committeePublicKey = ;
+        e3Polls[e3Id].committeePublicKey = abi.encodePacked(keccak256(pubKey));
 
         emit E3Activated(e3Id, e3Polls[e3Id].expiration, pubKey);
         return true;
@@ -108,7 +115,15 @@ contract CRISPVoting {
             "Ciphertext already published."
         );
 
-        e3Polls[e3Id].ciphertextOutput = data;
+        (
+            bytes memory verification,
+            bytes memory ciphertext
+        ) = abi.decode(data, (bytes, bytes));
+
+        e3Polls[e3Id].ciphertextOutput = abi.encodePacked(
+            keccak256(ciphertext)
+        );
+        emit CiphertextOutputPublished(e3Id, ciphertext);
         return true;
     }
 
@@ -125,7 +140,7 @@ contract CRISPVoting {
         );
         require(e3.plaintextOutput.length == 0, "Plaintext already published.");
 
-        e3.plaintextOutput = data;
+        e3.plaintextOutput = abi.encodePacked(keccak256(data));
         emit PlaintextOutputPublished(e3Id, data);
         return true;
     }

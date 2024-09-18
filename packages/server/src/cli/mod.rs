@@ -1,4 +1,5 @@
 mod auth;
+mod config;
 mod voting;
 
 use dialoguer::{theme::ColorfulTheme, FuzzySelect};
@@ -16,7 +17,20 @@ use serde::{Deserialize, Serialize};
 use env_logger::{Builder, Target};
 use log::LevelFilter;
 use log::info;
-use std::io::Write; // Use `std::io::Write` for writing to the buffer
+use std::io::Write;
+
+use once_cell::sync::Lazy;
+use sled::{Db, IVec};
+use std::{error::Error, str, sync::Arc};
+use tokio::sync::RwLock;
+
+pub static GLOBAL_DB: Lazy<Arc<RwLock<Db>>> = Lazy::new(|| {
+    let pathdb = std::env::current_dir()
+        .unwrap()
+        .join("database/cli");
+    Arc::new(RwLock::new(sled::open(pathdb).unwrap()))
+});
+
 
 fn init_logger() {
     let mut builder = Builder::new();
@@ -101,7 +115,7 @@ fn select_environment() -> Result<usize, Box<dyn std::error::Error + Send + Sync
 }
 
 fn select_action() -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
-    let selections = &["Initialize new E3 round.", "Activate an E3 round.", "Participate in an E3 round."];
+    let selections = &["Initialize new E3 round.", "Activate an E3 round.", "Participate in an E3 round.", "Decrypt Ciphertext & Publish Results"];
     Ok(FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt("Create a new CRISP round or participate in an existing round.")
         .default(0)

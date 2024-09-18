@@ -10,10 +10,11 @@ use alloy::primitives::{Address, Bytes, U256};
 
 use crate::enclave_server::blockchain::relayer::EnclaveContract;
 
-use crate::cli::{AuthenticationResponse, HyperClientPost};
+use crate::cli::{AuthenticationResponse, HyperClientPost, GLOBAL_DB};
 use crate::util::timeit::timeit;
 use fhe::bfv::{BfvParametersBuilder, Encoding, Plaintext, PublicKey, BfvParameters, SecretKey};
-use fhe_traits::{DeserializeParametrized, Deserialize as FheDeserialize, FheEncoder, FheEncrypter, Serialize as FheSerialize};
+use fhe_traits::{Deserialize as FheDeserialize, DeserializeParametrized, DeserializeWithContext, FheDecoder, FheDecrypter, FheEncoder, FheEncrypter, Serialize as FheSerialize};
+use fhe_math::rq::Poly;
 use rand::thread_rng;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -27,9 +28,22 @@ struct RoundCount {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+struct FHEParams {
+    params: Vec<u8>,
+    pk: Vec<u8>,
+    sk: Vec<i64>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct PKRequest {
-    round_id: u32,
+    round_id: u64,
     pk_bytes: Vec<u8>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct CTRequest {
+    round_id: u64,
+    ct_bytes: Vec<u8>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -46,7 +60,6 @@ struct JsonResponseTxHash {
     tx_hash: String,
 }
 
-
 async fn get_response_body(resp: Response<Incoming>) -> Result<String, Box<dyn std::error::Error + Send + Sync>> {
     let body_bytes = resp.collect().await?.to_bytes();
     Ok(String::from_utf8(body_bytes.to_vec())?)
@@ -60,9 +73,7 @@ pub async fn initialize_crisp_round(
 
     let params = generate_bfv_parameters().unwrap().to_bytes();
     
-    let private_key = env::var("PRIVATE_KEY").expect("PRIVATE_KEY must be set in the environment");
-    let rpc_url = "http://0.0.0.0:8545";
-    let contract = EnclaveContract::new(rpc_url, &config.voting_address, &private_key).await?;
+    let contract = EnclaveContract::new().await?;
     
     let filter: Address = "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5".parse()?;
     let threshold: [u32; 2] = [1, 2];
@@ -74,10 +85,6 @@ pub async fn initialize_crisp_round(
     let res = contract.request_e3(filter, threshold, start_window, duration, e3_program, e3_params, compute_provider_params).await?;
     println!("E3 request sent. TxHash: {:?}", res.transaction_hash);
 
-
-    // let e3_data = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
-    // let res = contract.publish_input(e3_id, e3_data).await?;
-    // println!("E3 data published. TxHash: {:?}", res.transaction_hash);
     Ok(())
 }
 
@@ -90,9 +97,7 @@ pub async fn activate_e3_round(config: &super::CrispConfig) -> Result<(), Box<dy
     let params = generate_bfv_parameters().unwrap();
     let (sk, pk) = generate_keys(&params);
 
-    let private_key = env::var("PRIVATE_KEY").expect("PRIVATE_KEY must be set in the environment");
-    let rpc_url = "http://0.0.0.0:8545";
-    let contract = EnclaveContract::new(rpc_url, &config.voting_address, &private_key).await?;
+    let contract = EnclaveContract::new().await?;
 
     let pk_bytes = Bytes::from(pk.to_bytes());
     // Print how many bytes are in the public key
@@ -101,6 +106,72 @@ pub async fn activate_e3_round(config: &super::CrispConfig) -> Result<(), Box<dy
     let res = contract.activate_e3(e3_id, pk_bytes).await?;
     println!("E3 activated. TxHash: {:?}", res.transaction_hash);
 
+    let e3_params = FHEParams {
+        params: params.to_bytes(),
+        pk: pk.to_bytes(),
+        sk: sk.coeffs.into_vec(),
+    };
+
+    let db = GLOBAL_DB.write().await;
+    db.insert(format!("e3:{}", input_e3_id), serde_json::to_vec(&e3_params)?)?;
+    println!("E3 parameters stored in database.");
+
+    Ok(())
+}
+
+
+pub async fn decrypt_and_publish_result(
+    config: &super::CrispConfig,
+    client: &HyperClientPost,
+    auth_res: &AuthenticationResponse,
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+    let input_crisp_id: u64 = Input::with_theme(&ColorfulTheme::default())
+        .with_prompt("Enter CRISP round ID.")
+        .interact_text()?;
+    info!("Decryption Initialized");
+
+    // Get final Ciphertext
+    let response_pk = CTRequest {
+        round_id: input_crisp_id,
+        ct_bytes: vec![0],
+    };
+
+    let url = format!("{}/get_ct_by_round", config.enclave_address);
+    let req = Request::builder()
+        .header("Content-Type", "application/json")
+        .method(Method::POST)
+        .uri(url)
+        .body(serde_json::to_string(&response_pk)?)?;
+
+    let resp = client.request(req).await?;
+    info!("Response status: {}", resp.status());
+
+    let body_str = get_response_body(resp).await?;
+    let ct_res: CTRequest = serde_json::from_str(&body_str)?;
+    info!("Shared Public Key for CRISP round {:?} collected.", ct_res.round_id);
+    info!("Public Key: {:?}", ct_res.ct_bytes);
+
+    let db = GLOBAL_DB.read().await;
+    let params_bytes = db.get(format!("e3:{}", input_crisp_id))?.unwrap();
+    let e3_params: FHEParams = serde_json::from_slice(&params_bytes)?;
+    let params = timeit!(
+        "Parameters generation",
+        generate_bfv_parameters()?
+    );
+    let pk_deserialized = PublicKey::from_bytes(&e3_params.pk, &params)?;
+    let sk_deserialized = SecretKey::new(e3_params.sk, &params);
+
+    let ct = fhe::bfv::Ciphertext::from_bytes(&ct_res.ct_bytes, &params)?;
+
+    let pt = sk_deserialized.try_decrypt(&ct)?;    
+    let votes = Vec::<u64>::try_decode(&pt, Encoding::poly())?[0];
+    println!("Vote count: {:?}", votes);
+
+    info!("Calling contract with plaintext output.");
+    let contract = EnclaveContract::new().await?;
+    let res = contract.publish_plaintext_output(U256::from(input_crisp_id), Bytes::from(votes.to_be_bytes())).await?;
+    println!("Vote broadcast. TxHash: {:?}", res.transaction_hash);
+    
     Ok(())
 }
 
@@ -110,7 +181,7 @@ pub async fn participate_in_existing_round(
     client: &HyperClientPost,
     auth_res: &AuthenticationResponse,
 ) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    let input_crisp_id: u32 = Input::with_theme(&ColorfulTheme::default())
+    let input_crisp_id: u64 = Input::with_theme(&ColorfulTheme::default())
         .with_prompt("Enter CRISP round ID.")
         .interact_text()?;
     info!("Voting state Initialized");
@@ -153,27 +224,10 @@ pub async fn participate_in_existing_round(
     info!("Vote encrypted.");
     info!("Calling voting contract with encrypted vote.");
 
-    let request_contract = EncryptedVote {
-        round_id: input_crisp_id,
-        enc_vote_bytes: ct.to_bytes(),
-        post_id: auth_res.jwt_token.clone(),
-    };
-
-    let url = format!("{}/broadcast_enc_vote", config.enclave_address);
-    let req = Request::builder()
-        .header("Content-Type", "application/json")
-        .method(Method::POST)
-        .uri(url)
-        .body(serde_json::to_string(&request_contract)?)?;
-
-    let resp = client.request(req).await?;
-    info!("Response status: {}", resp.status());
-
-    let body_str = get_response_body(resp).await?;
-    let contract_res: JsonResponseTxHash = serde_json::from_str(&body_str)?;
-    info!("Contract call: {:?}", contract_res.response);
-    info!("TxHash is {:?}", contract_res.tx_hash);
-
+    let contract = EnclaveContract::new().await?;
+    let res = contract.publish_input(U256::from(input_crisp_id), Bytes::from(ct.to_bytes())).await?;
+    println!("Vote broadcast. TxHash: {:?}", res.transaction_hash);
+    
     Ok(())
 }
 

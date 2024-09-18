@@ -102,8 +102,7 @@ impl ContractManager {
         EventListener::new(self.provider.clone(), filter)
     }
 }
-pub async fn start_listener(contract_address: &str) -> Result<()> {
-    let rpc_url = "ws://127.0.0.1:8545";
+pub async fn start_listener(rpc_url: &str, contract_address: &str) -> Result<()> {
     let address: Address = contract_address.parse()?;
     
     loop {

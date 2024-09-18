@@ -38,8 +38,9 @@ async fn broadcast_enc_vote(
 
     let sol_vote = Bytes::from(vote.enc_vote_bytes);
     let e3_id = U256::from(vote.round_id);
-    let tx_hash = match call_contract(e3_id, sol_vote, state_data.enclave_address.clone()).await {
-        Ok(hash) => hash.to_string(),
+    let contract = EnclaveContract::new().await.unwrap();
+    let tx_hash = match contract.publish_input(e3_id, sol_vote).await {
+        Ok(hash) => hash.transaction_hash.to_string(),
         Err(e) => {
             info!("Error while sending vote transaction: {:?}", e);
             return HttpResponse::InternalServerError().body("Failed to broadcast vote");
@@ -82,23 +83,4 @@ async fn get_vote_count_by_round(data: web::Json<VoteCountRequest>) -> impl Resp
     incoming.vote_count = state_data.vote_count as u32;
 
     HttpResponse::Ok().json(incoming)
-}
-
-pub async fn call_contract(
-    e3_id: U256,
-    enc_vote: Bytes,
-    address: String,
-) -> Result<B256, Box<dyn std::error::Error + Send + Sync>> {
-    info!("Calling voting contract");
-
-    let private_key = env::var("PRIVATE_KEY").expect("PRIVATE_KEY must be set in the environment");
-    let rpc_url = "http://0.0.0.0:8545";
-    let contract = EnclaveContract::new(rpc_url, &address, &private_key).await?;
-    let receipt = contract.publish_input(e3_id, enc_vote).await?;
-
-    // Log the transaction hash
-    let tx_hash = receipt.transaction_hash;
-    info!("Transaction hash: {:?}", tx_hash);
-
-    Ok(tx_hash)
 }

@@ -1,6 +1,7 @@
 mod database;
 mod models;
 mod routes;
+mod config;
 pub mod blockchain;
 
 use actix_cors::Cors;
@@ -14,6 +15,7 @@ use env_logger::{Builder, Target};
 use log::{LevelFilter, Record};
 use std::path::Path;
 use std::io::Write;
+use config::CONFIG;
 
 fn init_logger() {
     let mut builder = Builder::new();
@@ -40,7 +42,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     init_logger();
 
     tokio::spawn(async {
-        if let Err(e) = start_listener("0x5FbDB2315678afecb367f032d93F642f64180aa3").await {
+        if let Err(e) = start_listener(&CONFIG.ws_rpc_url, &CONFIG.contract_address).await {
             eprintln!("Listener failed: {:?}", e);
         }
     });

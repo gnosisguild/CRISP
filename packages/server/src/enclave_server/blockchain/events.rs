@@ -6,7 +6,7 @@ use alloy::{
 
 use eyre::Result;
 
-use super::handlers::{handle_e3, handle_input_published, handle_plaintext_output_published};
+use super::handlers::{handle_e3, handle_input_published, handle_plaintext_output_published, handle_ciphertext_output_published};
 use super::listener::ContractEvent;
 
 sol! {
@@ -15,6 +15,9 @@ sol! {
 
     #[derive(Debug)]
     event InputPublished(uint256 indexed e3Id, bytes data, uint256 inputHash, uint256 index);
+
+    #[derive(Debug)]
+    event CiphertextOutputPublished(uint256 indexed e3Id, bytes ciphertextOutput);
 
     #[derive(Debug)]
     event PlaintextOutputPublished(uint256 indexed e3Id, bytes plaintextOutput);
@@ -39,6 +42,19 @@ impl ContractEvent for InputPublished {
         tokio::spawn(async move {
             if let Err(e) = handle_input_published(event_clone).await {
                 eprintln!("Error handling input published: {:?}", e);
+            }
+        });
+
+        Ok(())
+    }
+}
+
+impl ContractEvent for CiphertextOutputPublished {
+    fn process(&self, _log: Log) -> Result<()> {
+        let event_clone = self.clone();
+        tokio::spawn(async move {
+            if let Err(e) = handle_ciphertext_output_published(event_clone).await {
+                eprintln!("Error handling ciphertext output published: {:?}", e);
             }
         });
 

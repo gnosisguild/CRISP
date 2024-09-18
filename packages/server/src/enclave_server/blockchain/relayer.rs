@@ -12,6 +12,7 @@ use alloy::{
 };
 use eyre::Result;
 use std::sync::Arc;
+use crate::enclave_server::CONFIG;
 
 sol! {
     #[derive(Debug)]
@@ -63,18 +64,18 @@ pub struct EnclaveContract {
 }
 
 impl EnclaveContract {
-    pub async fn new(rpc_url: &str, contract_address: &str, private_key: &str) -> Result<Self> {
-        let signer: PrivateKeySigner = private_key.parse()?;
+    pub async fn new() -> Result<Self> {
+        let signer: PrivateKeySigner = CONFIG.private_key.parse()?;
         let wallet = EthereumWallet::from(signer.clone());
         let provider = ProviderBuilder::new()
             .with_recommended_fillers()
             .wallet(wallet)
-            .on_builtin(rpc_url)
+            .on_builtin(&CONFIG.http_rpc_url)
             .await?;
 
         Ok(Self {
             provider: Arc::new(provider),
-            contract_address: contract_address.parse()?,
+            contract_address: CONFIG.contract_address.parse()?,
         })
     }
 

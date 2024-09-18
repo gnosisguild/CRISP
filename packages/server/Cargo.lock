@@ -1526,6 +1526,9 @@ name = "bitflags"
 version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cf4b9d6a944f767f8e5e0db018570623c85f3d925ac718db4e06d0187adb21c1"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "bitvec"
@@ -1929,6 +1932,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "config"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7328b20597b53c2454f0b1919720c25c7339051c02b72b7e05409e00b14132be"
+dependencies = [
+ "async-trait",
+ "convert_case 0.6.0",
+ "json5",
+ "lazy_static",
+ "nom",
+ "pathdiff",
+ "ron",
+ "rust-ini",
+ "serde",
+ "serde_json",
+ "toml",
+ "yaml-rust",
+]
+
+[[package]]
 name = "console"
 version = "0.15.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1961,6 +1984,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
 
 [[package]]
+name = "const-random"
+version = "0.1.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "87e00182fe74b066627d63b85fd550ac2998d4b0bd86bfed477a0ae4c7c71359"
+dependencies = [
+ "const-random-macro",
+]
+
+[[package]]
+name = "const-random-macro"
+version = "0.1.16"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f9d839f2a20b0aee515dc581a6172f2321f96cab76c1a38a4c584a194955390e"
+dependencies = [
+ "getrandom",
+ "once_cell",
+ "tiny-keccak",
+]
+
+[[package]]
 name = "constant_time_eq"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1971,6 +2014,15 @@ name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
+
+[[package]]
+name = "convert_case"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec182b0ca2f35d8fc196cf3404988fd8b8c739a4d270ff118a398feb0cbec1ca"
+dependencies = [
+ "unicode-segmentation",
+]
 
 [[package]]
 name = "cookie"
@@ -2134,7 +2186,7 @@ version = "0.99.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4fb810d30a7c1953f91334de7244731fc3f3c10d7fe163338a35b9f640960321"
 dependencies = [
- "convert_case",
+ "convert_case 0.4.0",
  "proc-macro2",
  "quote",
  "rustc_version 0.4.0",
@@ -2219,6 +2271,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "dlv-list"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "442039f5147480ba31067cb00ada1adae6892028e40e45fc5de7b7df6dcc1b5f"
+dependencies = [
+ "const-random",
+]
+
+[[package]]
 name = "doc-comment"
 version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2235,6 +2296,12 @@ name = "doctest-file"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aac81fa3e28d21450aa4d2ac065992ba96a1d7303efbce51a95f4fd175b67562"
+
+[[package]]
+name = "dotenvy"
+version = "0.15.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aaf95b3e5c8f23aa320147307562d361db0ae0d51242340f558153b4eb2439b"
 
 [[package]]
 name = "downcast-rs"
@@ -2819,12 +2886,35 @@ dependencies = [
 [[package]]
 name = "fhe"
 version = "0.1.0-beta.7"
+source = "git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration#26e5f2ff6c860d47a1c88a777936bc68eaedb129"
+dependencies = [
+ "doc-comment",
+ "fhe-math 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
+ "fhe-traits 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
+ "fhe-util 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
+ "itertools 0.12.1",
+ "ndarray",
+ "num-bigint",
+ "num-traits",
+ "prost",
+ "prost-build",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "serde",
+ "thiserror",
+ "zeroize",
+ "zeroize_derive",
+]
+
+[[package]]
+name = "fhe"
+version = "0.1.0-beta.7"
 source = "git+https://github.com/gnosisguild/fhe.rs#9624766dcfbb40ecfb01147f59c2f6292c447707"
 dependencies = [
  "doc-comment",
- "fhe-math",
- "fhe-traits",
- "fhe-util",
+ "fhe-math 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs)",
+ "fhe-traits 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs)",
+ "fhe-util 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs)",
  "itertools 0.12.1",
  "ndarray",
  "num-bigint",
@@ -2842,11 +2932,33 @@ dependencies = [
 [[package]]
 name = "fhe-math"
 version = "0.1.0-beta.7"
+source = "git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration#26e5f2ff6c860d47a1c88a777936bc68eaedb129"
+dependencies = [
+ "ethnum",
+ "fhe-traits 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
+ "fhe-util 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
+ "itertools 0.12.1",
+ "ndarray",
+ "num-bigint",
+ "num-bigint-dig",
+ "num-traits",
+ "prost",
+ "prost-build",
+ "rand 0.8.5",
+ "rand_chacha 0.3.1",
+ "sha2",
+ "thiserror",
+ "zeroize",
+]
+
+[[package]]
+name = "fhe-math"
+version = "0.1.0-beta.7"
 source = "git+https://github.com/gnosisguild/fhe.rs#9624766dcfbb40ecfb01147f59c2f6292c447707"
 dependencies = [
  "ethnum",
- "fhe-traits",
- "fhe-util",
+ "fhe-traits 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs)",
+ "fhe-util 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs)",
  "itertools 0.12.1",
  "ndarray",
  "num-bigint",
@@ -2864,8 +2976,27 @@ dependencies = [
 [[package]]
 name = "fhe-traits"
 version = "0.1.0-beta.7"
+source = "git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration#26e5f2ff6c860d47a1c88a777936bc68eaedb129"
+dependencies = [
+ "rand 0.8.5",
+]
+
+[[package]]
+name = "fhe-traits"
+version = "0.1.0-beta.7"
 source = "git+https://github.com/gnosisguild/fhe.rs#9624766dcfbb40ecfb01147f59c2f6292c447707"
 dependencies = [
+ "rand 0.8.5",
+]
+
+[[package]]
+name = "fhe-util"
+version = "0.1.0-beta.7"
+source = "git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration#26e5f2ff6c860d47a1c88a777936bc68eaedb129"
+dependencies = [
+ "itertools 0.12.1",
+ "num-bigint-dig",
+ "num-traits",
  "rand 0.8.5",
 ]
 
@@ -3791,6 +3922,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "json5"
+version = "0.4.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "96b0db21af676c1ce64250b5f40f3ce2cf27e4e47cb91ed91eb6fe9350b430c1"
+dependencies = [
+ "pest",
+ "pest_derive",
+ "serde",
+]
+
+[[package]]
 name = "jsonwebtoken"
 version = "8.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3968,6 +4110,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "linked-hash-map"
+version = "0.5.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0717cef1bc8b636c6e1c1bbdefc09e6322da8a9321966e8928ef80d20f7f770f"
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.3.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4123,6 +4271,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "minimal-lexical"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
+
+[[package]]
 name = "miniz_oxide"
 version = "0.7.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4203,6 +4357,16 @@ name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
+
+[[package]]
+name = "nom"
+version = "7.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
+dependencies = [
+ "memchr",
+ "minimal-lexical",
+]
 
 [[package]]
 name = "nu-ansi-term"
@@ -4408,6 +4572,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
+name = "ordered-multimap"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ed8acf08e98e744e5384c8bc63ceb0364e68a6854187221c18df61c4797690e"
+dependencies = [
+ "dlv-list",
+ "hashbrown 0.13.2",
+]
+
+[[package]]
 name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4517,6 +4691,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1e91099d4268b0e11973f036e885d652fb0b21fedcf69738c627f94db6a44f42"
 
 [[package]]
+name = "pathdiff"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8835116a5c179084a830efb3adc117ab007512b535bc1a21c991d3b32a6b44dd"
+
+[[package]]
 name = "pbkdf2"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4571,13 +4751,47 @@ checksum = "e3148f5046208a5d56bcfc03053e3ca6334e51da8dfb19b6cdc8b306fae3283e"
 
 [[package]]
 name = "pest"
-version = "2.7.11"
+version = "2.7.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cd53dff83f26735fdc1ca837098ccf133605d794cdae66acfc2bfac3ec809d95"
+checksum = "9c73c26c01b8c87956cea613c907c9d6ecffd8d18a2a5908e5de0adfaa185cea"
 dependencies = [
  "memchr",
  "thiserror",
  "ucd-trie",
+]
+
+[[package]]
+name = "pest_derive"
+version = "2.7.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "664d22978e2815783adbdd2c588b455b1bd625299ce36b2a99881ac9627e6d8d"
+dependencies = [
+ "pest",
+ "pest_generator",
+]
+
+[[package]]
+name = "pest_generator"
+version = "2.7.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2d5487022d5d33f4c30d91c22afa240ce2a644e87fe08caad974d4eab6badbe"
+dependencies = [
+ "pest",
+ "pest_meta",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.61",
+]
+
+[[package]]
+name = "pest_meta"
+version = "2.7.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0091754bbd0ea592c4deb3a122ce8ecbb0753b738aa82bc055fcc2eccc8d8174"
+dependencies = [
+ "once_cell",
+ "pest",
+ "sha2",
 ]
 
 [[package]]
@@ -5412,14 +5626,17 @@ dependencies = [
  "bytes",
  "chrono",
  "compute-provider",
+ "config",
  "console",
  "dialoguer",
+ "dotenvy",
  "env_logger 0.11.5",
  "ethers",
  "eyre",
- "fhe",
- "fhe-traits",
- "fhe-util",
+ "fhe 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
+ "fhe-math 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
+ "fhe-traits 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
+ "fhe-util 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
  "futures-util",
  "getrandom",
  "headers",
@@ -5441,7 +5658,6 @@ dependencies = [
  "serde_json",
  "sha2",
  "sled",
- "termcolor",
  "tokio",
  "voting-risc0",
  "walkdir",
@@ -5686,6 +5902,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ron"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b91f7eff05f748767f183df4320a63d6936e9c6107d97c9e6bdd9784f4289c94"
+dependencies = [
+ "base64 0.21.7",
+ "bitflags 2.5.0",
+ "serde",
+ "serde_derive",
+]
+
+[[package]]
 name = "route-recognizer"
 version = "0.1.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5741,6 +5969,16 @@ name = "ruint-macro"
 version = "1.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "48fd7bd8a6377e15ad9d42a8ec25371b94ddc67abe7c8b9127bec79bebaaae18"
+
+[[package]]
+name = "rust-ini"
+version = "0.19.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e2a3bcec1f113553ef1c88aae6c020a369d03d55b58de9869a0908930385091"
+dependencies = [
+ "cfg-if",
+ "ordered-multimap",
+]
 
 [[package]]
 name = "rustc-demangle"
@@ -7017,6 +7255,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "unicode-segmentation"
+version = "1.12.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f6ccf251212114b54433ec949fd6a7841275f9ada20dddd2f29e9ceea4501493"
+
+[[package]]
 name = "unicode-width"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7128,8 +7372,8 @@ name = "voting-core"
 version = "0.1.0"
 dependencies = [
  "compute-provider",
- "fhe",
- "fhe-traits",
+ "fhe 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs)",
+ "fhe-traits 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs)",
 ]
 
 [[package]]
@@ -7143,9 +7387,9 @@ dependencies = [
  "compute-provider",
  "env_logger 0.10.2",
  "ethers",
- "fhe",
- "fhe-traits",
- "fhe-util",
+ "fhe 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs)",
+ "fhe-traits 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs)",
+ "fhe-util 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs)",
  "log 0.4.22",
  "methods",
  "risc0-ethereum-contracts",
@@ -7553,6 +7797,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "05f360fc0b24296329c78fda852a1e9ae82de9cf7b27dae4b7f62f118f77b9ed"
 dependencies = [
  "tap",
+]
+
+[[package]]
+name = "yaml-rust"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "56c1936c4cc7a1c9ab21a1ebb602eb942ba868cbd44a99cb7cdc5892335e1c85"
+dependencies = [
+ "linked-hash-map",
 ]
 
 [[package]]

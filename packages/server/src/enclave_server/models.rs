@@ -56,8 +56,13 @@ pub struct PKShareCount {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PKRequest {
-    pub round_id: u32,
+    pub round_id: u64,
     pub pk_bytes: Vec<u8>,
+}
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CTRequest {
+    pub round_id: u64,
+    pub ct_bytes: Vec<u8>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]

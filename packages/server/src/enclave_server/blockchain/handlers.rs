@@ -1,8 +1,8 @@
 use super::{
-    events::{E3Activated, InputPublished, PlaintextOutputPublished},
+    events::{CiphertextOutputPublished, E3Activated, InputPublished, PlaintextOutputPublished},
     relayer::EnclaveContract,
 };
-use crate::enclave_server::database::{generate_emoji, get_e3, increment_e3_round, GLOBAL_DB};
+use crate::enclave_server::{config::CONFIG, database::{generate_emoji, get_e3, increment_e3_round, GLOBAL_DB}};
 use crate::enclave_server::models::E3;
 use alloy::{
     rpc::types::Log,
@@ -26,11 +26,7 @@ pub async fn handle_e3(
     info!("Handling E3 request with id {}", e3_id);
 
     // Fetch E3 from the contract
-    let private_key = env::var("PRIVATE_KEY").expect("PRIVATEKEY must be set in the environment");
-    let rpc_url = env::var("RPC_URL").expect("RPC_URL must be set in the environment");
-    let contract_address =
-        env::var("CONTRACT_ADDRESS").expect("CONTRACT_ADDRESS must be set in the environment");
-    let contract = EnclaveContract::new(&rpc_url, &contract_address, &private_key).await?;
+    let contract = EnclaveContract::new().await?;
 
     let e3 = contract.get_e3(e3_activated.e3Id).await?;
     info!("Fetched E3 from the contract.");
@@ -49,7 +45,7 @@ pub async fn handle_e3(
         // Identifiers
         id: e3_id,
         chain_id: 31337 as u64, // Hardcoded for testing
-        enclave_address: contract_address,
+        enclave_address: CONFIG.contract_address.clone(),
 
         // Status-related
         status: "Active".to_string(),
@@ -149,6 +145,24 @@ pub async fn handle_input_published(
     Ok(())
 }
 
+
+
+pub async fn handle_ciphertext_output_published(
+    ciphertext_output: CiphertextOutputPublished,
+) -> Result<(), Box<dyn Error>> {
+    info!("Handling CiphertextOutputPublished event...");
+
+    let e3_id = ciphertext_output.e3Id.to::<u64>();
+    let (mut e3, key) = get_e3(e3_id).await.unwrap();
+    e3.ciphertext_output = ciphertext_output.ciphertextOutput.to_vec();
+
+    let db = GLOBAL_DB.write().await;
+    db.insert(key, serde_json::to_vec(&e3).unwrap()).unwrap();
+
+    info!("CiphertextOutputPublished event handled.");
+    Ok(())
+}
+
 pub async fn handle_plaintext_output_published(
     plaintext_output: PlaintextOutputPublished,
 ) -> Result<(), Box<dyn Error>> {
@@ -157,6 +171,9 @@ pub async fn handle_plaintext_output_published(
     let e3_id = plaintext_output.e3Id.to::<u64>();
     let (mut e3, key) = get_e3(e3_id).await.unwrap();
     e3.plaintext_output = plaintext_output.plaintextOutput.to_vec();
+
+    e3.votes_option_2 = u64::from_be_bytes(e3.plaintext_output.as_slice().try_into().unwrap());
+    e3.votes_option_1 = e3.vote_count - e3.votes_option_2;
 
     let db = GLOBAL_DB.write().await;
     db.insert(key, serde_json::to_vec(&e3).unwrap()).unwrap();
