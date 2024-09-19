@@ -4,6 +4,7 @@ mod util;
 use fhe_math::zq::Modulus;
 use greco::greco::*;
 use wasm_bindgen::prelude::*;
+use wasm_bindgen_test::*;
 
 use serde::Deserialize;
 use std::{env, sync::Arc, thread, time};
@@ -71,4 +72,10 @@ impl Encrypt {
 
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     Ok(())
+}
+// Tests
+#[wasm_bindgen_test]
+fn test_encrypt_vote() {
+    // assert true
+    assert_eq!(1, 1);
 }

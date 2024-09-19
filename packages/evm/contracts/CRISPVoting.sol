@@ -39,7 +39,7 @@ contract CRISPVoting {
         bytes ciphertextOutput
     );
 
-    uint256 public e3Counter = 0; // Counter for E3 IDs
+    uint256 public nexte3Id = 0; // Counter for E3 IDs
 
     // Request a new E3 computation
     function request(
@@ -51,10 +51,10 @@ contract CRISPVoting {
         bytes memory e3ProgramParams,
         bytes memory computeProviderParams
     ) external payable returns (uint256 e3Id, E3 memory e3) {
-        e3Counter++;
+        nexte3Id++;
 
         E3 memory newE3 = E3({
-            seed: e3Counter,
+            seed: nexte3Id,
             threshold: threshold,
             startWindow: startWindow,
             duration: duration,
@@ -68,9 +68,9 @@ contract CRISPVoting {
             plaintextOutput: ""
         });
 
-        e3Polls[e3Counter] = newE3;
+        e3Polls[nexte3Id] = newE3;
 
-        return (e3Counter, newE3);
+        return (nexte3Id, newE3);
     }
 
     // Activate the poll
@@ -137,7 +137,7 @@ contract CRISPVoting {
         );
         require(e3.plaintextOutput.length == 0, "Plaintext already published.");
 
-        e3.plaintextOutput = abi.encodePacked(keccak256(data));
+        e3.plaintextOutput = data;
         emit PlaintextOutputPublished(e3Id, data);
         return true;
     }

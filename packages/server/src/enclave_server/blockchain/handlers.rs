@@ -153,6 +153,7 @@ pub async fn handle_ciphertext_output_published(
     let e3_id = ciphertext_output.e3Id.to::<u64>();
     let (mut e3, key) = get_e3(e3_id).await.unwrap();
     e3.ciphertext_output = ciphertext_output.ciphertextOutput.to_vec();
+    e3.status = "Published".to_string();
 
     let db = GLOBAL_DB.write().await;
     db.insert(key, serde_json::to_vec(&e3).unwrap()).unwrap();
@@ -173,6 +174,7 @@ pub async fn handle_plaintext_output_published(
 
     e3.votes_option_2 = u64::from_be_bytes(e3.plaintext_output.as_slice().try_into().unwrap());
     e3.votes_option_1 = e3.vote_count - e3.votes_option_2;
+    e3.status = "Finished".to_string();
 
     let db = GLOBAL_DB.write().await;
     db.insert(key, serde_json::to_vec(&e3).unwrap()).unwrap();

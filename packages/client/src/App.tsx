@@ -13,16 +13,14 @@ import { useVoteManagementContext } from '@/context/voteManagement'
 
 const App: React.FC = () => {
   useScrollToTop()
-  const { initialLoad, wasmInstance } = useVoteManagementContext()
+  const { initialLoad } = useVoteManagementContext()
 
   useEffect(() => {
-    if (!wasmInstance) {
       async function loadWasm() {
         await initialLoad()
       }
       loadWasm()
-    }
-  }, [wasmInstance])
+  }, [])
 
   return (
     <Fragment>

@@ -1,50 +1,53 @@
-import { useState } from 'react'
-import * as WasmInstance from 'libs/wasm/pkg/crisp_web'
+import { useState, useEffect } from 'react'
 import { handleGenericError } from '@/utils/handle-generic-error'
-
 import { useNotificationAlertContext } from '@/context/NotificationAlert'
 
 export const useWebAssemblyHook = () => {
   const { showToast } = useNotificationAlertContext()
-  const [wasmInstance, setWasmInstance] = useState<WasmInstance.InitOutput | null>(null)
-  const [encryptInstance, setEncryptInstance] = useState<WasmInstance.Encrypt | null>(null)
   const [isLoading, setIsLoading] = useState<boolean>(false)
+  const [worker, setWorker] = useState<Worker | null>(null)
 
-  const initWebAssembly = async () => {
-    try {
-      const wasmModule = await WasmInstance.default()
-      const newEncryptInstance = new WasmInstance.Encrypt()
-      setWasmInstance(wasmModule)
-      setEncryptInstance(newEncryptInstance)
-    } catch (err) {
-      handleGenericError('initWebAssembly', err as Error)
-    } finally {
-      setIsLoading(false)
+  useEffect(() => {
+    const newWorker = new Worker(new URL('libs/wasm/pkg/crisp_worker.js', import.meta.url), {
+      type: 'module',
+    })
+    setWorker(newWorker)
+    return () => {
+      newWorker.terminate()
     }
-  }
+  }, [])
 
   const encryptVote = async (voteId: bigint, publicKey: Uint8Array): Promise<Uint8Array | undefined> => {
-    if (!encryptInstance) {
-      console.error('WebAssembly module not initialized')
+    if (!worker) {
+      console.error('WebAssembly worker not initialized')
       return
     }
-    try {
+
+    return new Promise<Uint8Array | undefined>((resolve, reject) => {
       setIsLoading(true)
-      return encryptInstance.encrypt_vote(voteId, publicKey)
-    } catch (err) {
-      showToast({
-        type: 'danger',
-        message: err as string,
-      })
-      handleGenericError('encryptVote', { message: err } as Error)
-    }
+      worker.postMessage({ type: 'encrypt_vote', data: { voteId, publicKey } })
+      worker.onmessage = (event) => {
+        const { type, success, encryptedVote, error } = event.data
+        if (type === 'encrypt_vote') {
+          if (success) {
+            resolve(encryptedVote)
+          } else {
+            showToast({
+              type: 'danger',
+              message: error,
+            })
+            handleGenericError('encryptVote', new Error(error))
+            reject(new Error(error))
+          }
+          setIsLoading(false)
+        }
+      }
+    })
   }
 
   return {
     isLoading,
-    wasmInstance,
-    encryptInstance,
-    initWebAssembly,
     encryptVote,
   }
 }
+

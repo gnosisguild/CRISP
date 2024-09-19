@@ -84,7 +84,7 @@ pub async fn initialize_crisp_round(
     let filter: Address = "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5".parse()?;
     let threshold: [u32; 2] = [1, 2];
     let start_window: [U256; 2] = [U256::from(Utc::now().timestamp()), U256::from(Utc::now().timestamp() + 600)];
-    let duration: U256 = U256::from(40);
+    let duration: U256 = U256::from(300);
     let e3_program: Address = "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5".parse()?;
     let e3_params = Bytes::from(params);
     let compute_provider_params = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);

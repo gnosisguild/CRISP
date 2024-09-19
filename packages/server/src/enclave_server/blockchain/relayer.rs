@@ -34,6 +34,8 @@ sol! {
     #[derive(Debug)]
     #[sol(rpc)]
     contract Enclave {
+        uint256 public nexte3Id = 0;
+
         function request(address filter, uint32[2] calldata threshold, uint256[2] calldata startWindow, uint256 duration, address e3Program, bytes memory e3ProgramParams, bytes memory computeProviderParams) external payable returns (uint256 e3Id, E3 memory e3);
 
         function activate(uint256 e3Id, bytes memory pubKey) external returns (bool success);
@@ -138,6 +140,12 @@ impl EnclaveContract {
         let builder = contract.publishPlaintextOutput(e3_id, data);
         let receipt = builder.send().await?.get_receipt().await?;
         Ok(receipt)
+    }
+
+    pub async fn get_e3_id(&self) -> Result<U256> {
+        let contract = Enclave::new(self.contract_address, &self.provider);
+        let e3_id = contract.nexte3Id().call().await?;
+        Ok(e3_id.nexte3Id)
     }
 
     pub async fn get_e3(&self, e3_id: U256) -> Result<E3> {

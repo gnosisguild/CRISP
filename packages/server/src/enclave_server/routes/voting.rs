@@ -48,6 +48,7 @@ async fn broadcast_enc_vote(
     };
 
     state_data.has_voted.push(vote.postId);
+    // Lock the database for writing
     let db = state.db.write().await;
     if let Err(e) = db.insert(key, serde_json::to_vec(&state_data).unwrap()) {
         info!("Error updating state: {:?}", e);

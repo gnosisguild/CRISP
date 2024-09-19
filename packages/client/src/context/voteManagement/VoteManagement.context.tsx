@@ -31,7 +31,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   /**
    * Voting Management Methods
    **/
-  const { isLoading: wasmLoading, wasmInstance, encryptInstance, initWebAssembly, encryptVote } = useWebAssemblyHook()
+  const { isLoading: wasmLoading, encryptVote } = useWebAssemblyHook()
   const {
     isLoading: enclaveLoading,
     getRoundStateLite: getRoundStateLiteRequest,
@@ -43,7 +43,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   } = useEnclaveServer()
 
   const initialLoad = async () => {
-    await initWebAssembly()
+    console.log("Loading wasm");
     const round = await getRound()
     if (round) {
       await getRoundStateLite(round.round_count)
@@ -104,8 +104,6 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
     <VoteManagementContextProvider
       value={{
         isLoading,
-        wasmInstance,
-        encryptInstance,
         user,
         votingRound,
         roundEndDate,
@@ -128,7 +126,6 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         broadcastVote,
         setVotingRound,
         setUser,
-        initWebAssembly,
         encryptVote,
         logout,
       }}
