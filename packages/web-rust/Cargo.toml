@@ -13,9 +13,6 @@ fhe = { git = "https://github.com/gnosisguild/fhe.rs.git", branch = "feature/gre
 fhe-traits = { git = "https://github.com/gnosisguild/fhe.rs.git", branch = "feature/greco-integration" }
 fhe-math = { git = "https://github.com/gnosisguild/fhe.rs.git", branch = "feature/greco-integration" }
 fhe-util = { git = "https://github.com/gnosisguild/fhe.rs.git", branch = "feature/greco-integration" }
-# fhe = { git = "https://github.com/gnosisguild/fhe.rs", version = "0.1.0-beta.7" }
-# fhe-traits = { git = "https://github.com/gnosisguild/fhe.rs", version = "0.1.0-beta.7" }
-# fhe-util = { git = "https://github.com/gnosisguild/fhe.rs", version = "0.1.0-beta.7" }
 rand = "0.8.5"
 ethers = "2.0"
 getrandom = { version = "0.2.11", features = ["js"] }

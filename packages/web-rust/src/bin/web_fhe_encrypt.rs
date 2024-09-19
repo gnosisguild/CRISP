@@ -57,18 +57,8 @@ impl Encrypt {
             .map_err(|e| JsValue::from_str(&format!("Error encrypting vote: {}", e)))?;
 
         // Create Greco input validation ZKP proof
-        // todo: create function that modularizes this
-        let ctx = params
-            .ctx_at_level(pt.level())
-            .map_err(|e| JsValue::from_str(&format!("Error extracting context: {}", e)))?;
-        let t = Modulus::new(params.plaintext()).map_err(|e| {
-            JsValue::from_str(&format!(
-                "Error constructing plaintext modulus object: {}",
-                e
-            ))
-        })?;
         let input_val_vectors =
-            compute_input_validation_vectors(&ctx, &t, &pt, &u_rns, &e0_rns, &e1_rns, &ct, &pk);
+            compute_input_validation_vectors(&pt, &u_rns, &e0_rns, &e1_rns, &ct, &pk);
 
         self.encrypted_vote = ct.to_bytes();
         Ok(self.encrypted_vote.clone())

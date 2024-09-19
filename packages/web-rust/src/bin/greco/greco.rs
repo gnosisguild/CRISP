@@ -1,9 +1,8 @@
 use std::ops::Deref;
-use std::sync::Arc;
 
 use fhe::bfv::{Ciphertext, Plaintext, PublicKey};
 use fhe_math::rq::{Poly, Representation};
-use fhe_math::{rq::Context, zq::Modulus};
+use fhe_math::zq::Modulus;
 use serde_json::json;
 
 use crate::greco::poly::*;
@@ -122,8 +121,6 @@ fn to_string_2d_vec(poly: &Vec<Vec<BigInt>>) -> Vec<Vec<String>> {
 ///
 /// # Arguments
 ///
-/// * `ctx` - Context object from fhe.rs holding information about elements in Rq.
-/// * `t` - Plaintext modulus object.
 /// * `pt` - Plaintext from fhe.rs.
 /// * `u_rns` - Private polynomial used in ciphertext sampled from secret key distribution.
 /// * `e0_rns` - Error polynomial used in ciphertext sampled from error distribution.
@@ -132,8 +129,6 @@ fn to_string_2d_vec(poly: &Vec<Vec<BigInt>>) -> Vec<Vec<String>> {
 /// * `pk` - Public Key from fhe.re.
 ///
 pub fn compute_input_validation_vectors(
-    ctx: &Arc<Context>,
-    t: &Modulus,
     pt: &Plaintext,
     u_rns: &Poly,
     e0_rns: &Poly,
@@ -141,6 +136,10 @@ pub fn compute_input_validation_vectors(
     ct: &Ciphertext,
     pk: &PublicKey,
 ) -> InputValidationVectors {
+    // Get context, plaintext modulus, and degree
+    let params = &pk.par;
+    let ctx = params.ctx_at_level(pt.level()).unwrap();
+    let t = Modulus::new(params.plaintext()).unwrap();
     let N: u64 = ctx.degree as u64;
 
     // Calculate k1 (independent of qi), center and reverse
