@@ -1,7 +1,6 @@
 mod greco;
 mod util;
 
-use fhe_math::zq::Modulus;
 use greco::greco::*;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::*;
@@ -10,9 +9,7 @@ use serde::Deserialize;
 use std::{env, sync::Arc, thread, time};
 
 use fhe::{
-    bfv::{
-        BfvParameters, BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey,
-    },
+    bfv::{BfvParametersBuilder, Encoding, Plaintext, PublicKey, SecretKey},
     mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
     proto::bfv::Parameters,
 };
@@ -59,7 +56,7 @@ impl Encrypt {
 
         // Create Greco input validation ZKP proof
         let input_val_vectors =
-            compute_input_validation_vectors(&pt, &u_rns, &e0_rns, &e1_rns, &ct, &pk);
+            InputValidationVectors::compute(&pt, &u_rns, &e0_rns, &e1_rns, &ct, &pk);
 
         self.encrypted_vote = ct.to_bytes();
         Ok(self.encrypted_vote.clone())
