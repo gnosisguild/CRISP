@@ -171,15 +171,17 @@ impl InputValidationVectors {
         e1_rns: &Poly,
         ct: &Ciphertext,
         pk: &PublicKey,
-    ) -> InputValidationVectors {
+    ) -> Result<InputValidationVectors, Box<dyn std::error::Error>> {
         // Get context, plaintext modulus, and degree
         let params = &pk.par;
-        let ctx = params.ctx_at_level(pt.level()).unwrap();
-        let t = Modulus::new(params.plaintext()).unwrap();
+        let ctx = params.ctx_at_level(pt.level())?;
+        let t = Modulus::new(params.plaintext())?;
         let N: u64 = ctx.degree as u64;
 
         // Calculate k1 (independent of qi), center and reverse
-        let q_mod_t = (ctx.modulus() % t.modulus()).to_u64().unwrap(); // [q]_t
+        let q_mod_t = (ctx.modulus() % t.modulus())
+            .to_u64()
+            .ok_or_else(|| "Cannot convert BigInt to u64.".to_string())?; // [q]_t
         let mut k1_u64 = pt.value.deref().to_vec(); // m
         t.scalar_mul_vec(&mut k1_u64, q_mod_t); // k1 = [q*m]_t
         let mut k1: Vec<BigInt> = k1_u64.iter().map(|&x| BigInt::from(x)).rev().collect();
@@ -196,7 +198,13 @@ impl InputValidationVectors {
 
         let u: Vec<BigInt> = unsafe {
             ctx.moduli_operators()[0]
-                .center_vec_vt(u_rns_copy.coefficients().row(0).as_slice().unwrap())
+                .center_vec_vt(
+                    u_rns_copy
+                        .coefficients()
+                        .row(0)
+                        .as_slice()
+                        .ok_or_else(|| "Cannot center coefficients.".to_string())?,
+                )
                 .iter()
                 .rev()
                 .map(|&x| BigInt::from(x))
@@ -205,7 +213,13 @@ impl InputValidationVectors {
 
         let e0: Vec<BigInt> = unsafe {
             ctx.moduli_operators()[0]
-                .center_vec_vt(e0_rns_copy.coefficients().row(0).as_slice().unwrap())
+                .center_vec_vt(
+                    e0_rns_copy
+                        .coefficients()
+                        .row(0)
+                        .as_slice()
+                        .ok_or_else(|| "Cannot center coefficients.".to_string())?,
+                )
                 .iter()
                 .rev()
                 .map(|&x| BigInt::from(x))
@@ -214,7 +228,13 @@ impl InputValidationVectors {
 
         let e1: Vec<BigInt> = unsafe {
             ctx.moduli_operators()[0]
-                .center_vec_vt(e1_rns_copy.coefficients().row(0).as_slice().unwrap())
+                .center_vec_vt(
+                    e1_rns_copy
+                        .coefficients()
+                        .row(0)
+                        .as_slice()
+                        .ok_or_else(|| "Cannot center coefficients.".to_string())?,
+                )
                 .iter()
                 .rev()
                 .map(|&x| BigInt::from(x))
@@ -447,7 +467,7 @@ impl InputValidationVectors {
         res.e1 = e1;
         res.k1 = k1;
 
-        res
+        Ok(res)
     }
 }
 
@@ -575,18 +595,21 @@ impl InputValidationBounds {
     ///
     /// A new `InputValidationBounds` instance containing the bounds for vectors and polynomials
     /// based on the BFV parameters and the specified level.
-    pub fn compute(params: &Arc<BfvParameters>, level: usize) -> InputValidationBounds {
+    pub fn compute(
+        params: &Arc<BfvParameters>,
+        level: usize,
+    ) -> Result<InputValidationBounds, Box<dyn std::error::Error>> {
         // Get cyclotomic degree and context at provided level
         let N = BigInt::from(params.degree());
         let t = BigInt::from(params.plaintext());
-        let ctx = params.ctx_at_level(level).unwrap();
+        let ctx = params.ctx_at_level(level)?;
 
         // Note: the secret key in fhe.rs is sampled from a discrete gaussian distribution
         // rather than a ternary distribution as in bfv.py.
         let gauss_bound = BigInt::from(
             f64::ceil(6_f64 * f64::sqrt(params.variance() as f64))
                 .to_i64()
-                .unwrap(),
+                .ok_or_else(|| "Failed to convert variance to i64".to_string())?,
         );
         let u_bound = gauss_bound.clone();
         let e_bound = gauss_bound.clone();
@@ -605,7 +628,10 @@ impl InputValidationBounds {
             let qi_bound = (&qi_bigint - BigInt::from(1)) / BigInt::from(2);
 
             // Calculate the k0qi for the bounds (these are also constant wrt BFV params)
-            let k0qi = BigInt::from(qi.inv(qi.neg(params.plaintext())).unwrap());
+            let k0qi = BigInt::from(
+                qi.inv(qi.neg(params.plaintext()))
+                    .ok_or_else(|| "Failed to calculate modulus inverse for k0qi".to_string())?,
+            );
 
             pk_bounds[i] = qi_bound.clone();
             r2_bounds[i] = qi_bound.clone();
@@ -615,7 +641,7 @@ impl InputValidationBounds {
             p1_bounds[i] = ((&N + 2) * &qi_bound + &gauss_bound) / &qi_bigint;
         }
 
-        InputValidationBounds {
+        Ok(InputValidationBounds {
             u: u_bound,
             e: e_bound,
             t: ptxt_bound,
@@ -625,7 +651,7 @@ impl InputValidationBounds {
             r2: r2_bounds,
             p1: p1_bounds,
             p2: p2_bounds,
-        }
+        })
     }
 
     /// Writes the input validation bounds to a file that can be imported as a Rust module.
@@ -637,16 +663,26 @@ impl InputValidationBounds {
     ///
     /// This function calculates certain constants like `k0i` values for each modulus `qi` and writes the bounds and other
     /// relevant constants in a Rust-friendly format to the file specified by `output_file`.
-    fn to_file(&self, params: &Arc<BfvParameters>, output_file: &str) {
+    fn to_file(
+        &self,
+        params: &Arc<BfvParameters>,
+        output_file: &str,
+    ) -> Result<(), Box<dyn std::error::Error>> {
         let level = params.moduli().len() - self.r2.len();
-        let ctx = params.ctx_at_level(level).unwrap();
+        let ctx = params.ctx_at_level(level)?;
 
         // Calculate k0i constants
-        let k0i_constants: Vec<BigInt> = ctx
+        let k0i_constants = ctx
             .moduli_operators()
             .iter()
-            .map(|qi| BigInt::from(qi.inv(qi.neg(params.plaintext())).unwrap()))
-            .collect();
+            .map(|qi| {
+                // Use the ? operator to propagate errors
+                let k0qi_value = qi
+                    .inv(qi.neg(params.plaintext()))
+                    .ok_or_else(|| "Failed to calculate modulus inverse for k0qi".to_string())?;
+                Ok(BigInt::from(k0qi_value))
+            })
+            .collect::<Result<Vec<BigInt>, String>>()?;
 
         // Set the output file path
         let output_path = Path::new("src")
@@ -654,13 +690,11 @@ impl InputValidationBounds {
             .join("pk_enc_constants")
             .join(output_file);
 
-        let mut file = File::create(output_path).expect("Unable to create file");
+        let mut file = File::create(output_path)?;
 
         // Writing the constants to the file
-        writeln!(file, "/// `N` is the degree of the cyclotomic polynomial defining the ring `Rq = Zq[X]/(X^N + 1)`.")
-            .expect("Unable to write to file");
-        writeln!(file, "pub const N: usize = {};", params.degree())
-            .expect("Unable to write to file");
+        writeln!(file, "/// `N` is the degree of the cyclotomic polynomial defining the ring `Rq = Zq[X]/(X^N + 1)`.")?;
+        writeln!(file, "pub const N: usize = {};", params.degree())?;
 
         let pk_bound_str = self
             .pk
@@ -668,26 +702,21 @@ impl InputValidationBounds {
             .map(|x| x.to_string())
             .collect::<Vec<String>>()
             .join(", ");
-        writeln!(file, "/// The coefficients of the polynomial `pk0is` and `pk1is` should exist in the interval `[-PK_BOUND, PK_BOUND]`.")
-            .expect("Unable to write to file");
+        writeln!(file, "/// The coefficients of the polynomial `pk0is` and `pk1is` should exist in the interval `[-PK_BOUND, PK_BOUND]`.")?;
         writeln!(
             file,
             "pub const PK_BOUND: [u64; {}] = [{}];",
             self.pk.len(),
             pk_bound_str
-        )
-        .expect("Unable to write to file");
+        )?;
 
-        writeln!(file, "/// The coefficients of the polynomial `pk1is` should exist in the interval `[-PK0_BOUND, PK0_BOUND]`.")
-            .expect("Unable to write to file");
+        writeln!(file, "/// The coefficients of the polynomial `pk1is` should exist in the interval `[-PK0_BOUND, PK0_BOUND]`.")?;
 
-        writeln!(file, "/// The coefficients of the polynomial `e` should exist in the interval `[-E_BOUND, E_BOUND]` where `E_BOUND` is the upper bound of the gaussian distribution with 𝜎 = 3.2.")
-            .expect("Unable to write to file");
-        writeln!(file, "pub const E_BOUND: u64 = {};", self.e).expect("Unable to write to file");
+        writeln!(file, "/// The coefficients of the polynomial `e` should exist in the interval `[-E_BOUND, E_BOUND]` where `E_BOUND` is the upper bound of the gaussian distribution with 𝜎 = 3.2.")?;
+        writeln!(file, "pub const E_BOUND: u64 = {};", self.e)?;
 
-        writeln!(file, "/// The coefficients of the polynomial `s` should exist in the interval `[-S_BOUND, S_BOUND]`.")
-            .expect("Unable to write to file");
-        writeln!(file, "pub const U_BOUND: u64 = {};", self.u).expect("Unable to write to file");
+        writeln!(file, "/// The coefficients of the polynomial `s` should exist in the interval `[-S_BOUND, S_BOUND]`.")?;
+        writeln!(file, "pub const U_BOUND: u64 = {};", self.u)?;
 
         let r1_bounds_str = self
             .r1
@@ -695,15 +724,13 @@ impl InputValidationBounds {
             .map(|x| x.to_string())
             .collect::<Vec<String>>()
             .join(", ");
-        writeln!(file, "/// The coefficients of the polynomials `r1is` should exist in the interval `[-R1_BOUND[i], R1_BOUND[i]]` where `R1_BOUND[i]` is equal to `(qi-1)/2`.")
-            .expect("Unable to write to file");
+        writeln!(file, "/// The coefficients of the polynomials `r1is` should exist in the interval `[-R1_BOUND[i], R1_BOUND[i]]` where `R1_BOUND[i]` is equal to `(qi-1)/2`.")?;
         writeln!(
             file,
             "pub const R1_BOUNDS: [u64; {}] = [{}];",
             self.r1.len(),
             r1_bounds_str
-        )
-        .expect("Unable to write to file");
+        )?;
 
         let r2_bounds_str = self
             .r2
@@ -711,15 +738,13 @@ impl InputValidationBounds {
             .map(|x| x.to_string())
             .collect::<Vec<String>>()
             .join(", ");
-        writeln!(file, "/// The coefficients of the polynomials `r2is` should exist in the interval `[-R2_BOUND[i], R2_BOUND[i]]` where `R2_BOUND[i]` is equal to $\\frac{{(N+2) \\cdot \\frac{{q_i - 1}}{{2}} + B + \\frac{{t - 1}}{{2}} \\cdot |K_{{0,i}}|}}{{q_i}}`.")
-            .expect("Unable to write to file");
+        writeln!(file, "/// The coefficients of the polynomials `r2is` should exist in the interval `[-R2_BOUND[i], R2_BOUND[i]]` where `R2_BOUND[i]` is equal to $\\frac{{(N+2) \\cdot \\frac{{q_i - 1}}{{2}} + B + \\frac{{t - 1}}{{2}} \\cdot |K_{{0,i}}|}}{{q_i}}`.")?;
         writeln!(
             file,
             "pub const R2_BOUNDS: [u64; {}] = [{}];",
             self.r2.len(),
             r2_bounds_str
-        )
-        .expect("Unable to write to file");
+        )?;
 
         let p1_bounds_str = self
             .p1
@@ -727,15 +752,13 @@ impl InputValidationBounds {
             .map(|x| x.to_string())
             .collect::<Vec<String>>()
             .join(", ");
-        writeln!(file, "/// The coefficients of the polynomials `p1is` should exist in the interval `[-P1_BOUND[i], P1_BOUND[i]]` where `P1_BOUND[i]` is equal to (((qis[i] - 1) / 2) * (n + 2) + b ) / qis[i].")
-            .expect("Unable to write to file");
+        writeln!(file, "/// The coefficients of the polynomials `p1is` should exist in the interval `[-P1_BOUND[i], P1_BOUND[i]]` where `P1_BOUND[i]` is equal to (((qis[i] - 1) / 2) * (n + 2) + b ) / qis[i].")?;
         writeln!(
             file,
             "pub const P1_BOUNDS: [u64; {}] = [{}];",
             self.p1.len(),
             p1_bounds_str
-        )
-        .expect("Unable to write to file");
+        )?;
 
         let p2_bounds_str = self
             .p2
@@ -743,19 +766,16 @@ impl InputValidationBounds {
             .map(|x| x.to_string())
             .collect::<Vec<String>>()
             .join(", ");
-        writeln!(file, "/// The coefficients of the polynomials `p2is` should exist in the interval `[-P2_BOUND[i], P2_BOUND[i]]` where `P2_BOUND[i]` is equal to (qis[i] - 1) / 2.")
-            .expect("Unable to write to file");
+        writeln!(file, "/// The coefficients of the polynomials `p2is` should exist in the interval `[-P2_BOUND[i], P2_BOUND[i]]` where `P2_BOUND[i]` is equal to (qis[i] - 1) / 2.")?;
         writeln!(
             file,
             "pub const P2_BOUNDS: [u64; {}] = [{}];",
             self.p2.len(),
             p2_bounds_str
-        )
-        .expect("Unable to write to file");
+        )?;
 
-        writeln!(file, "/// The coefficients of `k1` should exist in the interval `[-K1_BOUND, K1_BOUND]` where `K1_BOUND` is equal to `(t-1)/2`.")
-            .expect("Unable to write to file");
-        writeln!(file, "pub const K1_BOUND: u64 = {};", self.k1).expect("Unable to write to file");
+        writeln!(file, "/// The coefficients of `k1` should exist in the interval `[-K1_BOUND, K1_BOUND]` where `K1_BOUND` is equal to `(t-1)/2`.")?;
+        writeln!(file, "pub const K1_BOUND: u64 = {};", self.k1)?;
 
         let qis_str = ctx
             .moduli()
@@ -763,30 +783,28 @@ impl InputValidationBounds {
             .map(|x| format!("\"{}\"", x))
             .collect::<Vec<String>>()
             .join(", ");
-        writeln!(file, "/// List of scalars `qis` such that `qis[i]` is the modulus of the i-th CRT basis of `q` (ciphertext space modulus).")
-            .expect("Unable to write to file");
+        writeln!(file, "/// List of scalars `qis` such that `qis[i]` is the modulus of the i-th CRT basis of `q` (ciphertext space modulus).")?;
         writeln!(
             file,
             "pub const QIS: [&str; {}] = [{}];",
             ctx.moduli().len(),
             qis_str
-        )
-        .expect("Unable to write to file");
+        )?;
 
         let k0is_str = k0i_constants
             .iter()
             .map(|x| format!("\"{}\"", x))
             .collect::<Vec<String>>()
             .join(", ");
-        writeln!(file, "/// List of scalars `k0is` such that `k0i[i]` is equal to the negative of the multiplicative inverses of t mod qi.")
-            .expect("Unable to write to file");
+        writeln!(file, "/// List of scalars `k0is` such that `k0i[i]` is equal to the negative of the multiplicative inverses of t mod qi.")?;
         writeln!(
             file,
             "pub const K0IS: [&str; {}] = [{}];",
             k0i_constants.len(),
             k0is_str
-        )
-        .expect("Unable to write to file");
+        )?;
+
+        Ok(())
     }
 }
 
