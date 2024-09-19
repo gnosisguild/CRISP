@@ -100,7 +100,7 @@ fn test_encrypt_vote() {
 
     let mut test = Encrypt::new();
     let vote = 10;
-    test.encrypt_vote(10, pk.to_bytes()).unwrap();
+    test.encrypt_vote(vote, pk.to_bytes()).unwrap();
 
     let ct = Ciphertext::from_bytes(&test.encrypted_vote, &params).unwrap();
     let pt = sk.try_decrypt(&ct).unwrap();
