@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity >=0.8.27;
 
-import {CRISPBase, IEnclave, IE3Program, IInputValidator, IDecryptionVerifier} from "evm_base/contracts/CRISPBase.sol";
+import {CRISPBase, IEnclave, IE3Program, IInputValidator} from "evm_base/contracts/CRISPBase.sol";
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 import {ImageID} from "./ImageID.sol";
 
@@ -29,12 +29,8 @@ contract CRISPRisc0 is CRISPBase {
         uint256 e3Id,
         uint256,
         bytes calldata e3ProgramParams,
-        bytes calldata computeProviderParams
-    )
-        external
-        override
-        returns (bytes32, IInputValidator, IDecryptionVerifier)
-    {
+        bytes calldata
+    ) external override returns (bytes32, IInputValidator) {
         require(paramsHashes[e3Id] == bytes32(0), E3AlreadyInitialized());
         (bytes memory params, IInputValidator inputValidator) = abi.decode(
             e3ProgramParams,
@@ -43,12 +39,7 @@ contract CRISPRisc0 is CRISPBase {
 
         paramsHashes[e3Id] = keccak256(params);
 
-        IDecryptionVerifier decryptionVerifier = abi.decode(
-            computeProviderParams,
-            (IDecryptionVerifier)
-        );
-
-        return (encryptionSchemeId, inputValidator, decryptionVerifier);
+        return (encryptionSchemeId, inputValidator);
     }
 
     function verify(

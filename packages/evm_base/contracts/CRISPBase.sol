@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity >=0.8.27;
 
-import {IE3Program, IInputValidator, IDecryptionVerifier} from "@gnosis-guild/enclave/contracts/interfaces/IE3Program.sol";
+import {IE3Program, IInputValidator} from "@gnosis-guild/enclave/contracts/interfaces/IE3Program.sol";
 import {IEnclave} from "@gnosis-guild/enclave/contracts/interfaces/IEnclave.sol";
 
 abstract contract CRISPBase is IE3Program {
