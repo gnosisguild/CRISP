@@ -22,9 +22,8 @@ import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 import {RiscZeroGroth16Verifier} from "risc0/groth16/RiscZeroGroth16Verifier.sol";
 import {ControlID} from "risc0/groth16/ControlID.sol";
 
-
 import {CRISPRisc0} from "../contracts/CRISPRisc0.sol";
-import {IEnclave} from "evm_base/CRISPBase.sol";
+import {IEnclave} from "@gnosis-guild/enclave/contracts/interfaces/IEnclave.sol";
 
 /// @notice Deployment script for the RISC Zero starter project.
 /// @dev Use the following environment variable to control the deployment:
