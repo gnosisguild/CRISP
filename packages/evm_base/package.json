@@ -80,6 +80,7 @@
     "typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain"
   },
   "dependencies": {
+    "@gnosis-guild/enclave": "^0.0.1",
     "@openzeppelin/contracts": "^5.0.0",
     "hardhat-etherscan": "^1.0.1"
   }
