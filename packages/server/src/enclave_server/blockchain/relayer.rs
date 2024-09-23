@@ -35,6 +35,7 @@ sol! {
     #[sol(rpc)]
     contract Enclave {
         uint256 public nexte3Id = 0;
+        mapping(uint256 e3Id => uint256 inputCount) public inputCounts;
 
         function request(address filter, uint32[2] calldata threshold, uint256[2] calldata startWindow, uint256 duration, address e3Program, bytes memory e3ProgramParams, bytes memory computeProviderParams) external payable returns (uint256 e3Id, E3 memory e3);
 
@@ -61,8 +62,8 @@ type CRISPProvider = FillProvider<
 >;
 
 pub struct EnclaveContract {
-    provider: Arc<CRISPProvider>,
-    contract_address: Address,
+    pub provider: Arc<CRISPProvider>,
+    pub contract_address: Address,
 }
 
 impl EnclaveContract {
@@ -152,6 +153,12 @@ impl EnclaveContract {
         let contract = Enclave::new(self.contract_address, &self.provider);
         let e3_return = contract.getE3(e3_id).call().await?;
         Ok(e3_return.e3)
+    }
+
+    pub async fn get_input_count(&self, e3_id: U256) -> Result<U256> {
+        let contract = Enclave::new(self.contract_address, &self.provider);
+        let input_count = contract.inputCounts(e3_id).call().await?;
+        Ok(input_count.inputCount)
     }
 
     pub async fn get_latest_block(&self) -> Result<u64> {

@@ -1,11 +1,9 @@
 use alloy::{
     rpc::types::Log,
     sol,
-    sol_types::{SolCall, SolEvent},
 };
 
 use eyre::Result;
-use log::info;
 
 use super::handlers::{handle_e3, handle_input_published, handle_plaintext_output_published, handle_ciphertext_output_published};
 use super::listener::ContractEvent;

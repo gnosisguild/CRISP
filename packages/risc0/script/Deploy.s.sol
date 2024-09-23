@@ -14,7 +14,7 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.27;
 
 import {Script} from "forge-std/Script.sol";
 import "forge-std/Test.sol";
@@ -46,69 +46,38 @@ contract CRISPRisc0Deploy is Script {
     function run() external {
         // Read and log the chainID
         uint256 chainId = block.chainid;
-        console2.log("You are deploying on ChainID %d", chainId);
+        console2.log("Deploying on ChainID %d", chainId);
 
+        setupVerifier();
+        setupDeployer();
+
+        // Contracts to Deploy
+        deployCrispRisc0();
+
+        vm.stopBroadcast();
+    }
+
+    function setupVerifier() private {
         // Read the config profile from the environment variable, or use the default for the chainId.
         // Default is the first profile with a matching chainId field.
         string memory config = vm.readFile(
             string.concat(vm.projectRoot(), "/", CONFIG_FILE)
         );
-        string memory configProfile = vm.envOr("CONFIG_PROFILE", string(""));
-        if (bytes(configProfile).length == 0) {
-            string[] memory profileKeys = vm.parseTomlKeys(config, ".profile");
-            for (uint256 i = 0; i < profileKeys.length; i++) {
-                if (
-                    stdToml.readUint(
-                        config,
-                        string.concat(".profile.", profileKeys[i], ".chainId")
-                    ) == chainId
-                ) {
-                    configProfile = profileKeys[i];
-                    break;
-                }
-            }
-        }
+        string memory configProfile = getConfigProfile(config);
 
         if (bytes(configProfile).length != 0) {
-            console2.log("Deploying using config profile:", configProfile);
-            string memory configProfileKey = string.concat(
-                ".profile.",
-                configProfile
-            );
+            console2.log("Using config profile:", configProfile);
             address riscZeroVerifierAddress = stdToml.readAddress(
                 config,
-                string.concat(configProfileKey, ".riscZeroVerifierAddress")
+                string.concat(
+                    ".profile.",
+                    configProfile,
+                    ".riscZeroVerifierAddress"
+                )
             );
-            // If set, use the predeployed verifier address found in the config.
             verifier = IRiscZeroVerifier(riscZeroVerifierAddress);
-
-            address enclaveAddress = stdToml.readAddress(
-                config,
-                string.concat(configProfileKey, ".enclaveAddress")
-            );
-            enclave = IEnclave(enclaveAddress);
         }
 
-        // Determine the wallet to send transactions from.
-        uint256 deployerKey = uint256(
-            vm.envOr("ETH_WALLET_PRIVATE_KEY", bytes32(0))
-        );
-        address deployerAddr = address(0);
-        if (deployerKey != 0) {
-            // Check for conflicts in how the two environment variables are set.
-            address envAddr = vm.envOr("ETH_WALLET_ADDRESS", address(0));
-            require(
-                envAddr == address(0) || envAddr == vm.addr(deployerKey),
-                "conflicting settings from ETH_WALLET_PRIVATE_KEY and ETH_WALLET_ADDRESS"
-            );
-
-            vm.startBroadcast(deployerKey);
-        } else {
-            deployerAddr = vm.envAddress("ETH_WALLET_ADDRESS");
-            vm.startBroadcast(deployerAddr);
-        }
-
-        // Deploy the verifier, if not already deployed.
         if (address(verifier) == address(0)) {
             verifier = new RiscZeroGroth16Verifier(
                 ControlID.CONTROL_ROOT,
@@ -119,16 +88,51 @@ contract CRISPRisc0Deploy is Script {
                 address(verifier)
             );
         } else {
-            console2.log(
-                "Using IRiscZeroVerifier contract deployed at",
-                address(verifier)
-            );
+            console2.log("Using IRiscZeroVerifier at", address(verifier));
         }
+    }
 
-        // Deploy the application contract.
+    function setupDeployer() private {
+        uint256 deployerKey = uint256(
+            vm.envOr("ETH_WALLET_PRIVATE_KEY", bytes32(0))
+        );
+        address deployerAddr = vm.envOr("ETH_WALLET_ADDRESS", address(0));
+
+        if (deployerKey != 0) {
+            require(
+                deployerAddr == address(0) ||
+                    deployerAddr == vm.addr(deployerKey),
+                "Conflicting wallet settings"
+            );
+            vm.startBroadcast(deployerKey);
+        } else {
+            require(deployerAddr != address(0), "No deployer address set");
+            vm.startBroadcast(deployerAddr);
+        }
+    }
+
+    function getConfigProfile(
+        string memory config
+    ) private view returns (string memory) {
+        string memory configProfile = vm.envOr("CONFIG_PROFILE", string(""));
+        if (bytes(configProfile).length == 0) {
+            string[] memory profileKeys = vm.parseTomlKeys(config, ".profile");
+            for (uint256 i = 0; i < profileKeys.length; i++) {
+                if (
+                    stdToml.readUint(
+                        config,
+                        string.concat(".profile.", profileKeys[i], ".chainId")
+                    ) == block.chainid
+                ) {
+                    return profileKeys[i];
+                }
+            }
+        }
+        return configProfile;
+    }
+
+    function deployCrispRisc0() private {
         CRISPRisc0 crisp = new CRISPRisc0(enclave, verifier);
         console2.log("Deployed CRISPRisc0 to", address(crisp));
-
-        vm.stopBroadcast();
     }
 }

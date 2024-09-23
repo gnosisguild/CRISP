@@ -1,10 +1,6 @@
-use alloy::primitives::{Bytes, B256, U256};
-use std::{env, str};
-
-use eyre::Result;
-use log::info;
-
+use alloy::primitives::{Bytes, U256};
 use actix_web::{web, HttpResponse, Responder};
+use log::info;
 
 use crate::enclave_server::database::get_e3;
 use crate::enclave_server::{

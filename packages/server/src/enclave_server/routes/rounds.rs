@@ -1,13 +1,9 @@
-use chrono::Utc;
 use log::info;
 use actix_web::{web, HttpResponse, Responder};
 
-
-use crate::enclave_server::models::{CTRequest, PKRequest};
-use crate::enclave_server::database::{generate_emoji, get_e3, get_e3_round, GLOBAL_DB};
-use crate::enclave_server::models::{
-    AppState, CrispConfig, JsonResponse, ReportTallyRequest, RoundCount
-};
+use crate::enclave_server::models::CTRequest;
+use crate::enclave_server::database::{get_e3, get_e3_round};
+use crate::enclave_server::models::RoundCount;
 
 pub fn setup_routes(config: &mut web::ServiceConfig) {
     config

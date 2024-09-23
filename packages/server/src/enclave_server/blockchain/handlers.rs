@@ -5,26 +5,23 @@ use super::{
 use crate::enclave_server::models::E3;
 use crate::enclave_server::{
     config::CONFIG,
-    database::{generate_emoji, get_e3, increment_e3_round, GLOBAL_DB},
+    database::{generate_emoji, get_e3, save_e3, increment_e3_round},
 };
-use alloy::{
-    rpc::types::Log,
-    sol_types::{SolCall, SolEvent},
-};
+use alloy::rpc::types::Log;
 use alloy_sol_types::SolValue;
 use chrono::Utc;
 use compute_provider::FHEInputs;
-use std::env;
 use std::error::Error;
 use tokio::time::{sleep, Duration};
 use voting_risc0::run_compute;
-
 use log::info;
+
+type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
 pub async fn handle_e3(
     e3_activated: E3Activated,
     log: Log,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
+) -> Result<()> {
     let e3_id = e3_activated.e3Id.to::<u64>();
     info!("Handling E3 request with id {}", e3_id);
 
@@ -80,12 +77,7 @@ pub async fn handle_e3(
 
     // Save E3 to the database
     let key = format!("e3:{}", e3_id);
-
-    let db = GLOBAL_DB.write().await;
-    db.insert(key, serde_json::to_vec(&e3_obj).unwrap())
-        .unwrap();
-    drop(db);
-
+    save_e3(&e3_obj, &key).await?;
     increment_e3_round().await.unwrap();
 
     // Sleep till the E3 expires
@@ -127,57 +119,48 @@ pub async fn handle_e3(
     Ok(())
 }
 
-pub async fn handle_input_published(
-    input: InputPublished,
-) -> Result<(), Box<dyn Error + Send + Sync>> {
+pub async fn handle_input_published(input: InputPublished) -> Result<()> {
     info!("Handling VoteCast event...");
 
     let e3_id = input.e3Id.to::<u64>();
-    let data = input.data.to_vec();
-    let input_count = input.index.to::<u64>();
-    let (mut e3, key) = get_e3(e3_id).await.unwrap();
-    e3.ciphertext_inputs.push((data, input_count));
+    let (mut e3, key) = get_e3(e3_id).await?;
+
+    e3.ciphertext_inputs.push((input.data.to_vec(), input.index.to::<u64>()));
     e3.vote_count += 1;
-    let db = GLOBAL_DB.write().await;
-    db.insert(key, serde_json::to_vec(&e3).unwrap()).unwrap();
+
+    save_e3(&e3, &key).await?;
 
     info!("Saved Input with Hash: {:?}", input.inputHash);
     Ok(())
 }
 
-pub async fn handle_ciphertext_output_published(
-    ciphertext_output: CiphertextOutputPublished,
-) -> Result<(), Box<dyn Error>> {
+pub async fn handle_ciphertext_output_published(ciphertext_output: CiphertextOutputPublished) -> Result<()> {
     info!("Handling CiphertextOutputPublished event...");
 
     let e3_id = ciphertext_output.e3Id.to::<u64>();
-    let (mut e3, key) = get_e3(e3_id).await.unwrap();
+    let (mut e3, key) = get_e3(e3_id).await?;
+
     e3.ciphertext_output = ciphertext_output.ciphertextOutput.to_vec();
     e3.status = "Published".to_string();
 
-    let db = GLOBAL_DB.write().await;
-    db.insert(key, serde_json::to_vec(&e3).unwrap()).unwrap();
+    save_e3(&e3, &key).await?;
 
     info!("CiphertextOutputPublished event handled.");
     Ok(())
 }
 
-pub async fn handle_plaintext_output_published(
-    plaintext_output: PlaintextOutputPublished,
-) -> Result<(), Box<dyn Error>> {
+pub async fn handle_plaintext_output_published(plaintext_output: PlaintextOutputPublished) -> Result<()> {
     info!("Handling PlaintextOutputPublished event...");
 
     let e3_id = plaintext_output.e3Id.to::<u64>();
-   
-    let (mut e3, key) = get_e3(e3_id).await.unwrap();
-    e3.plaintext_output = plaintext_output.plaintextOutput.to_vec();
+    let (mut e3, key) = get_e3(e3_id).await?;
 
+    e3.plaintext_output = plaintext_output.plaintextOutput.to_vec();
     e3.votes_option_2 = u64::from_be_bytes(e3.plaintext_output.as_slice().try_into().unwrap());
     e3.votes_option_1 = e3.vote_count - e3.votes_option_2;
     e3.status = "Finished".to_string();
 
-    let db = GLOBAL_DB.write().await;
-    db.insert(key, serde_json::to_vec(&e3).unwrap()).unwrap();
+    save_e3(&e3, &key).await?;
 
     info!("PlaintextOutputPublished event handled.");
     Ok(())

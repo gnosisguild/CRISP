@@ -3,7 +3,7 @@ use log::info;
 use once_cell::sync::Lazy;
 use rand::Rng;
 use sled::{Db, IVec};
-use std::{error::Error, io::Read, str, sync::Arc};
+use std::{error::Error, str, sync::Arc};
 use tokio::sync::RwLock;
 
 pub static GLOBAL_DB: Lazy<Arc<RwLock<Db>>> = Lazy::new(|| {
@@ -13,7 +13,7 @@ pub static GLOBAL_DB: Lazy<Arc<RwLock<Db>>> = Lazy::new(|| {
     Arc::new(RwLock::new(sled::open(pathdb).unwrap()))
 });
 
-pub async fn get_e3(e3_id: u64) -> Result<(E3, String), Box<dyn Error>> {
+pub async fn get_e3(e3_id: u64) -> Result<(E3, String), Box<dyn Error + Send + Sync>> {
     let key = format!("e3:{}", e3_id);
 
     let db = GLOBAL_DB.read().await;
@@ -29,7 +29,17 @@ pub async fn get_e3(e3_id: u64) -> Result<(E3, String), Box<dyn Error>> {
 
     Ok((e3, key))
 }
-pub async fn get_e3_round() -> Result<u64, Box<dyn Error>> {
+
+pub async fn save_e3(e3: &E3, key: &str) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let db = GLOBAL_DB.write().await;
+    match db.insert(key.to_string(), serde_json::to_vec(e3)?) {
+        Ok(_) => (),
+        Err(e) => return Err(format!("Failed to save E3: {}", e).into()),
+    };
+    Ok(())
+}
+
+pub async fn get_e3_round() -> Result<u64, Box<dyn Error + Send + Sync>> {
     let key = "e3:round";
 
     let db = GLOBAL_DB.read().await;
@@ -66,7 +76,7 @@ pub async fn get_e3_round() -> Result<u64, Box<dyn Error>> {
 
 pub async fn increment_e3_round() -> Result<(), Box<dyn Error>> {
     let key = "e3:round";
-    let mut encoded = Vec::new();
+    let mut encoded = vec![];
 
     match get_e3_round().await {
         Ok(round_count) => {
