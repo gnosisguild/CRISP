@@ -4,26 +4,21 @@ use methods::VOTING_ELF;
 use risc0_ethereum_contracts::groth16;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use voting_core::fhe_processor;
-use std::env;
+use serde::{Deserialize, Serialize};
 pub struct Risc0Provider;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Risc0Output {
     pub result: ComputeResult,
+    pub bytes: Vec<u8>,
     pub seal: Vec<u8>,
 }
 
 impl ComputeProvider for Risc0Provider {
     type Output = Risc0Output;
 
-    fn prove(&self, input: &ComputeInput) -> Self::Output {
-        println!("Proving with RISC0 provider");
-        let var_name = "BONSAI_API_URL";
+    fn prove(&self, input: &ComputeInput) -> Self::Output {   
 
-        match env::var(var_name) {
-            Ok(value) => println!("{}: {}", var_name, value),
-            Err(e) => println!("Couldn't read {}: {}", var_name, e),
-        }
-        
         let env = ExecutorEnv::builder()
             .write(input)
             .unwrap()
@@ -46,6 +41,7 @@ impl ComputeProvider for Risc0Provider {
 
         Risc0Output {
             result: decoded_journal,
+            bytes: receipt.journal.bytes.clone(),
             seal,
         }
     }

@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::{env, sync::Arc};
 
 use alloy::{
-    primitives::{Address, Bytes, U256},
+    primitives::{Address, Bytes, Keccak256, U256},
     sol_types::{SolCall, SolEvent, SolValue},
 };
 
@@ -80,11 +80,21 @@ pub async fn initialize_crisp_round(
     info!("Initializing Keyshare nodes...");
     let contract = EnclaveContract::new().await?;
 
+    // let tx = contract.get_root(U256::from(1)).await?;
+    // let bytes: [u8; 32] = tx.to_be_bytes::<32>();
+    // println!("Root: {:?}", bytes);
+
+    // let tx = contract.get_e3_params(U256::from(1)).await?;
+    // println!("E3 Params: {:?}", tx.to_vec());
+    // let mut keccak = Keccak256::new();
+    // keccak.update(tx.to_vec());
+    // let hsh = keccak.finalize();
+    // println!("Hash: {:?}", hsh.to_vec());
     let params = generate_bfv_parameters().unwrap().to_bytes();
     let filter: Address = "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5".parse()?;
     let threshold: [u32; 2] = [1, 2];
     let start_window: [U256; 2] = [U256::from(Utc::now().timestamp()), U256::from(Utc::now().timestamp() + 600)];
-    let duration: U256 = U256::from(300);
+    let duration: U256 = U256::from(60);
     let e3_program: Address = "0x95222290dd7278aa3ddd389cc1e1d165cc4bafe5".parse()?;
     let e3_params = Bytes::from(params);
     let compute_provider_params = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
@@ -105,16 +115,6 @@ pub async fn activate_e3_round(
     let params = generate_bfv_parameters().unwrap();
     let (sk, pk) = generate_keys(&params);
     let contract = EnclaveContract::new().await?;
-
-    // let value = vec![5u64];
-    // let pt = Plaintext::try_encode(&value, Encoding::poly(), &params)?;
-    // let ct = pk.try_encrypt(&pt, &mut thread_rng())?;
-    // let data = (vec![1u8; 32], vec![2u8; 32]).abi_encode();
-    // let ct_bytes = ct.to_bytes();
-    // println!("Ciphertext bytes: {:?}", ct_bytes.len());
-
-    // let res = contract.publish_ciphertext_output(U256::from(5u64), ct_bytes.into(), data.into()).await?;
-    // println!("Event emitted: {:?}", res.transaction_hash);
 
     let pk_bytes = Bytes::from(pk.to_bytes());
     // Print how many bytes are in the public key

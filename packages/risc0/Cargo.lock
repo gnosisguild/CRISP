@@ -4872,6 +4872,7 @@ dependencies = [
  "methods",
  "risc0-ethereum-contracts",
  "risc0-zkvm",
+ "serde",
  "tokio",
  "voting-core",
 ]

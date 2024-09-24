@@ -48,8 +48,8 @@ contract CRISPRisc0Deploy is Script {
         uint256 chainId = block.chainid;
         console2.log("Deploying on ChainID %d", chainId);
 
-        setupVerifier();
         setupDeployer();
+        setupVerifier();
 
         // Contracts to Deploy
         deployCrispRisc0();

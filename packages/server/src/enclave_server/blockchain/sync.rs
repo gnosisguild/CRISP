@@ -18,7 +18,7 @@ pub async fn sync_contracts_db() -> Result<(), Box<dyn std::error::Error + Send 
 
     // Update existing E3 if expired
     if let Ok((mut e3, key)) = get_e3(db_e3_id).await {
-        if e3.status != "Finished" && e3.expiration < Utc::now().timestamp() as u64 {
+        if e3.status != "Finished" && e3.status == "Published" && e3.expiration < Utc::now().timestamp() as u64 {
             let c_e3 = contract.get_e3(U256::from(db_e3_id)).await?;
             let inputs_count = contract.get_input_count(U256::from(db_e3_id)).await?.to::<u64>();
 

@@ -1,28 +1,29 @@
+pub mod blockchain;
+mod config;
 mod database;
 mod models;
 mod routes;
-mod config;
-pub mod blockchain;
 
 use actix_cors::Cors;
-use actix_web::{web, App, HttpServer, middleware::Logger};
+use actix_web::{middleware::Logger, web, App, HttpServer};
 
-use models::AppState;
-use database::GLOBAL_DB;
 use blockchain::listener::start_listener;
 use blockchain::sync::sync_contracts_db;
+use database::GLOBAL_DB;
+use models::AppState;
 
+use config::CONFIG;
 use env_logger::{Builder, Target};
 use log::{LevelFilter, Record};
-use std::path::Path;
+use serde::{Deserialize, Serialize};
 use std::io::Write;
-use config::CONFIG;
+use std::path::Path;
 
 fn init_logger() {
     let mut builder = Builder::new();
     builder
-        .target(Target::Stdout) 
-        .filter(None, LevelFilter::Info) 
+        .target(Target::Stdout)
+        .filter(None, LevelFilter::Info)
         .format(|buf, record: &Record| {
             let file = record.file().unwrap_or("unknown");
             let filename = Path::new(file).file_name().unwrap_or_else(|| file.as_ref());
@@ -51,12 +52,12 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
 
     let _ = HttpServer::new(|| {
         let cors =  Cors::default()
-        .allow_any_origin()  
+        .allow_any_origin()
         .allowed_methods(vec!["GET", "POST", "OPTIONS"])
-        .allow_any_header()  
+        .allow_any_header()
         .supports_credentials()
-        .max_age(3600); 
-    
+        .max_age(3600);
+
         App::new()
             .wrap(cors)
             .wrap(Logger::new(r#"%a "%r" %s %b %T"#))

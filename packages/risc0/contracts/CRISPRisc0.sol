@@ -48,14 +48,24 @@ contract CRISPRisc0 is CRISPBase {
         bytes memory proof
     ) external view override returns (bool) {
         require(paramsHashes[e3Id] != bytes32(0), E3DoesNotExist());
-        uint256 inputRoot = enclave.getInputRoot(e3Id);
+        bytes32 inputRoot = bytes32(enclave.getInputRoot(e3Id));
         bytes memory seal = abi.decode(proof, (bytes));
-        bytes memory journal = abi.encode(
-            ciphertextOutputHash,
-            inputRoot,
-            paramsHashes[e3Id]
-        );
+
+        bytes memory journal = new bytes(396); // (32 + 1) * 4 * 3
+
+        encodeLengthPrefixAndHash(journal, 0, ciphertextOutputHash);
+        encodeLengthPrefixAndHash(journal, 132, paramsHashes[e3Id]);
+        encodeLengthPrefixAndHash(journal, 264, inputRoot);
+
         verifier.verify(seal, imageIds[e3Id], sha256(journal));
         return (true);
+    }
+
+    function encodeLengthPrefixAndHash(bytes memory journal, uint256 startIndex, bytes32 hashVal) internal pure {
+        journal[startIndex] = 0x20;
+        startIndex += 4;
+        for (uint256 i = 0; i < 32; i++) {
+            journal[startIndex + i * 4] = hashVal[i];
+        }
     }
 }

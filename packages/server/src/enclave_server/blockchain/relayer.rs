@@ -1,3 +1,4 @@
+use crate::enclave_server::CONFIG;
 use alloy::{
     network::{Ethereum, EthereumWallet},
     primitives::{Address, Bytes, U256},
@@ -12,7 +13,6 @@ use alloy::{
 };
 use eyre::Result;
 use std::sync::Arc;
-use crate::enclave_server::CONFIG;
 
 sol! {
     #[derive(Debug)]
@@ -26,8 +26,8 @@ sol! {
         bytes e3ProgramParams;
         address inputValidator;
         address decryptionVerifier;
-        bytes committeePublicKey;
-        bytes ciphertextOutput;
+        bytes32 committeePublicKey;
+        bytes32 ciphertextOutput;
         bytes plaintextOutput;
     }
 
@@ -36,6 +36,7 @@ sol! {
     contract Enclave {
         uint256 public nexte3Id = 0;
         mapping(uint256 e3Id => uint256 inputCount) public inputCounts;
+        mapping(uint256 e3Id => bytes params) public e3Params;
 
         function request(address filter, uint32[2] calldata threshold, uint256[2] calldata startWindow, uint256 duration, address e3Program, bytes memory e3ProgramParams, bytes memory computeProviderParams) external payable returns (uint256 e3Id, E3 memory e3);
 
@@ -43,11 +44,13 @@ sol! {
 
         function publishInput(uint256 e3Id, bytes memory data ) external returns (bool success);
 
-        function publishCiphertextOutput(uint256 e3Id, bytes calldata data, bytes memory proof) external returns (bool success);
+        function publishCiphertextOutput(uint256 e3Id, bytes memory ciphertextOutput, bytes memory proof) external returns (bool success);
 
         function publishPlaintextOutput(uint256 e3Id, bytes memory data) external returns (bool success);
 
         function getE3(uint256 e3Id) external view returns (E3 memory e3);
+
+        function getRoot(uint256 id) public view returns (uint256);
     }
 }
 
@@ -164,5 +167,17 @@ impl EnclaveContract {
     pub async fn get_latest_block(&self) -> Result<u64> {
         let block = self.provider.get_block_number().await?;
         Ok(block)
+    }
+
+    pub async fn get_root(&self, id: U256) -> Result<U256> {
+        let contract = Enclave::new(self.contract_address, &self.provider);
+        let root = contract.getRoot(id).call().await?;
+        Ok(root._0)
+    }
+
+    pub async fn get_e3_params(&self, e3_id: U256) -> Result<Bytes> {
+        let contract = Enclave::new(self.contract_address, &self.provider);
+        let params = contract.e3Params(e3_id).call().await?;
+        Ok(params.params)
     }
 }

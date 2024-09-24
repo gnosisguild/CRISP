@@ -5,10 +5,9 @@ use super::{
 use crate::enclave_server::models::E3;
 use crate::enclave_server::{
     config::CONFIG,
-    database::{generate_emoji, get_e3, save_e3, increment_e3_round},
+    database::{generate_emoji, get_e3, increment_e3_round, save_e3},
 };
 use alloy::rpc::types::Log;
-use alloy_sol_types::SolValue;
 use chrono::Utc;
 use compute_provider::FHEInputs;
 use std::error::Error;
@@ -18,10 +17,7 @@ use log::info;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
-pub async fn handle_e3(
-    e3_activated: E3Activated,
-    log: Log,
-) -> Result<()> {
+pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
     let e3_id = e3_activated.e3Id.to::<u64>();
     info!("Handling E3 request with id {}", e3_id);
 
@@ -100,13 +96,15 @@ pub async fn handle_e3(
                 .await
                 .unwrap();
 
-        let proof = (
-            risc0_output.result.ciphertext_hash, risc0_output.seal
-        ).abi_encode();
+        println!("RISC0 Output: {:?}", risc0_output);
 
         // Params will be encoded on chain to create the journal
         let tx = contract
-            .publish_ciphertext_output(e3_activated.e3Id, ciphertext.into(), proof.into())
+            .publish_ciphertext_output(
+                e3_activated.e3Id,
+                ciphertext.into(),
+                risc0_output.seal.into(),
+            )
             .await?;
 
         info!(
@@ -125,7 +123,8 @@ pub async fn handle_input_published(input: InputPublished) -> Result<()> {
     let e3_id = input.e3Id.to::<u64>();
     let (mut e3, key) = get_e3(e3_id).await?;
 
-    e3.ciphertext_inputs.push((input.data.to_vec(), input.index.to::<u64>()));
+    e3.ciphertext_inputs
+        .push((input.data.to_vec(), input.index.to::<u64>()));
     e3.vote_count += 1;
 
     save_e3(&e3, &key).await?;
@@ -134,7 +133,9 @@ pub async fn handle_input_published(input: InputPublished) -> Result<()> {
     Ok(())
 }
 
-pub async fn handle_ciphertext_output_published(ciphertext_output: CiphertextOutputPublished) -> Result<()> {
+pub async fn handle_ciphertext_output_published(
+    ciphertext_output: CiphertextOutputPublished,
+) -> Result<()> {
     info!("Handling CiphertextOutputPublished event...");
 
     let e3_id = ciphertext_output.e3Id.to::<u64>();
@@ -149,7 +150,9 @@ pub async fn handle_ciphertext_output_published(ciphertext_output: CiphertextOut
     Ok(())
 }
 
-pub async fn handle_plaintext_output_published(plaintext_output: PlaintextOutputPublished) -> Result<()> {
+pub async fn handle_plaintext_output_published(
+    plaintext_output: PlaintextOutputPublished,
+) -> Result<()> {
     info!("Handling PlaintextOutputPublished event...");
 
     let e3_id = plaintext_output.e3Id.to::<u64>();
