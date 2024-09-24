@@ -76,6 +76,13 @@ contract CRISPRisc0Deploy is Script {
                 )
             );
             verifier = IRiscZeroVerifier(riscZeroVerifierAddress);
+
+            address enclaveAddress = stdToml.readAddress(
+                config,
+                string.concat(".profile.", configProfile, ".enclaveAddress")
+            );
+
+            enclave = IEnclave(enclaveAddress);
         }
 
         if (address(verifier) == address(0)) {
@@ -132,6 +139,9 @@ contract CRISPRisc0Deploy is Script {
     }
 
     function deployCrispRisc0() private {
+        console2.log("Deploying CRISPRisc0");
+        console2.log("Enclave Address: ", address(enclave));
+        console2.log("Verifier Address: ", address(verifier));
         CRISPRisc0 crisp = new CRISPRisc0(enclave, verifier);
         console2.log("Deployed CRISPRisc0 to", address(crisp));
     }

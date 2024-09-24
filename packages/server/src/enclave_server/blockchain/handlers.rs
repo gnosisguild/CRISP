@@ -10,10 +10,10 @@ use crate::enclave_server::{
 use alloy::rpc::types::Log;
 use chrono::Utc;
 use compute_provider::FHEInputs;
+use log::info;
 use std::error::Error;
 use tokio::time::{sleep, Duration};
 use voting_risc0::run_compute;
-use log::info;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
@@ -111,6 +111,9 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
             "CiphertextOutputPublished event published with tx: {:?}",
             tx.transaction_hash
         );
+    } else {
+        e3.status = "Finished".to_string();
+        save_e3(&e3, &key).await.unwrap();
     }
 
     info!("E3 request handled successfully.");

@@ -11,8 +11,10 @@ abstract contract CRISPBase is IE3Program {
 
     error E3AlreadyInitialized();
     error E3DoesNotExist();
+    error EnclaveAddressZero();
 
     function initialize(IEnclave _enclave) public {
+        require(address(enclave) == address(0), EnclaveAddressZero());
         enclave = _enclave;
     }
 
