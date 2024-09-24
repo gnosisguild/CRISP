@@ -40,7 +40,7 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
     let e3_obj = E3 {
         // Identifiers
         id: e3_id,
-        chain_id: 31337 as u64, // Hardcoded for testing
+        chain_id: CONFIG.chain_id, // Hardcoded for testing
         enclave_address: CONFIG.contract_address.clone(),
 
         // Status-related

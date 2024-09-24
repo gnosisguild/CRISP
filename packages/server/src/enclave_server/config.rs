@@ -9,6 +9,7 @@ pub struct Config {
     pub http_rpc_url: String,
     pub ws_rpc_url: String,
     pub contract_address: String,
+    pub chain_id: u64,
 }
 
 impl Config {

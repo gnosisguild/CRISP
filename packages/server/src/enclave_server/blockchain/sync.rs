@@ -1,7 +1,9 @@
 use super::relayer::EnclaveContract;
+use crate::enclave_server::config::CONFIG;
 use crate::enclave_server::database::{get_e3, get_e3_round, save_e3, generate_emoji};
 use crate::enclave_server::models::E3;
 use alloy::primitives::U256;
+use alloy::providers::Provider;
 use chrono::Utc;
 use eyre::Result;
 use log::info;
@@ -49,7 +51,7 @@ pub async fn sync_contracts_db() -> Result<(), Box<dyn std::error::Error + Send 
 
         let e3_obj = E3 {
             id: e3_id,
-            chain_id: 31337, // Hardcoded for testing
+            chain_id: CONFIG.chain_id,
             enclave_address: contract.contract_address.to_string(),
             status: status.to_string(),
             has_voted: vec!["".to_string()],
