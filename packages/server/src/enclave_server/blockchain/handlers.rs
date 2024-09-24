@@ -80,7 +80,7 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
     sleep(Duration::from_secs(e3.duration.to::<u64>())).await;
 
     // Get All Encrypted Votes
-    let (e3, _) = get_e3(e3_id).await.unwrap();
+    let (mut e3, _) = get_e3(e3_id).await.unwrap();
     if e3.vote_count > 0 {
         info!("E3 FROM DB");
         info!("Vote Count: {:?}", e3.vote_count);
@@ -95,8 +95,6 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
             tokio::task::spawn_blocking(move || run_compute(fhe_inputs).unwrap())
                 .await
                 .unwrap();
-
-        println!("RISC0 Output: {:?}", risc0_output);
 
         // Params will be encoded on chain to create the journal
         let tx = contract

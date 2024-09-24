@@ -42,7 +42,9 @@ fn init_logger() {
 #[actix_web::main]
 pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logger();
-    sync_contracts_db().await?;
+    if let Err(e) = sync_contracts_db().await {
+        eprintln!("Failed to sync contracts: {:?}", e);
+    }
 
     tokio::spawn(async {
         if let Err(e) = start_listener(&CONFIG.ws_rpc_url, &CONFIG.contract_address).await {
