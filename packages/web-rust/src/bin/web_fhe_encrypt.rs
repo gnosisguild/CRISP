@@ -36,9 +36,9 @@ impl Encrypt {
     }
 
     pub fn encrypt_vote(&mut self, vote: u64, public_key: Vec<u8>) -> Result<Vec<u8>, JsValue> {
-        let degree = 4096;
-        let plaintext_modulus: u64 = 65537;
-        let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
+        let degree = 2048;
+        let plaintext_modulus: u64 = 1032193;
+        let moduli = vec![0x3FFFFFFF000001];
 
         let params = BfvParametersBuilder::new()
             .set_degree(degree)
@@ -59,10 +59,10 @@ impl Encrypt {
             .map_err(|e| JsValue::from_str(&format!("Error encrypting vote: {}", e)))?;
 
         // Create Greco input validation ZKP proof
-        let input_val_vectors =
-            InputValidationVectors::compute(&pt, &u_rns, &e0_rns, &e1_rns, &ct, &pk).map_err(
-                |e| JsValue::from_str(&format!("Error computing input validation vectors: {}", e)),
-            )?;
+        // let input_val_vectors =
+        //     InputValidationVectors::compute(&pt, &u_rns, &e0_rns, &e1_rns, &ct, &pk).map_err(
+        //         |e| JsValue::from_str(&format!("Error computing input validation vectors: {}", e)),
+        //     )?;
 
         self.encrypted_vote = ct.to_bytes();
         Ok(self.encrypted_vote.clone())
@@ -83,9 +83,9 @@ fn test_encrypt_vote() {
     // Initialize the logger to print to the browser's console
     console_log::init_with_level(log::Level::Info).expect("Error initializing logger");
 
-    let degree = 4096;
-    let plaintext_modulus: u64 = 65537; // Must be co-prime with Q
-    let moduli = vec![0xffffee001, 0xffffc4001, 0x1ffffe0001];
+    let degree = 2048;
+    let plaintext_modulus: u64 = 1032193; // Must be Co-prime with Q
+    let moduli = vec![0x3FFFFFFF000001];
 
     let params = BfvParametersBuilder::new()
         .set_degree(degree)
