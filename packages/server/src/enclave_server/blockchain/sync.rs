@@ -3,13 +3,12 @@ use crate::enclave_server::config::CONFIG;
 use crate::enclave_server::database::{get_e3, get_e3_round, save_e3, generate_emoji};
 use crate::enclave_server::models::E3;
 use alloy::primitives::U256;
-use alloy::providers::Provider;
 use chrono::Utc;
 use eyre::Result;
 use log::info;
 pub async fn sync_contracts_db() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     info!("Syncing contracts with database");
-    let contract = EnclaveContract::new().await?;
+    let contract = EnclaveContract::new(CONFIG.enclave_address.clone()).await?;
     let contract_e3_id = contract.get_e3_id().await?.to::<u64>();
     let db_e3_id = get_e3_round().await?;
 

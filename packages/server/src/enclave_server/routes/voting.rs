@@ -2,6 +2,7 @@ use alloy::primitives::{Bytes, U256};
 use actix_web::{web, HttpResponse, Responder};
 use log::info;
 
+use crate::enclave_server::config::CONFIG;
 use crate::enclave_server::database::get_e3;
 use crate::enclave_server::{
     blockchain::relayer::EnclaveContract,
@@ -34,7 +35,7 @@ async fn broadcast_enc_vote(
 
     let sol_vote = Bytes::from(vote.enc_vote_bytes);
     let e3_id = U256::from(vote.round_id);
-    let contract = EnclaveContract::new().await.unwrap();
+    let contract = EnclaveContract::new(CONFIG.enclave_address.clone()).await.unwrap();
     let tx_hash = match contract.publish_input(e3_id, sol_vote).await {
         Ok(hash) => hash.transaction_hash.to_string(),
         Err(e) => {

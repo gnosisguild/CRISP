@@ -1,6 +1,6 @@
 mod auth;
-mod config;
 mod voting;
+mod config;
 
 use dialoguer::{theme::ColorfulTheme, FuzzySelect};
 use hyper_tls::HttpsConnector;
@@ -13,6 +13,7 @@ use http_body_util::Empty;
 
 use auth::{authenticate_user, AuthenticationResponse};
 use voting::{initialize_crisp_round, participate_in_existing_round, activate_e3_round, decrypt_and_publish_result};
+use config::CONFIG;
 use serde::{Deserialize, Serialize};
 use env_logger::{Builder, Target};
 use log::LevelFilter;
@@ -20,8 +21,8 @@ use log::info;
 use std::io::Write;
 
 use once_cell::sync::Lazy;
-use sled::{Db, IVec};
-use std::{error::Error, str, sync::Arc};
+use sled::Db;
+use std::{str, sync::Arc};
 use tokio::sync::RwLock;
 
 pub static GLOBAL_DB: Lazy<Arc<RwLock<Db>>> = Lazy::new(|| {
@@ -49,7 +50,7 @@ fn init_logger() {
         .init();
 }
 
-type HyperClientGet = HyperClient<HttpsConnector<HttpConnector>, Empty<Bytes>>;
+type _HyperClientGet = HyperClient<HttpsConnector<HttpConnector>, Empty<Bytes>>;
 type HyperClientPost = HyperClient<HttpsConnector<HttpConnector>, String>;
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -67,7 +68,7 @@ pub async fn run_cli() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logger();
 
     let https = HttpsConnector::new();
-    let client_get = HyperClient::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https.clone());
+    let _client_get = HyperClient::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https.clone());
     let client = HyperClient::builder(TokioExecutor::new()).build::<_, String>(https);
 
     clear_screen();
@@ -85,13 +86,13 @@ pub async fn run_cli() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     match action {
         0 => {
-            initialize_crisp_round(&config).await?;
+            initialize_crisp_round().await?;
         }
         1 => {
-            activate_e3_round(&config).await?;
+            activate_e3_round().await?;
         }
         2 => {
-            participate_in_existing_round(&config).await?;
+            participate_in_existing_round(&client).await?;
         }
         3 => {
             let auth_res = authenticate_user(&config, &client).await?;

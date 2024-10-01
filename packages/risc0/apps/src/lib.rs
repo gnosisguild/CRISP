@@ -5,6 +5,7 @@ use risc0_ethereum_contracts::groth16;
 use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use voting_core::fhe_processor;
 use serde::{Deserialize, Serialize};
+use std::time::Instant;
 pub struct Risc0Provider;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -52,7 +53,20 @@ pub fn run_compute(params: FHEInputs) -> Result<(Risc0Output, Vec<u8>)> {
 
     let mut provider = ComputeManager::new(risc0_provider, params, fhe_processor, false, None);
 
+    // Start timer
+    let start_time = Instant::now();
+
     let output = provider.start();
+
+    // Capture end time and calculate the duration
+    let elapsed_time = start_time.elapsed();
+
+    // Convert the elapsed time to minutes and seconds
+    let minutes = elapsed_time.as_secs() / 60;
+    let seconds = elapsed_time.as_secs() % 60;
+
+    println!("Prove function execution time: {} minutes and {} seconds", minutes, seconds);
+
 
     Ok(output)
 }

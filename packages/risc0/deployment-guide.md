@@ -29,6 +29,7 @@ You can deploy your contracts and run an end-to-end test or demo as follows:
     ```bash
     # Anvil sets up a number of default wallets, and this private key is one of them.
     export ETH_WALLET_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+    export ETH_WALLET_ADDRESS=0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
     export BONSAI_API_KEY="YOUR_API_KEY" # see form linked in the previous section
     export BONSAI_API_URL="BONSAI_API_URL" # provided with your api key
     ```

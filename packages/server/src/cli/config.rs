@@ -5,10 +5,10 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub private_key: String,
-    pub http_rpc_url: String,
-    pub ws_rpc_url: String,
-    pub contract_address: String,
+    pub enclave_server_url: String,
+    pub enclave_address: String,
+    pub naive_registry_filter_address: String,
+    pub e3_program_address: String,
 }
 
 impl Config {

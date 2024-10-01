@@ -7,7 +7,7 @@ use crate::enclave_server::{
     config::CONFIG,
     database::{generate_emoji, get_e3, increment_e3_round, save_e3},
 };
-use alloy::rpc::types::Log;
+use alloy:: rpc::types::Log;
 use chrono::Utc;
 use compute_provider::FHEInputs;
 use log::info;
@@ -22,7 +22,7 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
     info!("Handling E3 request with id {}", e3_id);
 
     // Fetch E3 from the contract
-    let contract = EnclaveContract::new().await?;
+    let contract = EnclaveContract::new(CONFIG.enclave_address.clone()).await?;
 
     let e3 = contract.get_e3(e3_activated.e3Id).await?;
     info!("Fetched E3 from the contract.");
@@ -41,7 +41,7 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
         // Identifiers
         id: e3_id,
         chain_id: CONFIG.chain_id, // Hardcoded for testing
-        enclave_address: CONFIG.contract_address.clone(),
+        enclave_address: CONFIG.enclave_address.clone(),
 
         // Status-related
         status: "Active".to_string(),
@@ -89,12 +89,17 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
             params: e3.e3_params,
             ciphertexts: e3.ciphertext_inputs,
         };
+        println!("Starting computation for E3: {}", e3_id);
 
         // Call Compute Provider in a separate thread
         let (risc0_output, ciphertext) =
             tokio::task::spawn_blocking(move || run_compute(fhe_inputs).unwrap())
                 .await
                 .unwrap();
+
+        println!("Computation completed for E3: {}", e3_id);
+        println!("Ciphertext: {:?}", ciphertext);
+        println!("RISC0 Output: {:?}", risc0_output);
 
         // Params will be encoded on chain to create the journal
         let tx = contract
@@ -155,12 +160,14 @@ pub async fn handle_plaintext_output_published(
     plaintext_output: PlaintextOutputPublished,
 ) -> Result<()> {
     info!("Handling PlaintextOutputPublished event...");
-
+    info!("Plaintext Output: {:?}", plaintext_output);
     let e3_id = plaintext_output.e3Id.to::<u64>();
     let (mut e3, key) = get_e3(e3_id).await?;
 
+    let decoded: Vec<u64> = bincode::deserialize(&plaintext_output.plaintextOutput.to_vec())?;
+    info!("Decoded plaintext output: {:?}", decoded);
     e3.plaintext_output = plaintext_output.plaintextOutput.to_vec();
-    e3.votes_option_2 = u64::from_be_bytes(e3.plaintext_output.as_slice().try_into().unwrap());
+    e3.votes_option_2 = decoded[0];
     e3.votes_option_1 = e3.vote_count - e3.votes_option_2;
     e3.status = "Finished".to_string();
 

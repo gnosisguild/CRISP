@@ -4,50 +4,88 @@ pragma solidity >=0.8.27;
 import {CRISPBase, IEnclave, IE3Program, IInputValidator} from "evm_base/contracts/CRISPBase.sol";
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 import {ImageID} from "./ImageID.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-contract CRISPRisc0 is CRISPBase {
-    /// @notice RISC Zero verifier contract address.
+contract CRISPRisc0 is CRISPBase, Ownable {
+    // Constants
+    bytes32 public constant IMAGE_ID = ImageID.VOTING_ID; // TODO: update this to the CRISP image ID
+    bytes32 public constant ENCRYPTION_SCHEME_ID = keccak256("fhe.rs:BFV");
+
+    // State variables
     IRiscZeroVerifier public verifier;
-    /// @notice Image ID of the only zkVM binary to accept verification from.
-    // bytes32 public constant imageId = ImageID.VOTING_ID; // TODO: update this to the CRISP image ID
+    IInputValidator public inputValidator;
 
-    bytes32 public constant encryptionSchemeId = keccak256("fhe.rs:BFV");
+    // Mappings
+    mapping(uint256 e3Id => bytes32 imageId) public imageIds;
+    mapping(address => bool) public authorizedContracts;
 
-    mapping(uint256 e3Ids => bytes32 imageId) public imageIds;
+    // Events
+    event InputValidatorUpdated(address indexed newValidator);
+
+    // Errors
+    error CallerNotAuthorized();
 
     /// @notice Initialize the contract, binding it to a specified RISC Zero verifier.
-    constructor(IEnclave _enclave, IRiscZeroVerifier _verifier) {
-        initialize(_enclave, _verifier);
+    /// @param _enclave The enclave address
+    /// @param _inputValidator The input validator address
+    /// @param _verifier The RISC Zero verifier address
+    constructor(
+        IEnclave _enclave,
+        IInputValidator _inputValidator,
+        IRiscZeroVerifier _verifier
+    ) Ownable(msg.sender) {
+        initialize(_enclave, _inputValidator, _verifier);
     }
 
-    function initialize(IEnclave _enclave, IRiscZeroVerifier _verifier) public {
+    /// @notice Initialize the contract components
+    /// @param _enclave The enclave address
+    /// @param _inputValidator The input validator address
+    /// @param _verifier The RISC Zero verifier address
+    function initialize(
+        IEnclave _enclave,
+        IInputValidator _inputValidator,
+        IRiscZeroVerifier _verifier
+    ) public {
         CRISPBase.initialize(_enclave);
+        inputValidator = _inputValidator;
         verifier = _verifier;
+        authorizedContracts[address(_enclave)] = true;
     }
 
+    /// @notice Set a new input validator
+    /// @param _inputValidator The new input validator address
+    function setInputValidator(IInputValidator _inputValidator) external onlyOwner {
+        inputValidator = _inputValidator;
+        emit InputValidatorUpdated(address(_inputValidator));
+    }
+
+    /// @notice Validate the E3 program parameters
+    /// @param e3Id The E3 program ID
+    /// @param e3ProgramParams The E3 program parameters
     function validate(
         uint256 e3Id,
         uint256,
         bytes calldata e3ProgramParams,
         bytes calldata
     ) external override returns (bytes32, IInputValidator) {
+        require(authorizedContracts[msg.sender] || msg.sender == owner(), CallerNotAuthorized());
         require(paramsHashes[e3Id] == bytes32(0), E3AlreadyInitialized());
-        (bytes memory params, IInputValidator inputValidator) = abi.decode(
-            e3ProgramParams,
-            (bytes, IInputValidator)
-        );
 
-        paramsHashes[e3Id] = keccak256(params);
+        paramsHashes[e3Id] = keccak256(e3ProgramParams);
 
-        return (encryptionSchemeId, inputValidator);
+        return (ENCRYPTION_SCHEME_ID, inputValidator);
     }
 
+    /// @notice Verify the proof
+    /// @param e3Id The E3 program ID
+    /// @param ciphertextOutputHash The hash of the ciphertext output
+    /// @param proof The proof to verify
     function verify(
         uint256 e3Id,
         bytes32 ciphertextOutputHash,
         bytes memory proof
     ) external view override returns (bool) {
-        require(paramsHashes[e3Id] != bytes32(0), E3DoesNotExist());
+        require(paramsHashes[e3Id] != bytes32(0), "E3 does not exist");
         bytes32 inputRoot = bytes32(enclave.getInputRoot(e3Id));
         bytes memory seal = abi.decode(proof, (bytes));
 
@@ -57,10 +95,14 @@ contract CRISPRisc0 is CRISPBase {
         encodeLengthPrefixAndHash(journal, 132, paramsHashes[e3Id]);
         encodeLengthPrefixAndHash(journal, 264, inputRoot);
 
-        verifier.verify(seal, imageIds[e3Id], sha256(journal));
-        return (true);
+        verifier.verify(seal, IMAGE_ID, sha256(journal));
+        return true;
     }
 
+    /// @notice Encode length prefix and hash
+    /// @param journal The journal to encode into
+    /// @param startIndex The start index in the journal
+    /// @param hashVal The hash value to encode
     function encodeLengthPrefixAndHash(bytes memory journal, uint256 startIndex, bytes32 hashVal) internal pure {
         journal[startIndex] = 0x20;
         startIndex += 4;

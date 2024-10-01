@@ -15,7 +15,6 @@ use models::AppState;
 use config::CONFIG;
 use env_logger::{Builder, Target};
 use log::{LevelFilter, Record};
-use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::Path;
 
@@ -47,7 +46,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     }
 
     tokio::spawn(async {
-        if let Err(e) = start_listener(&CONFIG.ws_rpc_url, &CONFIG.contract_address).await {
+        if let Err(e) = start_listener(&CONFIG.ws_rpc_url, &CONFIG.enclave_address).await {
             eprintln!("Listener failed: {:?}", e);
         }
     });

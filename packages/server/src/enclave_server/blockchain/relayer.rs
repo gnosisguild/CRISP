@@ -22,6 +22,7 @@ sol! {
         uint256[2] startWindow;
         uint256 duration;
         uint256 expiration;
+        bytes32 encryptionSchemeId;
         address e3Program;
         bytes e3ProgramParams;
         address inputValidator;
@@ -37,19 +38,13 @@ sol! {
         uint256 public nexte3Id = 0;
         mapping(uint256 e3Id => uint256 inputCount) public inputCounts;
         mapping(uint256 e3Id => bytes params) public e3Params;
-
-        function request(address filter, uint32[2] calldata threshold, uint256[2] calldata startWindow, uint256 duration, address e3Program, bytes memory e3ProgramParams, bytes memory computeProviderParams) external payable returns (uint256 e3Id, E3 memory e3);
-
+        function request(address filter, uint32[2] calldata threshold, uint256[2] calldata startWindow, uint256 duration, address e3Program, bytes memory e3ProgramParams, bytes memory computeProviderParams) external payable returns (uint256 e3Id, E3 memory e3);        
         function activate(uint256 e3Id, bytes memory pubKey) external returns (bool success);
-
-        function publishInput(uint256 e3Id, bytes memory data ) external returns (bool success);
-
+        function enableE3Program(address e3Program) public onlyOwner returns (bool success);
+        function publishInput(uint256 e3Id, bytes memory data) external returns (bool success);
         function publishCiphertextOutput(uint256 e3Id, bytes memory ciphertextOutput, bytes memory proof) external returns (bool success);
-
         function publishPlaintextOutput(uint256 e3Id, bytes memory data) external returns (bool success);
-
         function getE3(uint256 e3Id) external view returns (E3 memory e3);
-
         function getRoot(uint256 id) public view returns (uint256);
     }
 }
@@ -70,7 +65,7 @@ pub struct EnclaveContract {
 }
 
 impl EnclaveContract {
-    pub async fn new() -> Result<Self> {
+    pub async fn new(contract_address: String) -> Result<Self> {
         let signer: PrivateKeySigner = CONFIG.private_key.parse()?;
         let wallet = EthereumWallet::from(signer.clone());
         let provider = ProviderBuilder::new()
@@ -81,7 +76,7 @@ impl EnclaveContract {
 
         Ok(Self {
             provider: Arc::new(provider),
-            contract_address: CONFIG.contract_address.parse()?,
+            contract_address: contract_address.parse()?,
         })
     }
 
@@ -104,7 +99,7 @@ impl EnclaveContract {
             e3_program,
             e3_params,
             compute_provider_params,
-        );
+        ).value(U256::from(10000000));
         let receipt = builder.send().await?.get_receipt().await?;
         Ok(receipt)
     }
@@ -112,6 +107,13 @@ impl EnclaveContract {
     pub async fn activate_e3(&self, e3_id: U256, pub_key: Bytes) -> Result<TransactionReceipt> {
         let contract = Enclave::new(self.contract_address, &self.provider);
         let builder = contract.activate(e3_id, pub_key);
+        let receipt = builder.send().await?.get_receipt().await?;
+        Ok(receipt)
+    }
+
+    pub async fn enable_e3_program(&self, e3_program: Address) -> Result<TransactionReceipt> {
+        let contract = Enclave::new(self.contract_address, &self.provider);
+        let builder = contract.enableE3Program(e3_program);
         let receipt = builder.send().await?.get_receipt().await?;
         Ok(receipt)
     }

@@ -8,7 +8,7 @@ pub struct Config {
     pub private_key: String,
     pub http_rpc_url: String,
     pub ws_rpc_url: String,
-    pub contract_address: String,
+    pub enclave_address: String,
     pub chain_id: u64,
 }
 

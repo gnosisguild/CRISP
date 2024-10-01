@@ -24,6 +24,7 @@ import {ControlID} from "risc0/groth16/ControlID.sol";
 
 import {CRISPRisc0} from "../contracts/CRISPRisc0.sol";
 import {IEnclave} from "@gnosis-guild/enclave/contracts/interfaces/IEnclave.sol";
+import {IInputValidator} from "@gnosis-guild/enclave/contracts/interfaces/IInputValidator.sol";
 
 /// @notice Deployment script for the RISC Zero starter project.
 /// @dev Use the following environment variable to control the deployment:
@@ -42,6 +43,8 @@ contract CRISPRisc0Deploy is Script {
 
     IRiscZeroVerifier verifier;
     IEnclave enclave;
+    IInputValidator inputValidator;
+
 
     function run() external {
         // Read and log the chainID
@@ -83,6 +86,12 @@ contract CRISPRisc0Deploy is Script {
             );
 
             enclave = IEnclave(enclaveAddress);
+
+            address inputValidatorAddress = stdToml.readAddress(
+                config,
+                string.concat(".profile.", configProfile, ".inputValidatorAddress")
+            );
+            inputValidator = IInputValidator(inputValidatorAddress);
         }
 
         if (address(verifier) == address(0)) {
@@ -142,7 +151,7 @@ contract CRISPRisc0Deploy is Script {
         console2.log("Deploying CRISPRisc0");
         console2.log("Enclave Address: ", address(enclave));
         console2.log("Verifier Address: ", address(verifier));
-        CRISPRisc0 crisp = new CRISPRisc0(enclave, verifier);
+        CRISPRisc0 crisp = new CRISPRisc0(enclave, inputValidator, verifier);
         console2.log("Deployed CRISPRisc0 to", address(crisp));
     }
 }

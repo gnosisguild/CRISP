@@ -76,20 +76,14 @@ pub async fn get_e3_round() -> Result<u64, Box<dyn Error + Send + Sync>> {
 
 pub async fn increment_e3_round() -> Result<(), Box<dyn Error>> {
     let key = "e3:round";
-    let mut encoded = vec![];
 
-    match get_e3_round().await {
-        Ok(round_count) => {
-            let new_round_count = round_count + 1;
-            encoded = bincode::serialize(&new_round_count).unwrap();
-        }
-        Err(e) => {
-            return Err(e);
-        }
-    }
-    
+    let new_round_count = match get_e3_round().await {
+        Ok(round_count) => round_count + 1,
+        Err(e) => return Err(e),
+    };
+
     let db = GLOBAL_DB.write().await;
-    db.insert(key, IVec::from(encoded))?;
+    db.insert(key, IVec::from(bincode::serialize(&new_round_count)?))?;
 
     Ok(())
 }
