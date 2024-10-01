@@ -13,21 +13,11 @@ use std::time::Duration;
 use tokio::time::sleep;
 use log::{info, error};
 
-use super::events::{E3Activated, InputPublished, PlaintextOutputPublished, CiphertextOutputPublished};
+use super::events::{E3Activated, InputPublished, PlaintextOutputPublished, CiphertextOutputPublished, CommitteePublished};
 
 pub trait ContractEvent: Send + Sync + 'static {
     fn process(&self, log: Log) -> Result<()>;
 }
-
-// impl<T> ContractEvent for T
-// where
-//     T: SolEvent + Debug + Send + Sync + 'static,
-// {
-//     fn process(&self) -> Result<()> {
-//         println!("Processing event: {:?}", self);
-//         Ok(())
-//     }
-// }
 
 pub struct EventListener {
     provider: Arc<RootProvider<BoxTransport>>,
@@ -82,11 +72,11 @@ impl EventListener {
     }
 }
 
-pub struct ContractManager {
+pub struct EnclaveContract {
     provider: Arc<RootProvider<BoxTransport>>,
 }
 
-impl ContractManager {
+impl EnclaveContract {
     pub async fn new(rpc_url: &str) -> Result<Self> {
         let provider = ProviderBuilder::new().on_builtin(rpc_url).await?;
         Ok(Self {
@@ -102,11 +92,13 @@ impl ContractManager {
         EventListener::new(self.provider.clone(), filter)
     }
 }
-pub async fn start_listener(rpc_url: &str, contract_address: &str) -> Result<()> {
-    let address: Address = contract_address.parse()?;
+
+pub async fn start_listener(rpc_url: &str, enclave_address: &str, registry_address: &str) -> Result<()> {
+    let enclave_address: Address = enclave_address.parse()?;
+    let registry_address: Address = registry_address.parse()?;
     
     loop {
-        match run_listener(rpc_url, address).await {
+        match run_listener(rpc_url, enclave_address, registry_address).await {
             Ok(_) => {
                 info!("Listener finished successfully. Checking for reconnection...");
             },
@@ -119,26 +111,33 @@ pub async fn start_listener(rpc_url: &str, contract_address: &str) -> Result<()>
 }
 
 // Separate function to encapsulate listener logic
-async fn run_listener(rpc_url: &str, contract_address: Address) -> Result<()> {
-    let manager = ContractManager::new(rpc_url).await?;
+async fn run_listener(rpc_url: &str, enclave_address: Address, registry_address: Address) -> Result<()> {
+    let manager = EnclaveContract::new(rpc_url).await?;
     
-    let mut listener = manager.add_listener(contract_address);
-    listener.add_event_handler::<E3Activated>();
-    listener.add_event_handler::<InputPublished>();
-    listener.add_event_handler::<PlaintextOutputPublished>();
-    listener.add_event_handler::<CiphertextOutputPublished>();
+    let mut enclave_listener = manager.add_listener(enclave_address);
+    enclave_listener.add_event_handler::<E3Activated>();
+    enclave_listener.add_event_handler::<InputPublished>();
+    enclave_listener.add_event_handler::<PlaintextOutputPublished>();
+    enclave_listener.add_event_handler::<CiphertextOutputPublished>();
 
-    loop {
-        match listener.listen().await {
-            Ok(_) => {
-                info!("Listener is still active...");
-            }
-            Err(e) => {
-                error!("Connection lost or error occurred: {}. Attempting to reconnect...", e);
-                break;
-            }
+    let mut registry_listener = manager.add_listener(registry_address);
+    registry_listener.add_event_handler::<CommitteePublished>();
+
+    let enclave_handle = tokio::spawn(async move {
+        match enclave_listener.listen().await {
+            Ok(_) => info!("Enclave listener finished"),
+            Err(e) => error!("Error in enclave listener: {}", e),
         }
-    }
-    
+    });
+
+    let registry_handle = tokio::spawn(async move {
+        match registry_listener.listen().await {
+            Ok(_) => info!("Registry listener finished"),
+            Err(e) => error!("Error in registry listener: {}", e),
+        }
+    });
+
+    tokio::try_join!(enclave_handle, registry_handle)?;
+
     Ok(())
 }

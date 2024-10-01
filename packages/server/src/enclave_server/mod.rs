@@ -46,7 +46,7 @@ pub async fn start_server() -> Result<(), Box<dyn std::error::Error + Send + Syn
     }
 
     tokio::spawn(async {
-        if let Err(e) = start_listener(&CONFIG.ws_rpc_url, &CONFIG.enclave_address).await {
+        if let Err(e) = start_listener(&CONFIG.ws_rpc_url, &CONFIG.enclave_address, &CONFIG.ciphernode_registry_address).await {
             eprintln!("Listener failed: {:?}", e);
         }
     });

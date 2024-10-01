@@ -1,5 +1,5 @@
 use super::{
-    events::{CiphertextOutputPublished, E3Activated, InputPublished, PlaintextOutputPublished},
+    events::{CiphertextOutputPublished, E3Activated, InputPublished, PlaintextOutputPublished, CommitteePublished},
     relayer::EnclaveContract,
 };
 use crate::enclave_server::models::E3;
@@ -77,7 +77,7 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
     increment_e3_round().await.unwrap();
 
     // Sleep till the E3 expires
-    sleep(Duration::from_secs(e3.duration.to::<u64>())).await;
+    sleep(Duration::from_secs(e3.duration.to::<u64>() + 5)).await;
 
     // Get All Encrypted Votes
     let (mut e3, _) = get_e3(e3_id).await.unwrap();
@@ -98,7 +98,6 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
                 .unwrap();
 
         println!("Computation completed for E3: {}", e3_id);
-        println!("Ciphertext: {:?}", ciphertext);
         println!("RISC0 Output: {:?}", risc0_output);
 
         // Params will be encoded on chain to create the journal
@@ -160,19 +159,31 @@ pub async fn handle_plaintext_output_published(
     plaintext_output: PlaintextOutputPublished,
 ) -> Result<()> {
     info!("Handling PlaintextOutputPublished event...");
-    info!("Plaintext Output: {:?}", plaintext_output);
     let e3_id = plaintext_output.e3Id.to::<u64>();
     let (mut e3, key) = get_e3(e3_id).await?;
 
     let decoded: Vec<u64> = bincode::deserialize(&plaintext_output.plaintextOutput.to_vec())?;
-    info!("Decoded plaintext output: {:?}", decoded);
     e3.plaintext_output = plaintext_output.plaintextOutput.to_vec();
     e3.votes_option_2 = decoded[0];
     e3.votes_option_1 = e3.vote_count - e3.votes_option_2;
     e3.status = "Finished".to_string();
 
+    info!("Vote Count: {:?}", e3.vote_count);
+    info!("Votes Option 1: {:?}", e3.votes_option_1);
+    info!("Votes Option 2: {:?}", e3.votes_option_2);
+
     save_e3(&e3, &key).await?;
 
     info!("PlaintextOutputPublished event handled.");
+    Ok(())
+}
+
+pub async fn handle_committee_published(committee_published: CommitteePublished) -> Result<()> {
+    info!("Handling CommitteePublished event...");
+    info!("Committee Published: {:?}", committee_published);
+
+    let contract = EnclaveContract::new(CONFIG.enclave_address.clone()).await?;
+    let tx = contract.activate(committee_published.e3Id, committee_published.publicKey).await?;
+    info!("E3 activated with tx: {:?}", tx.transaction_hash);
     Ok(())
 }

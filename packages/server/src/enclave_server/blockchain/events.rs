@@ -5,7 +5,7 @@ use alloy::{
 
 use eyre::Result;
 
-use super::handlers::{handle_e3, handle_input_published, handle_plaintext_output_published, handle_ciphertext_output_published};
+use super::handlers::{handle_e3, handle_input_published, handle_plaintext_output_published, handle_ciphertext_output_published, handle_committee_published};
 use super::listener::ContractEvent;
 
 sol! {
@@ -20,6 +20,9 @@ sol! {
 
     #[derive(Debug)]
     event PlaintextOutputPublished(uint256 indexed e3Id, bytes plaintextOutput);
+
+    #[derive(Debug)]
+    event CommitteePublished(uint256 indexed e3Id, bytes publicKey);
 }
 
 impl ContractEvent for E3Activated {
@@ -68,6 +71,19 @@ impl ContractEvent for PlaintextOutputPublished {
         tokio::spawn(async move {
             if let Err(e) = handle_plaintext_output_published(event_clone).await {
                 eprintln!("Error handling public key published: {:?}", e);
+            }
+        });
+
+        Ok(())
+    }
+}
+
+impl ContractEvent for CommitteePublished {
+    fn process(&self, _log: Log) -> Result<()> {
+        let event_clone = self.clone();
+        tokio::spawn(async move {
+            if let Err(e) = handle_committee_published(event_clone).await {
+                eprintln!("Error handling committee published: {:?}", e);
             }
         });
 

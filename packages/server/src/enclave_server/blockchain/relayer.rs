@@ -39,7 +39,7 @@ sol! {
         mapping(uint256 e3Id => uint256 inputCount) public inputCounts;
         mapping(uint256 e3Id => bytes params) public e3Params;
         function request(address filter, uint32[2] calldata threshold, uint256[2] calldata startWindow, uint256 duration, address e3Program, bytes memory e3ProgramParams, bytes memory computeProviderParams) external payable returns (uint256 e3Id, E3 memory e3);        
-        function activate(uint256 e3Id, bytes memory pubKey) external returns (bool success);
+        function activate(uint256 e3Id,bytes memory publicKey) external returns (bool success);
         function enableE3Program(address e3Program) public onlyOwner returns (bool success);
         function publishInput(uint256 e3Id, bytes memory data) external returns (bool success);
         function publishCiphertextOutput(uint256 e3Id, bytes memory ciphertextOutput, bytes memory proof) external returns (bool success);
@@ -99,15 +99,15 @@ impl EnclaveContract {
             e3_program,
             e3_params,
             compute_provider_params,
-        ).value(U256::from(10000000));
-        let receipt = builder.send().await?.get_receipt().await?;
+        ).value(U256::from(100));
+        let receipt = builder.send().await.unwrap().get_receipt().await.unwrap();
         Ok(receipt)
     }
 
-    pub async fn activate_e3(&self, e3_id: U256, pub_key: Bytes) -> Result<TransactionReceipt> {
+    pub async fn activate(&self, e3_id: U256, pub_key: Bytes) -> Result<TransactionReceipt> {
         let contract = Enclave::new(self.contract_address, &self.provider);
         let builder = contract.activate(e3_id, pub_key);
-        let receipt = builder.send().await?.get_receipt().await?;
+        let receipt = builder.send().await.unwrap().get_receipt().await.unwrap();
         Ok(receipt)
     }
 
@@ -121,7 +121,7 @@ impl EnclaveContract {
     pub async fn publish_input(&self, e3_id: U256, data: Bytes) -> Result<TransactionReceipt> {
         let contract = Enclave::new(self.contract_address, &self.provider);
         let builder = contract.publishInput(e3_id, data);
-        let receipt = builder.send().await?.get_receipt().await?;
+        let receipt = builder.send().await.unwrap().get_receipt().await.unwrap();
         Ok(receipt)
     }
 
@@ -133,7 +133,7 @@ impl EnclaveContract {
     ) -> Result<TransactionReceipt> {
         let contract = Enclave::new(self.contract_address, &self.provider);
         let builder = contract.publishCiphertextOutput(e3_id, data, proof);
-        let receipt = builder.send().await?.get_receipt().await?;
+        let receipt = builder.send().await.unwrap().get_receipt().await.unwrap();
         Ok(receipt)
     }
 
@@ -144,7 +144,7 @@ impl EnclaveContract {
     ) -> Result<TransactionReceipt> {
         let contract = Enclave::new(self.contract_address, &self.provider);
         let builder = contract.publishPlaintextOutput(e3_id, data);
-        let receipt = builder.send().await?.get_receipt().await?;
+        let receipt = builder.send().await.unwrap().get_receipt().await.unwrap();
         Ok(receipt)
     }
 
