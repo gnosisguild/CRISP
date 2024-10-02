@@ -45,7 +45,7 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
 
         // Status-related
         status: "Active".to_string(),
-        has_voted: vec!["".to_string()],
+        has_voted: vec![],
         vote_count: 0,
         votes_option_1: 0,
         votes_option_2: 0,
@@ -74,7 +74,6 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
     // Save E3 to the database
     let key = format!("e3:{}", e3_id);
     save_e3(&e3_obj, &key).await?;
-    increment_e3_round().await.unwrap();
 
     // Sleep till the E3 expires
     sleep(Duration::from_secs(e3.duration.to::<u64>() + 5)).await;
@@ -118,7 +117,7 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
         e3.status = "Finished".to_string();
         save_e3(&e3, &key).await.unwrap();
     }
-
+    increment_e3_round().await.unwrap();
     info!("E3 request handled successfully.");
     Ok(())
 }

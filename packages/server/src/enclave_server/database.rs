@@ -36,6 +36,7 @@ pub async fn save_e3(e3: &E3, key: &str) -> Result<(), Box<dyn Error + Send + Sy
         Ok(_) => (),
         Err(e) => return Err(format!("Failed to save E3: {}", e).into()),
     };
+    db.flush().unwrap();
     Ok(())
 }
 

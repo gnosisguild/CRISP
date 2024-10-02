@@ -41,7 +41,7 @@ async fn request_e3_round(
 async fn get_rounds()-> impl Responder {
     match get_e3_round().await {
         Ok(round_count) => {
-            let count = RoundCount { round_count: round_count as u32 - 1 };
+            let count = RoundCount { round_count: round_count as u32 };
             info!("round_count: {}", count.round_count);
             HttpResponse::Ok().json(count)
         }

@@ -3,10 +3,10 @@ use actix_web::{web, HttpResponse, Responder};
 use log::info;
 
 use crate::enclave_server::config::CONFIG;
-use crate::enclave_server::database::get_e3;
+use crate::enclave_server::database::{get_e3, save_e3};
 use crate::enclave_server::{
     blockchain::relayer::EnclaveContract,
-    models::{AppState, EncryptedVote, GetEmojisRequest, JsonResponseTxHash, VoteCountRequest},
+    models::{EncryptedVote, GetEmojisRequest, JsonResponseTxHash, VoteCountRequest},
 };
 
 pub fn setup_routes(config: &mut web::ServiceConfig) {
@@ -20,12 +20,11 @@ pub fn setup_routes(config: &mut web::ServiceConfig) {
 }
 
 async fn broadcast_enc_vote(
-    data: web::Json<EncryptedVote>,
-    state: web::Data<AppState>,
+    data: web::Json<EncryptedVote>
 ) -> impl Responder {
     let vote: EncryptedVote = data.into_inner();
-    let (mut state_data, key) = get_e3(vote.round_id as u64).await.unwrap();
 
+    let (mut state_data, key) = get_e3(vote.round_id as u64).await.unwrap();
     if state_data.has_voted.contains(&vote.postId) {
         return HttpResponse::BadRequest().json(JsonResponseTxHash {
             response: "User has already voted".to_string(),
@@ -45,16 +44,8 @@ async fn broadcast_enc_vote(
     };
 
     state_data.has_voted.push(vote.postId);
-    // Lock the database for writing
-    let db = state.db.write().await;
-    if let Err(e) = db.insert(key, serde_json::to_vec(&state_data).unwrap()) {
-        info!("Error updating state: {:?}", e);
-    }
+    save_e3(&state_data, &key).await.unwrap();
 
-    info!(
-        "Vote broadcast for round {}: tx_hash {}",
-        vote.round_id, tx_hash
-    );
     HttpResponse::Ok().json(JsonResponseTxHash {
         response: "Vote successful".to_string(),
         tx_hash,
