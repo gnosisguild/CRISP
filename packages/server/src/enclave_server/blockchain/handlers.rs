@@ -114,6 +114,7 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
             tx.transaction_hash
         );
     } else {
+        info!("E3 has no votes to decrypt. Setting status to Finished.");
         e3.status = "Finished".to_string();
         save_e3(&e3, &key).await.unwrap();
     }

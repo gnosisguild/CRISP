@@ -9,9 +9,7 @@ broadcast/
 contracts/ImageID.sol
 tests/Elf.sol
 
-# Libraries
-lib/
-
+haha/
 # Dotenv file
 .env
 

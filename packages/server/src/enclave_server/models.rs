@@ -241,3 +241,8 @@ pub struct AuthenticationResponse {
     pub response: String,
     pub jwt_token: String,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct CronRequestE3 {
+    pub cron_api_key: String,
+}

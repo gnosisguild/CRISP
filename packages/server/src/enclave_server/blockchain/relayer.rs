@@ -38,6 +38,7 @@ sol! {
         uint256 public nexte3Id = 0;
         mapping(uint256 e3Id => uint256 inputCount) public inputCounts;
         mapping(uint256 e3Id => bytes params) public e3Params;
+        mapping(address e3Program => bool allowed) public e3Programs;
         function request(address filter, uint32[2] calldata threshold, uint256[2] calldata startWindow, uint256 duration, address e3Program, bytes memory e3ProgramParams, bytes memory computeProviderParams) external payable returns (uint256 e3Id, E3 memory e3);        
         function activate(uint256 e3Id,bytes memory publicKey) external returns (bool success);
         function enableE3Program(address e3Program) public onlyOwner returns (bool success);
@@ -181,5 +182,11 @@ impl EnclaveContract {
         let contract = Enclave::new(self.contract_address, &self.provider);
         let params = contract.e3Params(e3_id).call().await?;
         Ok(params.params)
+    }
+
+    pub async fn is_e3_program_enabled(&self, e3_program: Address) -> Result<bool> {
+        let contract = Enclave::new(self.contract_address, &self.provider);
+        let enabled = contract.e3Programs(e3_program).call().await?;
+        Ok(enabled.allowed)
     }
 }

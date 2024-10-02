@@ -1,57 +1,50 @@
-mod auth;
-mod voting;
 mod config;
+mod voting;
 
 use dialoguer::{theme::ColorfulTheme, FuzzySelect};
-use hyper_tls::HttpsConnector;
-use hyper_util::{client::legacy::{Client as HyperClient, connect::HttpConnector}, rt::TokioExecutor};
-use bytes::Bytes;
-use std::env;
-use std::fs::File;
-use std::io::Read;
-use http_body_util::Empty;
+use reqwest::Client;
 
-use auth::{authenticate_user, AuthenticationResponse};
-use voting::{initialize_crisp_round, participate_in_existing_round, activate_e3_round, decrypt_and_publish_result};
 use config::CONFIG;
-use serde::{Deserialize, Serialize};
 use env_logger::{Builder, Target};
-use log::LevelFilter;
-use log::info;
-use std::io::Write;
+use log::{info, LevelFilter, Record};
+use serde::{Deserialize, Serialize};
+use voting::{
+    activate_e3_round, decrypt_and_publish_result, initialize_crisp_round,
+    participate_in_existing_round,
+};
 
 use once_cell::sync::Lazy;
+
 use sled::Db;
-use std::{str, sync::Arc};
+use std::sync::Arc;
+use std::path::Path;
+use std::io::Write;
 use tokio::sync::RwLock;
 
 pub static GLOBAL_DB: Lazy<Arc<RwLock<Db>>> = Lazy::new(|| {
-    let pathdb = std::env::current_dir()
-        .unwrap()
-        .join("database/cli");
+    let pathdb = std::env::current_dir().unwrap().join("database/cli");
     Arc::new(RwLock::new(sled::open(pathdb).unwrap()))
 });
-
 
 fn init_logger() {
     let mut builder = Builder::new();
     builder
-        .target(Target::Stdout) // Set target to stdout
-        .filter(None, LevelFilter::Info) // Set log level to Info
-        .format(|buf, record| {
+        .target(Target::Stdout)
+        .filter(None, LevelFilter::Info)
+        .format(|buf, record: &Record| {
+            let file = record.file().unwrap_or("unknown");
+            let filename = Path::new(file).file_name().unwrap_or_else(|| file.as_ref());
+
             writeln!(
-                buf, // Use `writeln!` correctly with the `buf`
+                buf,
                 "[{}:{}] - {}",
-                record.file().unwrap_or("unknown"),
+                filename.to_string_lossy(),
                 record.line().unwrap_or(0),
                 record.args()
             )
         })
         .init();
 }
-
-type _HyperClientGet = HyperClient<HttpsConnector<HttpConnector>, Empty<Bytes>>;
-type HyperClientPost = HyperClient<HttpsConnector<HttpConnector>, String>;
 
 #[derive(Debug, Deserialize, Serialize)]
 struct CrispConfig {
@@ -63,13 +56,12 @@ struct CrispConfig {
     enclave_address: String,
     authentication_id: String,
 }
+
 #[tokio::main]
 pub async fn run_cli() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logger();
 
-    let https = HttpsConnector::new();
-    let _client_get = HyperClient::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https.clone());
-    let client = HyperClient::builder(TokioExecutor::new()).build::<_, String>(https);
+    let client = Client::new();
 
     clear_screen();
 
@@ -81,7 +73,6 @@ pub async fn run_cli() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     clear_screen();
 
-    let config = read_config()?;
     let action = select_action()?;
 
     match action {
@@ -95,8 +86,7 @@ pub async fn run_cli() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
             participate_in_existing_round(&client).await?;
         }
         3 => {
-            let auth_res = authenticate_user(&config, &client).await?;
-            decrypt_and_publish_result(&config, &client, &auth_res).await?;
+            decrypt_and_publish_result(&client).await?;
         }
         _ => unreachable!(),
     }
@@ -118,18 +108,15 @@ fn select_environment() -> Result<usize, Box<dyn std::error::Error + Send + Sync
 }
 
 fn select_action() -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
-    let selections = &["Initialize new E3 round.", "Activate an E3 round.", "Participate in an E3 round.", "Decrypt Ciphertext & Publish Results"];
+    let selections = &[
+        "Initialize new E3 round.",
+        "Activate an E3 round.",
+        "Participate in an E3 round.",
+        "Decrypt Ciphertext & Publish Results",
+    ];
     Ok(FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt("Create a new CRISP round or participate in an existing round.")
         .default(0)
         .items(&selections[..])
         .interact()?)
-}
-
-fn read_config() -> Result<CrispConfig, Box<dyn std::error::Error + Send + Sync>> {
-    let config_path = env::current_dir()?.join("example_config.json");
-    let mut file = File::open(config_path)?;
-    let mut data = String::new();
-    file.read_to_string(&mut data)?;
-    Ok(serde_json::from_str(&data)?)
 }
