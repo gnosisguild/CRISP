@@ -7,7 +7,6 @@ use reqwest::Client;
 use config::CONFIG;
 use env_logger::{Builder, Target};
 use log::{info, LevelFilter, Record};
-use serde::{Deserialize, Serialize};
 use voting::{
     activate_e3_round, decrypt_and_publish_result, initialize_crisp_round,
     participate_in_existing_round,
@@ -46,16 +45,6 @@ fn init_logger() {
         .init();
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-struct CrispConfig {
-    round_id: u32,
-    poll_length: u32,
-    chain_id: u32,
-    voting_address: String,
-    ciphernode_count: u32,
-    enclave_address: String,
-    authentication_id: String,
-}
 
 #[tokio::main]
 pub async fn run_cli() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
