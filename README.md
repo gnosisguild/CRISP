@@ -30,6 +30,8 @@ CRISP/packages
 <img width="607" alt="image" src="https://github.com/gnosisguild/CRISP/assets/19823989/c8881fe2-1e66-4d99-9347-24e4edc91516">Ï
 </p>
 
+## Running the project locally
+
 Check out the [README file in the `/packages/local_testnet` directory](packages/local_testnet/Readme.md) for detailed instructions on how to run the project locally.
 
 ## Contributing
