@@ -159,7 +159,7 @@ fn generate_bfv_parameters() -> Result<std::sync::Arc<BfvParameters>, Box<dyn st
     Ok(BfvParametersBuilder::new()
         .set_degree(2048)
         .set_plaintext_modulus(1032193)
-        .set_moduli(&[0x3FFFFFFF000001])
+        .set_moduli(&[0xffffffff00001])
         .build_arc()?)
 }
 

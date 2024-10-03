@@ -1,10 +1,6 @@
 //! Utility functions
 
-use fhe::bfv;
-use fhe_traits::FheEncoder;
-use fhe_util::transcode_from_bytes;
-use std::{cmp::min, fmt, sync::Arc, time::Duration};
-use log::info;
+use std::{fmt, time::Duration};
 
 /// Macros to time code and display a human-readable duration.
 pub mod timeit {
@@ -60,71 +56,3 @@ impl fmt::Display for DisplayDuration {
         }
     }
 }
-
-// Utility functions for Private Information Retrieval.
-
-/// Generate a database of elements of the form [i || 0...0] where i is the 4B
-/// little endian encoding of the index. When the element size is less than 4B,
-/// the encoding is truncated.
-#[allow(dead_code)]
-pub fn generate_database(database_size: usize, elements_size: usize) -> Vec<Vec<u8>> {
-    assert!(database_size > 0 && elements_size > 0);
-    let mut database = vec![vec![0u8; elements_size]; database_size];
-    for (i, element) in database.iter_mut().enumerate() {
-        element[..min(4, elements_size)]
-            .copy_from_slice(&(i as u32).to_le_bytes()[..min(4, elements_size)]);
-    }
-    database
-}
-
-#[allow(dead_code)]
-pub fn number_elements_per_plaintext(
-    degree: usize,
-    plaintext_nbits: usize,
-    elements_size: usize,
-) -> usize {
-    (plaintext_nbits * degree) / (elements_size * 8)
-}
-
-#[allow(dead_code)]
-pub fn encode_database(
-    database: &Vec<Vec<u8>>,
-    par: Arc<bfv::BfvParameters>,
-    level: usize,
-) -> (Vec<bfv::Plaintext>, (usize, usize)) {
-    assert!(!database.is_empty());
-
-    let elements_size = database[0].len();
-    let plaintext_nbits = par.plaintext().ilog2() as usize;
-    let number_elements_per_plaintext =
-        number_elements_per_plaintext(par.degree(), plaintext_nbits, elements_size);
-    let number_rows =
-        (database.len() + number_elements_per_plaintext - 1) / number_elements_per_plaintext;
-    info!("number_rows = {number_rows}");
-    info!("number_elements_per_plaintext = {number_elements_per_plaintext}");
-    let dimension_1 = (number_rows as f64).sqrt().ceil() as usize;
-    let dimension_2 = (number_rows + dimension_1 - 1) / dimension_1;
-    info!("dimensions = {dimension_1} {dimension_2}");
-    info!("dimension = {}", dimension_1 * dimension_2);
-    let mut preprocessed_database =
-        vec![
-            bfv::Plaintext::zero(bfv::Encoding::poly_at_level(level), &par).unwrap();
-            dimension_1 * dimension_2
-        ];
-    (0..number_rows).for_each(|i| {
-        let mut serialized_plaintext = vec![0u8; number_elements_per_plaintext * elements_size];
-        for j in 0..number_elements_per_plaintext {
-            if let Some(pt) = database.get(j + i * number_elements_per_plaintext) {
-                serialized_plaintext[j * elements_size..(j + 1) * elements_size].copy_from_slice(pt)
-            }
-        }
-        let pt_values = transcode_from_bytes(&serialized_plaintext, plaintext_nbits);
-        preprocessed_database[i] =
-            bfv::Plaintext::try_encode(&pt_values, bfv::Encoding::poly_at_level(level), &par)
-                .unwrap();
-    });
-    (preprocessed_database, (dimension_1, dimension_2))
-}
-
-#[allow(dead_code)]
-fn main() {}

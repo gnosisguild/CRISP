@@ -8,7 +8,7 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 contract CRISPRisc0 is CRISPBase, Ownable {
     // Constants
-    bytes32 public constant IMAGE_ID = ImageID.VOTING_ID; // TODO: update this to the CRISP image ID
+    bytes32 public constant IMAGE_ID = ImageID.VOTING_ID;
     bytes32 public constant ENCRYPTION_SCHEME_ID = keccak256("fhe.rs:BFV");
 
     // State variables
@@ -16,7 +16,6 @@ contract CRISPRisc0 is CRISPBase, Ownable {
     IInputValidator public inputValidator;
 
     // Mappings
-    mapping(uint256 e3Id => bytes32 imageId) public imageIds;
     mapping(address => bool) public authorizedContracts;
 
     // Events

@@ -116,7 +116,7 @@ fn generate_bfv_parameters(
 ) -> Result<std::sync::Arc<fhe::bfv::BfvParameters>, Box<dyn std::error::Error + Send + Sync>> {
     let degree = 2048;
     let plaintext_modulus: u64 = 1032193;
-    let moduli = vec![0x3FFFFFFF000001];
+    let moduli = vec![0xffffffff00001];
 
     Ok(BfvParametersBuilder::new()
         .set_degree(degree)

@@ -4,9 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 serde = { version = "1.0", features = ["derive", "std"] }
-zk-kit-imt = "0.0.5"
 lean-imt = "0.1.0"
 sha3 = "0.10.8"
 num-bigint = "0.4"

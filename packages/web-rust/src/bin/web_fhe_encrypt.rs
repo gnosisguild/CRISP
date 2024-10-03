@@ -38,7 +38,7 @@ impl Encrypt {
     pub fn encrypt_vote(&mut self, vote: u64, public_key: Vec<u8>) -> Result<Vec<u8>, JsValue> {
         let degree = 2048;
         let plaintext_modulus: u64 = 1032193;
-        let moduli = vec![0x3FFFFFFF000001];
+        let moduli = vec![0xffffffff00001];
 
         let params = BfvParametersBuilder::new()
             .set_degree(degree)
@@ -85,7 +85,7 @@ fn test_encrypt_vote() {
 
     let degree = 2048;
     let plaintext_modulus: u64 = 1032193; // Must be Co-prime with Q
-    let moduli = vec![0x3FFFFFFF000001];
+    let moduli = vec![0xffffffff00001]; // Must be 52-bit or less
 
     let params = BfvParametersBuilder::new()
         .set_degree(degree)
