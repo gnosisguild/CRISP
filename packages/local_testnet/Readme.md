@@ -1,4 +1,5 @@
 # CRISP - Collusion-Resistant Impartial Selection Protocol
+
 Welcome to the CRISP project! This document provides a comprehensive guide to setting up and deploying the application both locally. Follow the steps carefully to ensure that all dependencies, services, and components are properly configured.
 
 ## Project Structure
@@ -127,6 +128,7 @@ Keep Anvil running in the terminal, and open a new terminal for the next steps.
    ```
 
 After deployment, note down the addresses for the following contracts:
+
 - Enclave
 - Ciphernode Registry
 - Naive Registry Filter
@@ -144,7 +146,8 @@ After deployment, note down the addresses for the following contracts:
 
 3. Add the following configuration to `config.toml`:
 
-   > ***Note:*** *This requires having access to a Bonsai API Key. To request an API key [complete the form here](https://bonsai.xyz/apply).*
+   > **_Note:_** _This requires having access to a Bonsai API Key. To request an API key [complete the form here](https://bonsai.xyz/apply)._
+
    ```toml
    [env]
    ETH_WALLET_PRIVATE_KEY="your_private_key"
@@ -206,12 +209,12 @@ Once the aggregator is running, you can add the Ciphernodes to the registry with
 ./add_ciphernodes.sh
 ```
 
-## Running the Enclave Server
+## Running the CRISP Server
 
-To run the Enclave Server, navigate to the `enclave_server` directory and execute the following command:
+To run the CRISP Server, navigate to the `server` directory and execute the following command:
 
 ```sh
-cargo run --bin enclave_server
+cargo run --bin server
 ```
 
 ## Interacting with CRISP via CLI

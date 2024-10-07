@@ -1,6 +1,6 @@
-# Enclave Server
+# CRISP Server
 
-This is a Rust-based server implementation for an Enclave system, which handles E3 (Encrypted Execution Environment) rounds and voting processes.
+This is a Rust-based server implementation for CRISP, which is built on top of the Enclave Protocol, which handles E3 (Encrypted Execution Environment) rounds and voting processes.
 
 ## Features
 
@@ -11,6 +11,7 @@ This is a Rust-based server implementation for an Enclave system, which handles 
 - CLI for manual interaction
 
 ## Prerequisites
+
 - Rust (latest stable version)
 - Cargo (Rust's package manager)
 - Foundry (for deploying contracts)
@@ -19,6 +20,7 @@ This is a Rust-based server implementation for an Enclave system, which handles 
 ## Setup
 
 1. Install dependencies:
+
    ```
    cargo build --release
    ```
@@ -40,6 +42,7 @@ This is a Rust-based server implementation for an Enclave system, which handles 
 ## Running the Server
 
 1. Start the crisp server:
+
    ```
    cargo run --bin server
    ```
