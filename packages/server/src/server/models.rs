@@ -1,10 +1,8 @@
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
-use sled::Db;
-use tokio::sync::RwLock;
+use crate::server::database::SledDB;
 
 pub struct AppState {
-    pub db: Arc<RwLock<Db>>,
+    pub sled: SledDB,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -22,9 +20,13 @@ pub struct JsonResponseTxHash {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct RoundCount {
-    pub round_count: u32,
+    pub round_count: u64,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct CurrentRound {
+    pub id: u64,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PKRequest {
@@ -38,31 +40,40 @@ pub struct CTRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct VoteCountRequest {
-    pub round_id: u32,
-    pub vote_count: u32,
-}
-
-
-#[derive(Debug, Deserialize, Serialize)]
 #[allow(non_snake_case)]
 pub struct EncryptedVote {
-    pub round_id: u32,
+    pub round_id: u64,
     pub enc_vote_bytes: Vec<u8>,
     pub postId: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GetRoundRequest {
-    pub round_id: u32,
+    pub round_id: u64,
+}
+
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AuthenticationDB {
+    pub jwt_tokens: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct GetEmojisRequest {
-    pub round_id: u32,
-    pub emojis: [String; 2],
+#[allow(non_snake_case)]
+pub struct AuthenticationLogin {
+    pub postId: String,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct AuthenticationResponse {
+    pub response: String,
+    pub jwt_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct CronRequestE3 {
+    pub cron_api_key: String,
+}
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct WebResultRequest {
@@ -76,9 +87,22 @@ pub struct WebResultRequest {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-pub struct AllWebStates {
-    pub states: Vec<WebResultRequest>,
+pub struct E3StateLite {
+    pub id: u64,
+    pub chain_id: u64,
+    pub enclave_address: String,
+  
+    pub status: String,
+    pub vote_count: u64,
+  
+    pub start_time: u64,
+    pub duration: u64,
+    pub expiration: u64,
+  
+    pub committee_public_key: Vec<u8>,
+    pub emojis: [String; 2],
 }
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct E3 {
     // Identifiers
@@ -114,42 +138,34 @@ pub struct E3 {
     pub emojis: [String; 2],
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct E3StateLite {
-    pub id: u64,
-    pub chain_id: u64,
-    pub enclave_address: String,
-  
-    pub status: String,
-    pub vote_count: u64,
-  
-    pub start_time: u64,
-    pub duration: u64,
-    pub expiration: u64,
-  
-    pub committee_public_key: Vec<u8>,
-    pub emojis: [String; 2],
+
+impl From<E3> for WebResultRequest {
+    fn from(e3: E3) -> Self {
+        WebResultRequest {
+            round_id: e3.id,
+            option_1_tally: e3.votes_option_1,
+            option_2_tally: e3.votes_option_2,
+            total_votes: e3.votes_option_1 + e3.votes_option_2,
+            option_1_emoji: e3.emojis[0].clone(),
+            option_2_emoji: e3.emojis[1].clone(),
+            end_time: e3.expiration,
+        }
+    }
 }
 
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct AuthenticationDB {
-    pub jwt_tokens: Vec<String>,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-#[allow(non_snake_case)]
-pub struct AuthenticationLogin {
-    pub postId: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct AuthenticationResponse {
-    pub response: String,
-    pub jwt_token: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct CronRequestE3 {
-    pub cron_api_key: String,
+impl From<E3> for E3StateLite {
+    fn from(e3: E3) -> Self {
+        E3StateLite {
+            id: e3.id,
+            chain_id: e3.chain_id,
+            enclave_address: e3.enclave_address,
+            status: e3.status,
+            vote_count: e3.vote_count,
+            start_time: e3.start_time,
+            duration: e3.duration,
+            expiration: e3.expiration,
+            committee_public_key: e3.committee_public_key,
+            emojis: e3.emojis,
+        }
+    }
 }

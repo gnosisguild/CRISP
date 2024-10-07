@@ -1,4 +1,4 @@
-use crate::enclave_server::CONFIG;
+use crate::server::CONFIG;
 use alloy::{
     network::{Ethereum, EthereumWallet},
     primitives::{Address, Bytes, U256},

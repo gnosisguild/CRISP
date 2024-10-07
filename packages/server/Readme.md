@@ -39,14 +39,14 @@ This is a Rust-based server implementation for an Enclave system, which handles 
 
 ## Running the Server
 
-1. Start the enclave server:
+1. Start the crisp server:
    ```
-   cargo run --bin enclave_server
+   cargo run --bin server
    ```
 
 2. To start the E3 cron job that requests new rounds every 24 hours, run:
    ```
-   cargo run --bin e3_cron
+   cargo run --bin cron
    ```
 
 ## Using the CLI
@@ -63,24 +63,22 @@ Follow the prompts to initialize new E3 rounds, activate rounds, participate in 
 
 The server exposes several RESTful API endpoints:
 
-- `/get_rounds`: Get the current round count
-- `/get_pk_by_round`: Get the public key for a specific round
-- `/get_ct_by_round`: Get the ciphertext for a specific round
-- `/request_e3_round`: Request a new E3 round (protected by API key)
-- `/broadcast_enc_vote`: Submit an encrypted vote
-- `/get_vote_count_by_round`: Get the vote count for a specific round
-- `/get_emojis_by_round`: Get the emojis associated with a round
-- `/get_web_result_all`: Get results for all rounds
-- `/get_round_state_lite`: Get a lightweight state of a specific round
-- `/get_round_state`: Get the full state of a specific round
-- `/get_web_result`: Get the web-friendly result of a specific round
+- `POST /auth/login`: Authenticate a user login
+- `GET /rounds/current`: Get the current round information
+- `POST /rounds/public-key`: Get the public key for a specific round
+- `POST /rounds/ciphertext`: Get the ciphertext for a specific round
+- `POST /rounds/request`: Request a new E3 round (protected by API key)
+- `POST /state/result`: Get the result for a specific round
+- `GET /state/all`: Get results for all rounds
+- `POST /state/lite`: Get a lite version of the state for a specific round
+- `POST /voting/broadcast`: Broadcast an encrypted vote
 
 ## Architecture
 
 The project is structured into several modules:
 
 - `cli`: Command-line interface for interacting with the system
-- `enclave_server`: Main server implementation
+- `server`: Main server implementation
 - `blockchain`: Handlers for blockchain events and interactions
 - `models`: Data structures used throughout the application
 - `routes`: API endpoint implementations

@@ -10,8 +10,9 @@ export interface VotingRound {
   round_id: number
   pk_bytes: number[]
 }
-export interface RoundCount {
-  round_count: number
+
+export interface CurrentRound {
+  id: number
 }
 
 export interface BroadcastVoteRequest {

@@ -5,14 +5,12 @@ use reqwest::Client;
 use log::info;
 
 use alloy::primitives::{Address, Bytes, U256};
-use crate::enclave_server::blockchain::relayer::EnclaveContract;
-use crate::cli::GLOBAL_DB;
-use crate::util::timeit::timeit;
+use crisp::server::blockchain::relayer::EnclaveContract;
 use fhe::bfv::{BfvParameters, BfvParametersBuilder, Encoding, Plaintext, PublicKey, SecretKey, Ciphertext};
 use fhe_traits::{DeserializeParametrized, FheDecoder, FheDecrypter, FheEncoder, FheEncrypter, Serialize as FheSerialize};
 use rand::thread_rng;
 
-use super::CONFIG;
+use super::{CONFIG, CLI_DB};
 
 #[derive(Debug, Deserialize, Serialize)]
 struct FHEParams {
@@ -56,7 +54,7 @@ pub async fn initialize_crisp_round() -> Result<(), Box<dyn std::error::Error + 
     let filter: Address = CONFIG.naive_registry_filter_address.parse()?;
     let threshold: [u32; 2] = [1, 2];
     let start_window: [U256; 2] = [U256::from(Utc::now().timestamp()), U256::from(Utc::now().timestamp() + 600)];
-    let duration: U256 = U256::from(600);
+    let duration: U256 = U256::from(40);
     let e3_params = Bytes::from(generate_bfv_parameters()?.to_bytes());
     let compute_provider_params = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
 
@@ -85,7 +83,7 @@ pub async fn activate_e3_round() -> Result<(), Box<dyn std::error::Error + Send 
         sk: sk.coeffs.into_vec(),
     };
 
-    let db = GLOBAL_DB.write().await;
+    let db = CLI_DB.write().await;
     let key = format!("e3:{}", input_e3_id);
     db.insert(key, serde_json::to_vec(&e3_params)?)?;
     db.flush()?;
@@ -106,7 +104,7 @@ pub async fn participate_in_existing_round(client: &Client) -> Result<(), Box<dy
         .await?;
 
     let pk_res: PKRequest = resp.json().await?;
-    let params = timeit!("Parameters generation", generate_bfv_parameters()?);
+    let params = generate_bfv_parameters()?;
     let pk_deserialized = PublicKey::from_bytes(&pk_res.pk_bytes, &params)?;
 
     let vote_choice = get_user_vote()?;
@@ -135,7 +133,7 @@ pub async fn decrypt_and_publish_result(client: &Client) -> Result<(), Box<dyn s
 
     let ct_res: CTRequest = resp.json().await?;
 
-    let db = GLOBAL_DB.read().await;
+    let db = CLI_DB.read().await;
     let params_bytes = db.get(format!("e3:{}", input_crisp_id))?.ok_or("Key not found")?;
     let e3_params: FHEParams = serde_json::from_slice(&params_bytes)?;
     let params = generate_bfv_parameters()?;

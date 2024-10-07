@@ -1,13 +1,13 @@
 mod config;
-mod voting;
+mod commands;
 
 use dialoguer::{theme::ColorfulTheme, FuzzySelect};
 use reqwest::Client;
 
 use config::CONFIG;
-use env_logger::{Builder, Target};
-use log::{info, LevelFilter, Record};
-use voting::{
+use crisp::logger::init_logger;
+use log::info;
+use commands::{
     activate_e3_round, decrypt_and_publish_result, initialize_crisp_round,
     participate_in_existing_round,
 };
@@ -16,38 +16,16 @@ use once_cell::sync::Lazy;
 
 use sled::Db;
 use std::sync::Arc;
-use std::path::Path;
-use std::io::Write;
 use tokio::sync::RwLock;
 
-pub static GLOBAL_DB: Lazy<Arc<RwLock<Db>>> = Lazy::new(|| {
+pub static CLI_DB: Lazy<Arc<RwLock<Db>>> = Lazy::new(|| {
     let pathdb = std::env::current_dir().unwrap().join("database/cli");
     Arc::new(RwLock::new(sled::open(pathdb).unwrap()))
 });
 
-fn init_logger() {
-    let mut builder = Builder::new();
-    builder
-        .target(Target::Stdout)
-        .filter(None, LevelFilter::Info)
-        .format(|buf, record: &Record| {
-            let file = record.file().unwrap_or("unknown");
-            let filename = Path::new(file).file_name().unwrap_or_else(|| file.as_ref());
-
-            writeln!(
-                buf,
-                "[{}:{}] - {}",
-                filename.to_string_lossy(),
-                record.line().unwrap_or(0),
-                record.args()
-            )
-        })
-        .init();
-}
-
 
 #[tokio::main]
-pub async fn run_cli() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logger();
 
     let client = Client::new();

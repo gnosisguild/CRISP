@@ -1,5 +1,5 @@
-use rfv::cli::run_cli;
+use crisp::server;
 
 fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    run_cli()
+    server::start()
 }

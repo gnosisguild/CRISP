@@ -38,22 +38,22 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
     getWebResultByRound,
     getToken,
     getWebResult,
-    getRound,
+    getCurrentRound,
     broadcastVote,
   } = useEnclaveServer()
 
   const initialLoad = async () => {
     console.log("Loading wasm");
-    const round = await getRound()
-    if (round) {
-      await getRoundStateLite(round.round_count)
+    const currentRound = await getCurrentRound()
+    if (currentRound) {
+      await getRoundStateLite(currentRound.id)
     }
   }
 
   const existNewRound = async () => {
-    const round = await getRound()
-    if (round && votingRound && round.round_count > votingRound.round_id) {
-      await getRoundStateLite(round.round_count)
+    const currentRound = await getCurrentRound()
+    if (currentRound && votingRound && currentRound.id > votingRound.round_id) {
+      await getRoundStateLite(currentRound.id)
     }
   }
 

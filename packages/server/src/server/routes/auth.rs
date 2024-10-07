@@ -6,14 +6,27 @@ use log::info;
 
 use actix_web::{web, HttpResponse, Responder};
 
-use crate::enclave_server::models::{AppState, AuthenticationLogin, AuthenticationDB, AuthenticationResponse};
+use crate::server::models::{AppState, AuthenticationLogin, AuthenticationDB, AuthenticationResponse};
 
 pub fn setup_routes(config: &mut web::ServiceConfig) {
     config
-        .route("/authentication_login", web::post().to(authentication_login));
+        .service(
+            web::scope("/auth")
+                .route("/login", web::post().to(authenticate_login))
+        );
 }
 
-async fn authentication_login(state: web::Data<AppState>, data: web::Json<AuthenticationLogin>) -> impl Responder {
+/// Authenticate a login
+/// 
+/// # Arguments
+/// 
+/// * `state` - The application state
+/// * `AuthenticationLogin` - The post ID for the login
+/// 
+/// # Returns
+/// 
+/// * `AuthenticationResponse` - The response indicating the success or failure of the login
+async fn authenticate_login(state: web::Data<AppState>, data: web::Json<AuthenticationLogin>) -> impl Responder {
     let incoming = data.into_inner();
     info!("Twitter Login Request");
 
@@ -24,7 +37,7 @@ async fn authentication_login(state: web::Data<AppState>, data: web::Json<Authen
     let token = claims.sign_with_key(&hmac_key).unwrap();
 
     let key = "authentication";
-    let db = &state.db.write().await;
+    let db = &state.sled.db.write().await;
     let mut is_new = false; // Track if it's a new login
 
     // Perform DB update and fetch the current state

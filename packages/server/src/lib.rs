@@ -1,3 +1,2 @@
-pub mod cli;
-pub mod util;
-pub mod enclave_server;
+pub mod server;
+pub mod logger;

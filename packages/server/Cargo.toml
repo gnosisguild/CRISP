@@ -1,38 +1,70 @@
 [package]
-name = "rfv"
+name = "crisp"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[[bin]]
+name = "server"
+path = "src/server/main.rs"
+
+[[bin]]
+name = "cli"
+path = "src/cli/main.rs"
+
+[[bin]]
+name = "cron"
+path = "src/cron/main.rs"
 
 [dependencies]
-fhe = { git = "https://github.com/gnosisguild/fhe.rs", branch = "feature/greco-integration", version = "0.1.0-beta.7" }
-fhe-traits = { git = "https://github.com/gnosisguild/fhe.rs", branch = "feature/greco-integration", version = "0.1.0-beta.7" }
-compute-provider = { path = "../compute_provider" }
-voting-risc0 = { path = "../risc0/apps" }
-rand = "0.8.5"
-tokio = { version = "1.37.0", features = ["full"] }
-bincode = "1.3.3"
-dialoguer = { version = "0.11.0", features = ["fuzzy-select"] }
-serde = { version = "1.0.197", features = ["derive"] }
-serde_json = "1.0.114"
-wasm-bindgen = "0.2"
-chrono = "0.4.38"
-sled = "0.34"
-once_cell = "1.19.0"
-jwt = "0.16.0"
-hmac = "0.12.1"
-sha2 = "0.10.8"
-log = "0.4.22"
-env_logger = "0.11.5"
-actix-web = "4.9.0"
+# Web framework and related
 actix-cors = "0.7.0"
+actix-web = "4.9.0"
+
+# Async and networking
+futures-util = "0.3"
+reqwest = { version = "0.12.8", features = ["json"] }
+tokio = { version = "1.37.0", features = ["full"] }
+
+# Cryptography and blockchain
+alloy = { version = "0.2.1", features = ["full", "rpc-types-eth"] }
 alloy-primitives = { version = "0.6", default-features = false, features = ["rlp", "serde", "std"] }
 alloy-sol-types = { version = "0.6" }
-alloy = { version = "0.2.1", features = ["full", "rpc-types-eth"] }
-futures-util = "0.3"
+fhe = { git = "https://github.com/gnosisguild/fhe.rs", branch = "feature/greco-integration", version = "0.1.0-beta.7" }
+fhe-traits = { git = "https://github.com/gnosisguild/fhe.rs", branch = "feature/greco-integration", version = "0.1.0-beta.7" }
+hmac = "0.12.1"
+jwt = "0.16.0"
+sha2 = "0.10.8"
+
+# Local dependencies
+compute-provider = { path = "../compute_provider" }
+voting-risc0 = { path = "../risc0/apps" }
+
+# CLI and user interaction
+dialoguer = { version = "0.11.0", features = ["fuzzy-select"] }
+
+# Serialization and deserialization
+bincode = "1.3.3"
+serde = { version = "1.0.197", features = ["derive"] }
+serde_json = "1.0.114"
+
+# Utility libraries
+chrono = "0.4.38"
 eyre = "0.6"
 hex = "0.4"
-dotenvy = "0.15.7"
+once_cell = "1.19.0"
+rand = "0.8.5"
+thiserror = "1.0.64"
+
+# Database
+sled = "0.34.7"
+
+# WebAssembly
+wasm-bindgen = "0.2"
+
+# Logging
+env_logger = "0.11.5"
+log = "0.4.22"
+
+# Configuration
 config = "0.14.0"
-reqwest = { version = "0.12.8", features = ["json"] }
+dotenvy = "0.15.7"

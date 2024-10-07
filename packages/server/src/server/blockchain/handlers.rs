@@ -1,13 +1,16 @@
 use super::{
-    events::{CiphertextOutputPublished, E3Activated, InputPublished, PlaintextOutputPublished, CommitteePublished},
+    events::{
+        CiphertextOutputPublished, CommitteePublished, E3Activated, InputPublished,
+        PlaintextOutputPublished,
+    },
     relayer::EnclaveContract,
 };
-use crate::enclave_server::models::E3;
-use crate::enclave_server::{
+use crate::server::{
     config::CONFIG,
-    database::{generate_emoji, get_e3, increment_e3_round, save_e3},
+    database::{generate_emoji, get_e3, GLOBAL_DB},
+    models::{E3, CurrentRound},
 };
-use alloy:: rpc::types::Log;
+use alloy::rpc::types::Log;
 use chrono::Utc;
 use compute_provider::FHEInputs;
 use log::info;
@@ -73,10 +76,16 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
 
     // Save E3 to the database
     let key = format!("e3:{}", e3_id);
-    save_e3(&e3_obj, &key).await?;
+    GLOBAL_DB.insert(&key, &e3_obj).await?;
+
+    // Set Current Round
+    let current_round = CurrentRound {
+        id: e3_id,
+    };
+    GLOBAL_DB.insert("e3:current_round", &current_round).await?;
 
     // Sleep till the E3 expires
-    sleep(Duration::from_secs(e3.duration.to::<u64>() + 5)).await;
+    sleep(Duration::from_secs(e3.duration.to::<u64>())).await;
 
     // Get All Encrypted Votes
     let (mut e3, _) = get_e3(e3_id).await.unwrap();
@@ -115,9 +124,9 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
     } else {
         info!("E3 has no votes to decrypt. Setting status to Finished.");
         e3.status = "Finished".to_string();
-        save_e3(&e3, &key).await.unwrap();
+
+        GLOBAL_DB.insert(&key, &e3_obj).await?;
     }
-    increment_e3_round().await.unwrap();
     info!("E3 request handled successfully.");
     Ok(())
 }
@@ -132,7 +141,7 @@ pub async fn handle_input_published(input: InputPublished) -> Result<()> {
         .push((input.data.to_vec(), input.index.to::<u64>()));
     e3.vote_count += 1;
 
-    save_e3(&e3, &key).await?;
+    GLOBAL_DB.insert(&key, &e3).await?;
 
     info!("Saved Input with Hash: {:?}", input.inputHash);
     Ok(())
@@ -149,7 +158,7 @@ pub async fn handle_ciphertext_output_published(
     e3.ciphertext_output = ciphertext_output.ciphertextOutput.to_vec();
     e3.status = "Published".to_string();
 
-    save_e3(&e3, &key).await?;
+    GLOBAL_DB.insert(&key, &e3).await?;
 
     info!("CiphertextOutputPublished event handled.");
     Ok(())
@@ -172,7 +181,7 @@ pub async fn handle_plaintext_output_published(
     info!("Votes Option 1: {:?}", e3.votes_option_1);
     info!("Votes Option 2: {:?}", e3.votes_option_2);
 
-    save_e3(&e3, &key).await?;
+    GLOBAL_DB.insert(&key, &e3).await?;
 
     info!("PlaintextOutputPublished event handled.");
     Ok(())
@@ -180,10 +189,12 @@ pub async fn handle_plaintext_output_published(
 
 pub async fn handle_committee_published(committee_published: CommitteePublished) -> Result<()> {
     info!("Handling CommitteePublished event...");
-    info!("Committee Published: {:?}", committee_published);
+    info!("Committee Published for round: {:?}", committee_published.e3Id);
 
     let contract = EnclaveContract::new(CONFIG.enclave_address.clone()).await?;
-    let tx = contract.activate(committee_published.e3Id, committee_published.publicKey).await?;
+    let tx = contract
+        .activate(committee_published.e3Id, committee_published.publicKey)
+        .await?;
     info!("E3 activated with tx: {:?}", tx.transaction_hash);
     Ok(())
 }

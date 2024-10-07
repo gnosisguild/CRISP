@@ -45,19 +45,6 @@ export const formatDate = (isoDateString: string): string => {
   return `${dateFormatter.format(date)} -  ${timeFormatter.format(date)}`
 }
 
-export const fixResult = (poll: PollRequestResult): PollRequestResult => {
-  let fixedPollResult = { ...poll }
-  fixedPollResult.option_1_tally = poll.option_2_tally
-  fixedPollResult.option_2_tally = poll.option_1_tally
-  return fixedPollResult
-}
-
-export const fixPollResult = (polls: PollRequestResult[]): PollRequestResult[] => {
-  return polls.map((poll) => {
-    return fixResult(poll)
-  })
-}
-
 export const convertPollData = (request: PollRequestResult[]): PollResult[] => {
   const pollResults = request.map((poll) => {
     const totalVotes = poll.total_votes

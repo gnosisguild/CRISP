@@ -1563,13 +1563,13 @@ dependencies = [
 
 [[package]]
 name = "cc"
-version = "1.0.97"
+version = "1.1.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "099a5357d84c4c61eb35fc8eafa9a79a902c2f76911e5747ced4e032edd8d9b4"
+checksum = "2e80e3b6a3ab07840e1cae9b0666a63970dc28e8ed5ffbcdacbfc760c281bfc1"
 dependencies = [
  "jobserver",
  "libc",
- "once_cell",
+ "shlex",
 ]
 
 [[package]]
@@ -1853,6 +1853,43 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3855a8a784b474f333699ef2bbca9db2c4a1f6d9088a90a2d25b1eb53111eaa"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "crisp"
+version = "0.1.0"
+dependencies = [
+ "actix-cors",
+ "actix-web",
+ "alloy",
+ "alloy-primitives 0.6.4",
+ "alloy-sol-types 0.6.4",
+ "bincode",
+ "chrono",
+ "compute-provider",
+ "config",
+ "dialoguer",
+ "dotenvy",
+ "env_logger 0.11.5",
+ "eyre",
+ "fhe 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
+ "fhe-traits 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
+ "futures-util",
+ "hex",
+ "hmac",
+ "jwt",
+ "log",
+ "once_cell",
+ "rand",
+ "reqwest 0.12.8",
+ "serde",
+ "serde_json",
+ "sha2",
+ "sled",
+ "thiserror",
+ "tokio",
+ "voting-risc0",
+ "wasm-bindgen",
 ]
 
 [[package]]
@@ -4896,42 +4933,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rfv"
-version = "0.1.0"
-dependencies = [
- "actix-cors",
- "actix-web",
- "alloy",
- "alloy-primitives 0.6.4",
- "alloy-sol-types 0.6.4",
- "bincode",
- "chrono",
- "compute-provider",
- "config",
- "dialoguer",
- "dotenvy",
- "env_logger 0.11.5",
- "eyre",
- "fhe 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
- "fhe-traits 0.1.0-beta.7 (git+https://github.com/gnosisguild/fhe.rs?branch=feature/greco-integration)",
- "futures-util",
- "hex",
- "hmac",
- "jwt",
- "log",
- "once_cell",
- "rand",
- "reqwest 0.12.8",
- "serde",
- "serde_json",
- "sha2",
- "sled",
- "tokio",
- "voting-risc0",
- "wasm-bindgen",
-]
-
-[[package]]
 name = "ring"
 version = "0.16.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5631,6 +5632,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "24188a676b6ae68c3b2cb3a01be17fbf7240ce009799bb56d5b1409051e78fde"
 
 [[package]]
+name = "shlex"
+version = "1.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
+
+[[package]]
 name = "signal-hook-registry"
 version = "1.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5960,18 +5967,18 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.60"
+version = "1.0.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "579e9083ca58dd9dcf91a9923bb9054071b9ebbd800b342194c9feb0ee89fc18"
+checksum = "d50af8abc119fb8bb6dbabcfa89656f46f84aa0ac7688088608076ad2b459a84"
 dependencies = [
  "thiserror-impl",
 ]
 
 [[package]]
 name = "thiserror-impl"
-version = "1.0.60"
+version = "1.0.64"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e2470041c06ec3ac1ab38d0356a6119054dedaea53e12fbefc0de730a1c08524"
+checksum = "08904e7672f5eb876eaaf87e0ce17857500934f4981c4a0ab2b4aa98baac7fc3"
 dependencies = [
  "proc-macro2",
  "quote",
