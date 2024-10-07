@@ -31,29 +31,29 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   /**
    * Voting Management Methods
    **/
-  const { isLoading: wasmLoading, wasmInstance, encryptInstance, initWebAssembly, encryptVote } = useWebAssemblyHook()
+  const { isLoading: wasmLoading, encryptVote } = useWebAssemblyHook()
   const {
     isLoading: enclaveLoading,
     getRoundStateLite: getRoundStateLiteRequest,
     getWebResultByRound,
     getToken,
     getWebResult,
-    getRound,
+    getCurrentRound,
     broadcastVote,
   } = useEnclaveServer()
 
   const initialLoad = async () => {
-    await initWebAssembly()
-    const round = await getRound()
-    if (round) {
-      await getRoundStateLite(round.round_count)
+    console.log("Loading wasm");
+    const currentRound = await getCurrentRound()
+    if (currentRound) {
+      await getRoundStateLite(currentRound.id)
     }
   }
 
   const existNewRound = async () => {
-    const round = await getRound()
-    if (round && votingRound && round.round_count > votingRound.round_id) {
-      await getRoundStateLite(round.round_count)
+    const currentRound = await getCurrentRound()
+    if (currentRound && votingRound && currentRound.id > votingRound.round_id) {
+      await getRoundStateLite(currentRound.id)
     }
   }
 
@@ -65,7 +65,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
   const getRoundStateLite = async (roundCount: number) => {
     const roundState = await getRoundStateLiteRequest(roundCount)
 
-    if (roundState?.pk.length === 1 && roundState.pk[0] === 0) {
+    if (roundState?.committee_public_key.length === 1 && roundState.committee_public_key[0] === 0) {
       handleGenericError('getRoundStateLite', {
         message: 'Enclave server failed generating the necessary pk bytes',
         name: 'getRoundStateLite',
@@ -73,9 +73,9 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
     }
     if (roundState) {
       setRoundState(roundState)
-      setVotingRound({ round_id: roundState.id, pk_bytes: roundState.pk })
+      setVotingRound({ round_id: roundState.id, pk_bytes: roundState.committee_public_key })
       setPollOptions(generatePoll({ round_id: roundState.id, emojis: roundState.emojis }))
-      setRoundEndDate(convertTimestampToDate(roundState.start_time, roundState.poll_length))
+      setRoundEndDate(convertTimestampToDate(roundState.start_time, roundState.duration))
     }
   }
 
@@ -104,8 +104,6 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
     <VoteManagementContextProvider
       value={{
         isLoading,
-        wasmInstance,
-        encryptInstance,
         user,
         votingRound,
         roundEndDate,
@@ -128,7 +126,6 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         broadcastVote,
         setVotingRound,
         setUser,
-        initWebAssembly,
         encryptVote,
         logout,
       }}

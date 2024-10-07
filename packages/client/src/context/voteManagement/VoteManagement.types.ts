@@ -1,6 +1,4 @@
 import { ReactNode } from 'react'
-import * as WasmInstance from 'libs/wasm/pkg/crisp_web'
-
 import { BroadcastVoteRequest, BroadcastVoteResponse, VoteStateLite, VotingRound } from '@/model/vote.model'
 import { Poll, PollRequestResult, PollResult } from '@/model/poll.model'
 import { StatusAPIResponse } from '@farcaster/auth-client'
@@ -8,8 +6,6 @@ import { Auth } from '@/model/auth.model'
 
 export type VoteManagementContextType = {
   isLoading: boolean
-  wasmInstance: WasmInstance.InitOutput | null
-  encryptInstance: WasmInstance.Encrypt | null
   user: StatusAPIResponse | null
   votingRound: VotingRound | null
   roundEndDate: Date | null
@@ -28,7 +24,6 @@ export type VoteManagementContextType = {
   getPastPolls: () => Promise<void>
   setVotingRound: React.Dispatch<React.SetStateAction<VotingRound | null>>
   setUser: (value: StatusAPIResponse | null) => void
-  initWebAssembly: () => Promise<void>
   encryptVote: (voteId: bigint, publicKey: Uint8Array) => Promise<Uint8Array | undefined>
   broadcastVote: (vote: BroadcastVoteRequest) => Promise<BroadcastVoteResponse | undefined>
   getRoundStateLite: (roundCount: number) => Promise<void>

@@ -24,7 +24,7 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, e
     interval: 2000,
   })
   const { user, pollOptions, setPollOptions, roundState } = useVoteManagementContext()
-  const isEnded = roundState ? hasPollEnded(roundState?.poll_length, roundState?.start_time) : false
+  const isEnded = roundState ? hasPollEnded(roundState?.duration, roundState?.start_time) : false
   const status = roundState?.status
   const [pollSelected, setPollSelected] = useState<Poll | null>(null)
   const [noPollSelected, setNoPollSelected] = useState<boolean>(true)

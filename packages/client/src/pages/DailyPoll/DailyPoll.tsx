@@ -13,7 +13,7 @@ const DailyPoll: React.FC = () => {
     useVoteManagementContext()
   const [loading, setLoading] = useState<boolean>(false)
   const [newRoundLoading, setNewRoundLoading] = useState<boolean>(false)
-  const endTime = roundState && convertTimestampToDate(roundState?.start_time, roundState?.poll_length)
+  const endTime = roundState && convertTimestampToDate(roundState?.start_time, roundState?.duration)
 
   useEffect(() => {
     const checkRound = async () => {
@@ -51,7 +51,7 @@ const DailyPoll: React.FC = () => {
   const handleVoted = async (vote: Poll | null) => {
     if (!vote || !votingRound) return
     setLoading(true)
-
+    
     try {
       const voteEncrypted = await handleVoteEncryption(vote)
       const broadcastVoteResponse = voteEncrypted && (await handleVoteBroadcast(voteEncrypted))
