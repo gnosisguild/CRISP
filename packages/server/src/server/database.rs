@@ -54,7 +54,15 @@ pub async fn get_e3(e3_id: u64) -> Result<(E3, String), Box<dyn Error + Send + S
     Ok((e3.unwrap(), key))
 }
 
-pub fn generate_emoji() -> (String, String) {
+pub async fn update_e3_status(e3_id: u64, status: String) -> Result<(), Box<dyn Error + Send + Sync>> {
+    let key = format!("e3:{}", e3_id);
+    let mut e3 = GLOBAL_DB.get::<E3>(&key).await?.unwrap();
+    e3.status = status;
+    GLOBAL_DB.insert(&key, &e3).await?;
+    Ok(())
+}
+
+pub fn generate_emoji() -> [String; 2] {
     let emojis = [
         "🍇", "🍈", "🍉", "🍊", "🍋", "🍌", "🍍", "🥭", "🍎", "🍏", "🍐", "🍑", "🍒", "🍓", "🫐",
         "🥝", "🍅", "🫒", "🥥", "🥑", "🍆", "🥔", "🥕", "🌽", "🌶️", "🫑", "🥒", "🥬", "🥦", "🧄",
@@ -74,5 +82,5 @@ pub fn generate_emoji() -> (String, String) {
             index1 = index1 + 1;
         };
     };
-    (emojis[index1].to_string(), emojis[index2].to_string())
+    [emojis[index1].to_string(), emojis[index2].to_string()]
 }

@@ -2,11 +2,11 @@ use log::{info, error};
 use actix_web::{web, HttpResponse, Responder};
 use alloy::primitives::{Address, U256, Bytes};
 use chrono::Utc;
-use fhe::bfv::BfvParametersBuilder;
 use fhe_traits::Serialize;
+use crate::server::utils::generate_bfv_parameters;
 use crate::server::blockchain::relayer::EnclaveContract;
 use crate::server::config::CONFIG;
-use crate::server::models::{CTRequest, CurrentRound, AppState, PKRequest, CronRequestE3, JsonResponse};
+use crate::server::models::{CTRequest, CurrentRound, AppState, PKRequest, CronRequestE3, JsonResponse, ComputeProviderParams};
 use crate::server::database::get_e3;
 
 pub fn setup_routes(config: &mut web::ServiceConfig) {
@@ -145,26 +145,19 @@ pub async fn initialize_crisp_round() -> Result<(), Box<dyn std::error::Error + 
 
     info!("Requesting E3...");
     let filter: Address = CONFIG.naive_registry_filter_address.parse()?;
-    let threshold: [u32; 2] = [1, 2];
-    let start_window: [U256; 2] = [U256::from(Utc::now().timestamp()), U256::from(Utc::now().timestamp() + 600)];
-    let duration: U256 = U256::from(600);
+    let threshold: [u32; 2] = [CONFIG.e3_threshold_min, CONFIG.e3_threshold_max];
+    let start_window: [U256; 2] = [U256::from(Utc::now().timestamp()), U256::from(Utc::now().timestamp() + CONFIG.e3_window_size as i64)];
+    let duration: U256 = U256::from(CONFIG.e3_duration);
     let e3_params = Bytes::from(params);
-    let compute_provider_params = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    let compute_provider_params = ComputeProviderParams {
+        name: CONFIG.e3_compute_provider_name.clone(),
+        parallel: CONFIG.e3_compute_provider_parallel,
+        batch_size: CONFIG.e3_compute_provider_batch_size,
+    };
+    let compute_provider_params = Bytes::from(bincode::serialize(&compute_provider_params).unwrap());
     let res = contract.request_e3(filter, threshold, start_window, duration, e3_program, e3_params, compute_provider_params).await?;
     info!("E3 request sent. TxHash: {:?}", res.transaction_hash);
 
     Ok(())
 }
 
-fn generate_bfv_parameters(
-) -> Result<std::sync::Arc<fhe::bfv::BfvParameters>, Box<dyn std::error::Error + Send + Sync>> {
-    let degree = 2048;
-    let plaintext_modulus: u64 = 1032193;
-    let moduli = vec![0xffffffff00001];
-
-    Ok(BfvParametersBuilder::new()
-        .set_degree(degree)
-        .set_plaintext_modulus(plaintext_modulus)
-        .set_moduli(&moduli)
-        .build_arc()?)
-}

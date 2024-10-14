@@ -20,6 +20,13 @@ struct FHEParams {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+struct ComputeProviderParams {
+    name: String,
+    parallel: bool,
+    batch_size: u32,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 struct PKRequest {
     round_id: u64,
     pk_bytes: Vec<u8>,
@@ -52,13 +59,18 @@ pub async fn initialize_crisp_round() -> Result<(), Box<dyn std::error::Error + 
     }
 
     let filter: Address = CONFIG.naive_registry_filter_address.parse()?;
-    let threshold: [u32; 2] = [1, 2];
-    let start_window: [U256; 2] = [U256::from(Utc::now().timestamp()), U256::from(Utc::now().timestamp() + 600)];
-    let duration: U256 = U256::from(40);
+    let threshold: [u32; 2] = [CONFIG.e3_threshold_min, CONFIG.e3_threshold_max];
+    let start_window: [U256; 2] = [U256::from(Utc::now().timestamp()), U256::from(Utc::now().timestamp() + CONFIG.e3_window_size as i64)];
+    let duration: U256 = U256::from(CONFIG.e3_duration);
     let e3_params = Bytes::from(generate_bfv_parameters()?.to_bytes());
-    let compute_provider_params = Bytes::from(vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    let compute_provider_params = ComputeProviderParams {
+        name: CONFIG.e3_compute_provider_name.to_string(),
+        parallel: CONFIG.e3_compute_provider_parallel,
+        batch_size: CONFIG.e3_compute_provider_batch_size,
+    };
+    let compute_provider_params_bytes = Bytes::from(serde_json::to_vec(&compute_provider_params)?);
 
-    let res = contract.request_e3(filter, threshold, start_window, duration, e3_program, e3_params, compute_provider_params).await?;
+    let res = contract.request_e3(filter, threshold, start_window, duration, e3_program, e3_params, compute_provider_params_bytes).await?;
     info!("E3 request sent. TxHash: {:?}", res.transaction_hash);
 
     Ok(())
@@ -97,7 +109,7 @@ pub async fn participate_in_existing_round(client: &Client) -> Result<(), Box<dy
         .with_prompt("Enter CRISP round ID.")
         .interact_text()?;
 
-    let url = format!("{}/get_pk_by_round", CONFIG.enclave_server_url);
+    let url = format!("{}/rounds/public-key", CONFIG.enclave_server_url);
     let resp = client.post(&url)
         .json(&PKRequest { round_id: input_crisp_id, pk_bytes: vec![0] })
         .send()
@@ -125,7 +137,7 @@ pub async fn decrypt_and_publish_result(client: &Client) -> Result<(), Box<dyn s
         .with_prompt("Enter CRISP round ID.")
         .interact_text()?;
 
-    let url = format!("{}/get_ct_by_round", CONFIG.enclave_address);
+    let url = format!("{}/get_ct_b_round", CONFIG.enclave_address);
     let resp = client.post(&url)
         .json(&CTRequest { round_id: input_crisp_id, ct_bytes: vec![0] })
         .send()

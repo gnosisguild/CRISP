@@ -30,15 +30,11 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let client = Client::new();
 
-    clear_screen();
-
     let environment = select_environment()?;
     if environment != 0 {
         info!("Check back soon!");
         return Ok(());
     }
-
-    clear_screen();
 
     let action = select_action()?;
 
@@ -61,9 +57,6 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     Ok(())
 }
 
-fn clear_screen() {
-    print!("{esc}[2J{esc}[1;1H", esc = 27 as char);
-}
 
 fn select_environment() -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
     let selections = &["CRISP: Voting Protocol (ETH)", "More Coming Soon!"];
