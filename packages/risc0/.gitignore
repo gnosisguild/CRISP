@@ -12,6 +12,7 @@ tests/Elf.sol
 haha/
 # Dotenv file
 .env
+.cargo
 
 # Cargo
 target/

@@ -75,6 +75,7 @@ impl EnclaveContract {
             .on_builtin(&CONFIG.http_rpc_url)
             .await?;
 
+
         Ok(Self {
             provider: Arc::new(provider),
             contract_address: contract_address.parse()?,

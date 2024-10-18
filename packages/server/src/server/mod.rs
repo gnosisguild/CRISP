@@ -3,6 +3,7 @@ mod config;
 mod database;
 mod models;
 mod routes;
+mod utils;
 
 use actix_cors::Cors;
 use actix_web::{middleware::Logger, web, App, HttpServer};
@@ -17,6 +18,12 @@ use crate::logger::init_logger;
 #[actix_web::main]
 pub async fn start() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     init_logger();
+
+    tokio::spawn(async {
+    if let Err(e) = blockchain::sync::sync_server().await {
+            eprintln!("Sync server failed: {:?}", e);
+        }
+    });
 
     tokio::spawn(async {
         if let Err(e) = start_listener(&CONFIG.ws_rpc_url, &CONFIG.enclave_address, &CONFIG.ciphernode_registry_address).await {

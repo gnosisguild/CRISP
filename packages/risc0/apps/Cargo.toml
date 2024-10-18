@@ -21,3 +21,5 @@ fhe = { workspace = true }
 fhe-traits = { workspace = true }
 fhe-util = { workspace = true }
 voting-core = { path = "../core" }
+rand = "0.8"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }

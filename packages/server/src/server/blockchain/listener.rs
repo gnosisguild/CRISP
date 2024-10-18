@@ -6,14 +6,18 @@ use alloy::{
     transports::BoxTransport,
 };
 use eyre::Result;
-use futures_util::stream::StreamExt;
+use futures::stream::StreamExt;
+use log::{error, info};
+use eyre::eyre;
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
-use log::{info, error};
 
-use super::events::{E3Activated, InputPublished, PlaintextOutputPublished, CiphertextOutputPublished, CommitteePublished};
+use super::events::{
+    CiphertextOutputPublished, CommitteePublished, E3Activated, InputPublished,
+    PlaintextOutputPublished,
+};
 
 pub trait ContractEvent: Send + Sync + 'static {
     fn process(&self, log: Log) -> Result<()>;
@@ -93,17 +97,28 @@ impl EnclaveContract {
     }
 }
 
-pub async fn start_listener(rpc_url: &str, enclave_address: &str, registry_address: &str) -> Result<()> {
-    let enclave_address: Address = enclave_address.parse()?;
-    let registry_address: Address = registry_address.parse()?;
-    
+pub async fn start_listener(
+    rpc_url: &str,
+    enclave_address: &str,
+    registry_address: &str,
+) -> Result<()> {
+    let enclave_address: Address = enclave_address
+        .parse()
+        .map_err(|_| eyre!("Failed to parse enclave_address: {}", enclave_address))?;
+    let registry_address: Address = registry_address
+        .parse()
+        .map_err(|_| eyre!("Failed to parse registry_address: {}", registry_address))?;
+
     loop {
         match run_listener(rpc_url, enclave_address, registry_address).await {
             Ok(_) => {
                 info!("Listener finished successfully. Checking for reconnection...");
-            },
+            }
             Err(e) => {
-                error!("Error occurred in listener: {}. Reconnecting after delay...", e);
+                error!(
+                    "Error occurred in listener: {}. Reconnecting after delay...",
+                    e
+                );
             }
         }
         sleep(Duration::from_secs(5)).await;
@@ -111,9 +126,13 @@ pub async fn start_listener(rpc_url: &str, enclave_address: &str, registry_addre
 }
 
 // Separate function to encapsulate listener logic
-async fn run_listener(rpc_url: &str, enclave_address: Address, registry_address: Address) -> Result<()> {
+async fn run_listener(
+    rpc_url: &str,
+    enclave_address: Address,
+    registry_address: Address,
+) -> Result<()> {
     let manager = EnclaveContract::new(rpc_url).await?;
-    
+
     let mut enclave_listener = manager.add_listener(enclave_address);
     enclave_listener.add_event_handler::<E3Activated>();
     enclave_listener.add_event_handler::<InputPublished>();

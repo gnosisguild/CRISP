@@ -19,7 +19,7 @@ async fn main() -> Result<(), Box<dyn Error>> {
 
         while retries < MAX_RETRIES {
             let response = client
-                .post(format!("{}/request_e3_round", enclave_server_url))
+                .post(format!("{}/rounds/request", enclave_server_url))
                 .json(&json!({
                     "cron_api_key": cron_api_key
                 }))
