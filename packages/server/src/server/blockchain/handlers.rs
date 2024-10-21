@@ -10,7 +10,6 @@ use crate::server::{
     database::{generate_emoji, get_e3, update_e3_status, GLOBAL_DB},
     models::{E3, CurrentRound},
 };
-use alloy::rpc::types::Log;
 use chrono::Utc;
 use compute_provider::FHEInputs;
 use log::info;
@@ -21,7 +20,7 @@ use voting_risc0::run_compute;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
-pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
+pub async fn handle_e3(e3_activated: E3Activated) -> Result<()> {
     let e3_id = e3_activated.e3Id.to::<u64>();
     info!("Handling E3 request with id {}", e3_id);
 
@@ -33,11 +32,6 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
     info!("E3: {:?}", e3);
 
     let start_time = Utc::now().timestamp() as u64;
-
-    let block_start = match log.block_number {
-        Some(bn) => bn,
-        None => contract.get_latest_block().await?,
-    };
 
     let e3_obj = E3 {
         // Identifiers
@@ -54,7 +48,7 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
 
         // Timing-related
         start_time,
-        block_start,
+        block_start: e3.requestBlock.to::<u64>(),
         duration: e3.duration.to::<u64>(),
         expiration: e3.expiration.to::<u64>(),
 
