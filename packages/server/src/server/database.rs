@@ -4,6 +4,7 @@ use rand::Rng;
 use sled::Db;
 use std::{error::Error, str, sync::Arc};
 use tokio::sync::RwLock;
+use log::error;
 use thiserror::Error;
 use serde::{Serialize, de::DeserializeOwned};
 
@@ -50,8 +51,13 @@ pub static GLOBAL_DB: Lazy<SledDB> = Lazy::new(|| {
 
 pub async fn get_e3(e3_id: u64) -> Result<(E3, String), Box<dyn Error + Send + Sync>> {
     let key = format!("e3:{}", e3_id);
-    let e3 = GLOBAL_DB.get::<E3>(&key).await?;
-    Ok((e3.unwrap(), key))
+    match GLOBAL_DB.get::<E3>(&key).await? {
+        Some(e3) => Ok((e3, key)),
+        None => {
+            error!("E3 state not found for key: {}", key);
+            Err("E3 state not found".into())
+        }
+    }
 }
 
 pub async fn update_e3_status(e3_id: u64, status: String) -> Result<(), Box<dyn Error + Send + Sync>> {

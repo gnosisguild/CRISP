@@ -26,13 +26,13 @@ const HistoricPoll: React.FC = () => {
   }, [loadingMore, isLoading])
 
   useEffect(() => {
-    if (votingRound && votingRound?.round_id - 1 > pastPolls.length) {
+    if (votingRound && votingRound?.pk_bytes) {
       const fetchPastPolls = async () => {
         await getPastPolls()
       }
       fetchPastPolls()
     }
-  }, [pastPolls, votingRound, getPastPolls])
+  }, [votingRound])
 
   useEffect(() => {
     setVisiblePolls(pastPolls.slice(0, 12)) // Initialize with the first 12 polls
