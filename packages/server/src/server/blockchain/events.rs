@@ -26,10 +26,10 @@ sol! {
 }
 
 impl ContractEvent for E3Activated {
-    fn process(&self, log: Log) -> Result<()> {
+    fn process(&self, _log: Log) -> Result<()> {
         let event_clone = self.clone();
         tokio::spawn(async move {
-            if let Err(e) = handle_e3(event_clone, log).await {
+            if let Err(e) = handle_e3(event_clone).await {
                 eprintln!("Error handling E3 request: {:?}", e);
             }
         });

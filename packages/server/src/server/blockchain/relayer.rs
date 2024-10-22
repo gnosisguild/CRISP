@@ -19,6 +19,7 @@ sol! {
     struct E3 {
         uint256 seed;
         uint32[2] threshold;
+        uint256 requestBlock;
         uint256[2] startWindow;
         uint256 duration;
         uint256 expiration;
@@ -74,6 +75,7 @@ impl EnclaveContract {
             .wallet(wallet)
             .on_builtin(&CONFIG.http_rpc_url)
             .await?;
+
 
         Ok(Self {
             provider: Arc::new(provider),

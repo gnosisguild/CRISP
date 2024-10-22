@@ -150,7 +150,6 @@ After deployment, note down the addresses for the following contracts:
 
    ```toml
    [env]
-   ETH_WALLET_PRIVATE_KEY="your_private_key"
    BONSAI_API_KEY="your_api_key"
    BONSAI_API_URL="your_api_url"
    ```
@@ -164,8 +163,13 @@ After deployment, note down the addresses for the following contracts:
    enclaveAddress = "your_enclave_address"
    inputValidatorAddress = "your_input_validator_address"
    ```
+5. Export the ETH_WALLET_PRIVATE_KEY environment variable:
 
-5. Deploy the contracts:
+   ```sh
+   export ETH_WALLET_PRIVATE_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80" # Anvil's default private key
+   ```
+
+6. Deploy the contracts:
 
    ```sh
    forge script --rpc-url http://localhost:8545 --broadcast script/Deploy.s.sol
@@ -178,15 +182,27 @@ Note down the CRISPRisc0 Contract Address, which will be used as the E3 Program 
 Create a `.env` file in the `server` directory with the following:
 
 ```sh
+CRON_API_KEY=your_cron_api_key # Optional for e3_cron binary
+
 PRIVATE_KEY=your_private_key
 HTTP_RPC_URL=http://localhost:8545
 WS_RPC_URL=ws://localhost:8546
+CHAIN_ID=your_chain_id
+
 ENCLAVE_ADDRESS=your_enclave_contract_address
 E3_PROGRAM_ADDRESS=your_e3_program_address # CRISPRisc0 Contract Address
 CIPHERNODE_REGISTRY_ADDRESS=your_ciphernode_registry_address
 NAIVE_REGISTRY_FILTER_ADDRESS=your_naive_registry_filter_address
-CHAIN_ID=your_chain_id
-CRON_API_KEY=your_cron_api_key # Optional for e3_cron binary
+
+# E3 Config
+E3_WINDOW_SIZE=600
+E3_THRESHOLD_MIN=1
+E3_THRESHOLD_MAX=2
+E3_DURATION=600
+# E3 Compute Provider Config
+E3_COMPUTE_PROVIDER_NAME="RISC0"
+E3_COMPUTE_PROVIDER_PARALLEL=false
+E3_COMPUTE_PROVIDER_BATCH_SIZE=4 # Must be a power of 2
 ```
 
 ## Running Ciphernodes

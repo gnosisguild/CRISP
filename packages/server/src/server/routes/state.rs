@@ -55,8 +55,7 @@ async fn get_all_round_results() -> impl Responder {
             }
             Err(e) => {
                 info!("Error retrieving state for round {}: {:?}", i, e);
-                return HttpResponse::InternalServerError()
-                    .body(format!("Failed to retrieve state for round {}", i));
+                continue;
             }
         }
     }

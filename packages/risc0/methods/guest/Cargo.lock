@@ -475,7 +475,6 @@ dependencies = [
  "light-poseidon",
  "num-bigint",
  "num-traits",
- "rand",
  "rayon",
  "serde",
  "sha3",

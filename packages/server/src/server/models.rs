@@ -70,6 +70,13 @@ pub struct AuthenticationResponse {
     pub jwt_token: String,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct ComputeProviderParams {
+    pub name: String,
+    pub parallel: bool,
+    pub batch_size: u32,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct CronRequestE3 {
     pub cron_api_key: String,

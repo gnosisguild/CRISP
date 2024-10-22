@@ -7,20 +7,20 @@ use super::{
 };
 use crate::server::{
     config::CONFIG,
-    database::{generate_emoji, get_e3, GLOBAL_DB},
+    database::{generate_emoji, get_e3, update_e3_status, GLOBAL_DB},
     models::{E3, CurrentRound},
 };
-use alloy::rpc::types::Log;
 use chrono::Utc;
 use compute_provider::FHEInputs;
 use log::info;
 use std::error::Error;
-use tokio::time::{sleep, Duration};
+use std::time::{UNIX_EPOCH, Duration, SystemTime};
+use tokio::time::{sleep_until, Instant};
 use voting_risc0::run_compute;
 
 type Result<T> = std::result::Result<T, Box<dyn Error + Send + Sync>>;
 
-pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
+pub async fn handle_e3(e3_activated: E3Activated) -> Result<()> {
     let e3_id = e3_activated.e3Id.to::<u64>();
     info!("Handling E3 request with id {}", e3_id);
 
@@ -32,13 +32,6 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
     info!("E3: {:?}", e3);
 
     let start_time = Utc::now().timestamp() as u64;
-
-    let block_start = match log.block_number {
-        Some(bn) => bn,
-        None => contract.get_latest_block().await?,
-    };
-
-    let (emoji1, emoji2) = generate_emoji();
 
     let e3_obj = E3 {
         // Identifiers
@@ -55,7 +48,7 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
 
         // Timing-related
         start_time,
-        block_start,
+        block_start: e3.requestBlock.to::<u64>(),
         duration: e3.duration.to::<u64>(),
         expiration: e3.expiration.to::<u64>(),
 
@@ -71,7 +64,7 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
         ciphertext_inputs: vec![],
 
         // Emojis
-        emojis: [emoji1, emoji2],
+        emojis: generate_emoji(),
     };
 
     // Save E3 to the database
@@ -84,11 +77,19 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
     };
     GLOBAL_DB.insert("e3:current_round", &current_round).await?;
 
-    // Sleep till the E3 expires
-    sleep(Duration::from_secs(e3.duration.to::<u64>())).await;
+    let expiration = Instant::now() + (UNIX_EPOCH + Duration::from_secs(e3.expiration.to::<u64>()))
+    .duration_since(SystemTime::now())
+    .unwrap_or_else(|_| Duration::ZERO);
+
+    info!("Expiration: {:?}", expiration);
+
+    // Sleep till the E3 expires (instantly if in the past)
+    sleep_until(expiration).await;
 
     // Get All Encrypted Votes
     let (mut e3, _) = get_e3(e3_id).await.unwrap();
+    update_e3_status(e3_id, "Expired".to_string()).await?;
+
     if e3.vote_count > 0 {
         info!("E3 FROM DB");
         info!("Vote Count: {:?}", e3.vote_count);
@@ -97,17 +98,17 @@ pub async fn handle_e3(e3_activated: E3Activated, log: Log) -> Result<()> {
             params: e3.e3_params,
             ciphertexts: e3.ciphertext_inputs,
         };
-        println!("Starting computation for E3: {}", e3_id);
-
+        info!("Starting computation for E3: {}", e3_id);
+        update_e3_status(e3_id, "Computing".to_string()).await?;
         // Call Compute Provider in a separate thread
         let (risc0_output, ciphertext) =
             tokio::task::spawn_blocking(move || run_compute(fhe_inputs).unwrap())
                 .await
                 .unwrap();
 
-        println!("Computation completed for E3: {}", e3_id);
-        println!("RISC0 Output: {:?}", risc0_output);
-
+        info!("Computation completed for E3: {}", e3_id);
+        info!("RISC0 Output: {:?}", risc0_output);
+        update_e3_status(e3_id, "PublishingCiphertext".to_string()).await?;
         // Params will be encoded on chain to create the journal
         let tx = contract
             .publish_ciphertext_output(
@@ -156,7 +157,7 @@ pub async fn handle_ciphertext_output_published(
     let (mut e3, key) = get_e3(e3_id).await?;
 
     e3.ciphertext_output = ciphertext_output.ciphertextOutput.to_vec();
-    e3.status = "Published".to_string();
+    e3.status = "CiphertextPublished".to_string();
 
     GLOBAL_DB.insert(&key, &e3).await?;
 
