@@ -137,7 +137,7 @@ pub async fn decrypt_and_publish_result(client: &Client) -> Result<(), Box<dyn s
         .with_prompt("Enter CRISP round ID.")
         .interact_text()?;
 
-    let url = format!("{}/get_ct_b_round", CONFIG.enclave_address);
+    let url = format!("{}/rounds/ciphertext", CONFIG.enclave_address);
     let resp = client.post(&url)
         .json(&CTRequest { round_id: input_crisp_id, ct_bytes: vec![0] })
         .send()
