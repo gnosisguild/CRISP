@@ -48,14 +48,14 @@ pub async fn initialize_crisp_round() -> Result<(), Box<dyn std::error::Error + 
         Ok(enabled) => {
             if !enabled {
                 match contract.enable_e3_program(e3_program).await {
-                    Ok(res) => println!("E3 Program enabled. TxHash: {:?}", res.transaction_hash),
-                    Err(e) => println!("Error enabling E3 Program: {:?}", e),
+                    Ok(res) => info!("E3 Program enabled. TxHash: {:?}", res.transaction_hash),
+                    Err(e) => info!("Error enabling E3 Program: {:?}", e),
                 }
             } else {
                 info!("E3 Program already enabled");
             }
         }
-        Err(e) => println!("Error checking E3 Program enabled: {:?}", e),
+        Err(e) => info!("Error checking E3 Program enabled: {:?}", e),
     }
 
     let filter: Address = CONFIG.naive_registry_filter_address.parse()?;

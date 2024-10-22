@@ -24,12 +24,17 @@ pub fn setup_routes(config: &mut web::ServiceConfig) {
 /// 
 async fn get_round_result(data: web::Json<GetRoundRequest>) -> impl Responder {
     let incoming = data.into_inner();
-
-    let (state, _) = get_e3(incoming.round_id).await.unwrap();
     
-    let response: WebResultRequest = state.into();
-    
-    HttpResponse::Ok().json(response)
+    match get_e3(incoming.round_id).await {
+        Ok((state, _)) => {
+            let response: WebResultRequest = state.into();
+            HttpResponse::Ok().json(response)
+        }
+        Err(e) => {
+            info!("Error getting E3 state: {:?}", e);
+            HttpResponse::InternalServerError().body("Failed to get E3 state")
+        }
+    }
 }
 
 /// Get all the results for all rounds
