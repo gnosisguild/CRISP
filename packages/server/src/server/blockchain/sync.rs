@@ -43,7 +43,12 @@ pub async fn sync_server() -> Result<()> {
 
     // Fetch the latest E3 from the database and the contract.
     let (latest_db_e3, _) = get_e3(current_round.id).await?;
-    let latest_contract_e3_id = contract.get_e3_id().await?.to::<u64>() - 1;
+    let contract_e3_id = contract.get_e3_id().await?.to::<u64>();
+    if contract_e3_id == 0 {
+        warn!("No E3 IDs found in the contract.");
+        return Ok(());
+    }
+    let latest_contract_e3_id = contract_e3_id - 1;
 
     // Check if synchronization is needed.
     if latest_db_e3.status == "Finished" && latest_db_e3.id == latest_contract_e3_id {
@@ -98,7 +103,10 @@ pub async fn sync_server() -> Result<()> {
 /// Finds the last finished E3 ID in the database.
 async fn find_last_finished_e3_id(latest_db_id: u64) -> Result<Option<u64>> {
     for id in (0..=latest_db_id).rev() {
-        let (e3, _) = get_e3(id).await?;
+        let (e3, _) = match get_e3(id).await {
+            Ok(e3) => e3,
+            Err(_) => continue,
+        };
         if e3.status == "Finished" {
             return Ok(Some(id));
         }
@@ -117,7 +125,10 @@ async fn fetch_events(
         .address(Address::from_str(&CONFIG.enclave_address)?)
         .event(InputPublished::SIGNATURE);
 
-    let logs = contract.provider.get_logs(&filter).await?;
+    let logs = contract.provider.get_logs(&filter).await.map_err(|e| {
+        error!("Error fetching logs: {:?}", e);
+        e
+    })?;
 
     let mut events_by_e3_id = HashMap::new();
     for log in logs {
@@ -154,7 +165,8 @@ async fn sync_e3(
         if now >= expiration {
             info!("E3 {} expired, computing and publishing ciphertext.", e3_id);
             tokio::spawn(async move {
-                if let Err(e) = compute_and_publish_ciphertext(e3_id, contract_clone, events_clone).await
+                if let Err(e) =
+                    compute_and_publish_ciphertext(e3_id, contract_clone, events_clone).await
                 {
                     error!("Error computing and publishing ciphertext: {:?}", e);
                 }
@@ -163,7 +175,9 @@ async fn sync_e3(
             info!("E3 {} still active, waiting until expiration", e3_id);
             sleep_until(expiration).await;
             // After sleeping, re-fetch events
-            let events = Arc::new(fetch_events(contract.clone(), contract_e3.requestBlock.to::<u64>()).await?);
+            let events = Arc::new(
+                fetch_events(contract.clone(), contract_e3.requestBlock.to::<u64>()).await?,
+            );
 
             tokio::spawn(async move {
                 if let Err(e) = compute_and_publish_ciphertext(e3_id, contract_clone, events).await
@@ -221,11 +235,13 @@ async fn compute_and_publish_ciphertext(
         update_e3_status(e3_id.to::<u64>(), "Finished".to_string()).await?;
         return Ok(());
     }
-    
+
     // Update vote count
     let mut db_e3 = get_e3(e3_id.to::<u64>()).await?.0;
     db_e3.vote_count = ciphertext_inputs.len() as u64;
-    GLOBAL_DB.insert(&format!("e3:{}", e3_id.to::<u64>()), &db_e3).await?;
+    GLOBAL_DB
+        .insert(&format!("e3:{}", e3_id.to::<u64>()), &db_e3)
+        .await?;
 
     let contract_e3 = contract.get_e3(e3_id).await?;
     let fhe_inputs = FHEInputs {
@@ -283,7 +299,9 @@ async fn sync_e3_with_db(e3_id: U256, contract_e3: &ContractE3, vote_count: u64)
     db_e3.status = "Finished".to_string();
 
     // Decode plaintext output to obtain vote counts.
-    let decoded: Vec<u64> = bincode::deserialize(&db_e3.plaintext_output)?;
+    let decoded: Vec<u64> = bincode::deserialize(&db_e3.plaintext_output)
+        .unwrap_or(vec![0, 0]);
+
     if decoded.len() >= 2 {
         db_e3.votes_option_2 = decoded[0];
         db_e3.votes_option_1 = decoded[1];
