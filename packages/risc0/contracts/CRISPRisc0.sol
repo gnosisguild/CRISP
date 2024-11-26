@@ -98,7 +98,7 @@ contract CRISPRisc0 is IE3Program, Ownable {
         bytes32 ciphertextOutputHash,
         bytes memory proof
     ) external view override returns (bool) {
-        require(paramsHashes[e3Id] != bytes32(0), "E3 does not exist");
+        require(paramsHashes[e3Id] != bytes32(0), E3DoesNotExist());
         bytes32 inputRoot = bytes32(enclave.getInputRoot(e3Id));
         bytes memory journal = new bytes(396); // (32 + 1) * 4 * 3
 
