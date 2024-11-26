@@ -3,7 +3,13 @@
   "version": "0.0.0",
   "description": "Risc0 implementation of CRISP",
   "repository": "https://github.com/gnosisguild/CRISP",
-  "author": "Gnosis Guild",
+  "author": {
+    "name": "gnosisguild",
+    "url": "https://github.com/gnosisguild"
+  },
+  "dependencies": {
+    "@gnosis-guild/enclave": "^0.0.3"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
     "@nomicfoundation/hardhat-ethers": "^3.0.0",
