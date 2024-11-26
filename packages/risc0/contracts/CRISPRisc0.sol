@@ -1,28 +1,34 @@
 // SPDX-License-Identifier: LGPL-3.0-only
 pragma solidity >=0.8.27;
 
-import {CRISPBase, IEnclave, IE3Program, IInputValidator} from "evm_base/contracts/CRISPBase.sol";
 import {IRiscZeroVerifier} from "risc0/IRiscZeroVerifier.sol";
 import {ImageID} from "./ImageID.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {IE3Program, IInputValidator} from "@gnosis-guild/enclave/contracts/interfaces/IE3Program.sol";
+import {IEnclave} from "@gnosis-guild/enclave/contracts/interfaces/IEnclave.sol";
 
-contract CRISPRisc0 is CRISPBase, Ownable {
+contract CRISPRisc0 is IE3Program, Ownable {
     // Constants
     bytes32 public constant IMAGE_ID = ImageID.VOTING_ID;
     bytes32 public constant ENCRYPTION_SCHEME_ID = keccak256("fhe.rs:BFV");
 
     // State variables
+    IEnclave public enclave;
     IRiscZeroVerifier public verifier;
     IInputValidator public inputValidator;
 
     // Mappings
     mapping(address => bool) public authorizedContracts;
+    mapping(uint256 e3Id => bytes32 paramsHash) public paramsHashes;
 
     // Events
     event InputValidatorUpdated(address indexed newValidator);
 
     // Errors
     error CallerNotAuthorized();
+    error E3AlreadyInitialized();
+    error E3DoesNotExist();
+    error EnclaveAddressZero();
 
     /// @notice Initialize the contract, binding it to a specified RISC Zero verifier.
     /// @param _enclave The enclave address
@@ -45,7 +51,8 @@ contract CRISPRisc0 is CRISPBase, Ownable {
         IInputValidator _inputValidator,
         IRiscZeroVerifier _verifier
     ) public {
-        CRISPBase.initialize(_enclave);
+        require(address(enclave) == address(0), EnclaveAddressZero());
+        enclave = _enclave;
         inputValidator = _inputValidator;
         verifier = _verifier;
         authorizedContracts[address(_enclave)] = true;
@@ -56,6 +63,13 @@ contract CRISPRisc0 is CRISPBase, Ownable {
     function setInputValidator(IInputValidator _inputValidator) external onlyOwner {
         inputValidator = _inputValidator;
         emit InputValidatorUpdated(address(_inputValidator));
+    }
+
+    /// @notice Get the params hash for an E3 program
+    /// @param e3Id The E3 program ID
+    /// @return The params hash
+    function getParamsHash(uint256 e3Id) public view returns (bytes32) {
+        return paramsHashes[e3Id];
     }
 
     /// @notice Validate the E3 program parameters
