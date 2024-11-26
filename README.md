@@ -17,9 +17,7 @@ CRISP/packages
 ├── /client/
 │   ├── /libs/wasm/pkg/ - WebAssembly library package
 │   ├── /public/ - Static files
-│   ├── /src/ - React components and source code
-│   └── [configuration files and README]
-├── /compute_provider/ - Helper library for RISC Zero compute provider
+│   └── /src/ - React components and source code
 ├── /risc0/ - RISC Zero zkVM and Verifier contracts
 ├── /server/ - Rust server-side logic
 └── /web-rust/ - Rust to WebAssembly logic

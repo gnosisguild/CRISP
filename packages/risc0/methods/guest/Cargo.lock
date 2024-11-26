@@ -361,6 +361,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8c3c1a368f70d6cf7302d78f8f7093da241fb8e8807c05cc9e51a125895a6d5b"
 
 [[package]]
+name = "bincode"
+version = "1.3.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1f45e9417d87227c7a56d22e471c6206462cba514c7590c09aff4cf6d1ddcad"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -467,6 +476,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "compute-provider"
 version = "0.1.0"
+source = "git+https://github.com/gnosisguild/enclave?branch=hmza/add-compute-provider#5c4d60aa5de1be1096bae03224580fbf271e5fa9"
 dependencies = [
  "ark-bn254",
  "ark-ff 0.4.2",
@@ -867,6 +877,8 @@ version = "0.1.0"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
+ "anyhow",
+ "bincode",
  "compute-provider",
  "risc0-zkvm",
  "voting-core",
