@@ -1,8 +1,8 @@
-# Collusion-Resistant Impartial Selection Protocol (CRISP)
+# Coercion-Resistant Impartial Selection Protocol (CRISP)
 
-This is a specification for an implementation of the Collusion-Resistant Impartial Selection Protocol (CRISP). Heavily inspired by [MACI](https://github.com/privacy-scaling-explorations/maci), which was [originally proposed by Vitalik Buterin](https://ethresear.ch/t/minimal-anti-collusion-infrastructure/5413). CRISP differs from MACI primarily in its use of Fully Homomorphic Encryption (FHE) and threshold cryptography to form an arbitrarily large trusted coordinator set, as opposed to using Zero Knowledge Proofs and a single trusted coordinator.
+This is a specification for an implementation of the Coercion-Resistant Impartial Selection Protocol (CRISP). Heavily inspired by [MACI](https://github.com/privacy-scaling-explorations/maci), which was [originally proposed by Vitalik Buterin](https://ethresear.ch/t/minimal-anti-collusion-infrastructure/5413). CRISP differs from MACI primarily in its use of Fully Homomorphic Encryption (FHE) and threshold cryptography to form an arbitrarily large trusted coordinator set, as opposed to using Zero Knowledge Proofs and a single trusted coordinator.
 
-Systems built with CRISP make collusion among participants highly trustful, while also being censorship resistant, with strong correct execution guarantees, and no trusted individuals.
+Systems built with CRISP make coercion among participants highly trustful, while also being censorship resistant, with strong correct execution guarantees, and no trusted individuals.
 
 ## High-Level Description
 
