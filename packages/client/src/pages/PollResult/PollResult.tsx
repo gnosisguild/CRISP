@@ -105,7 +105,7 @@ const PollResult: React.FC = () => {
                     Your participation has directly contributed to a transparent and fair decision-making process, showcasing the power of
                     privacy-preserving technology in governance and beyond. The use of CRISP in this vote represents a significant step
                     towards secure, anonymous, and tamper-proof digital elections and polls. This innovation ensures that every vote counts
-                    equally while safeguarding against the risks of fraud and collusion, enhancing the reliability and trustworthiness of
+                    equally while safeguarding against the risks of fraud and coercion, enhancing the reliability and trustworthiness of
                     digital decision-making platforms.
                   </p>
                 </div>
