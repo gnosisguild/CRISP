@@ -1,14 +1,14 @@
-# CRISP - Collusion-Resistant Impartial Selection Protocol
+# CRISP - Coercion-Resistant Impartial Selection Protocol
 
-CRISP (Collusion-Resistant Impartial Selection Protocol) is a secure protocol for digital decision-making, leveraging fully homomorphic encryption (FHE) and threshold cryptography to enable verifiable secret ballots; a critical component for democracies and many other decision-making applications.
+CRISP (Coercion-Resistant Impartial Selection Protocol) is a secure protocol for digital decision-making, leveraging fully homomorphic encryption (FHE) and distributed threshold cryptography (DTC) to enable verifiable secret ballots. Built with [Enclave](https://www.enclave.gg/), CRISP safeguards democratic systems and decision-making applications against coercion, manipulation, and other vulnerabilities.
 
 ## Why CRISP?
 
-Open ballots are known to produce suboptimal outcomes due to bribery and various forms of collusion. CRISP mitigates collusion and other vulnerabilities by ensuring ballots are secret and receipt-free, enabling a secure and impartial decision-making environment.
+Open ballots are known to produce suboptimal outcomes, exposing participants to bribery and coercion. CRISP mitigates these risks and other vulnerabilities with secret, receipt-free ballots, fostering secure and impartial decision-making environments.
 
 ## Proof of Concept
 
-This application is a Proof of Concept (PoC), demonstrating the viability of Enclave as a network and CRISP as an application for secret ballots. For the sake of getting a demonstration of CRISP into the wild, this PoC application is not yet leveraging Enclave and omits several key components of CRISP. Future iterations of this and other applications will be progressively more complete
+This application is a Proof of Concept (PoC), demonstrating the viability of Enclave as a network and CRISP as an application for secret ballots. Future iterations of this and other applications will be progressively more complete.
 
 ## Project Structure
 
