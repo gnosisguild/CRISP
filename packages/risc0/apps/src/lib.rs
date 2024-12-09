@@ -1,4 +1,3 @@
-use anyhow::Result;
 use compute_provider::{ComputeInput, ComputeManager, ComputeProvider, ComputeResult, FHEInputs};
 use methods::VOTING_ELF;
 use risc0_ethereum_contracts::groth16;
@@ -6,6 +5,13 @@ use risc0_zkvm::{default_prover, ExecutorEnv, ProverOpts, VerifierContext};
 use voting_core::fhe_processor;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
+use bincode::serialize;
+use anyhow::{Error, Result};
+
+fn encode_input(input: &[u8]) -> Result<Vec<u8>, Error> {
+    Ok(bytemuck::pod_collect_to_vec(&risc0_zkvm::serde::to_vec(input)?))
+}
+
 pub struct Risc0Provider;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -19,10 +25,9 @@ impl ComputeProvider for Risc0Provider {
     type Output = Risc0Output;
 
     fn prove(&self, input: &ComputeInput) -> Self::Output {   
-
+        let encoded_input = encode_input(&serialize(input).unwrap()).unwrap();
         let env = ExecutorEnv::builder()
-            .write(input)
-            .unwrap()
+            .write_slice(&encoded_input)
             .build()
             .unwrap();
 

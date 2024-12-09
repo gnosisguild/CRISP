@@ -8,8 +8,12 @@ version = "0.1.0"
 edition = "2021"
 
 [workspace.dependencies]
-alloy-primitives = { version = "0.6", default-features = false, features = ["rlp", "serde", "std"] }
-alloy-sol-types = { version = "0.6" }
+alloy-primitives = { version = "0.8", default-features = false, features = [
+    "rlp",
+    "serde",
+    "std",
+] }
+alloy-sol-types = { version = "0.8" }
 anyhow = { version = "1.0.75" }
 bincode = { version = "1.3" }
 bytemuck = { version = "1.14" }
@@ -26,7 +30,8 @@ serde = { version = "1.0", features = ["derive", "std"] }
 fhe = { git = "https://github.com/gnosisguild/fhe.rs", version = "0.1.0-beta.7" }
 fhe-traits = { git = "https://github.com/gnosisguild/fhe.rs", version = "0.1.0-beta.7" }
 fhe-util = { git = "https://github.com/gnosisguild/fhe.rs", version = "0.1.0-beta.7" }
-compute-provider ={ path = "../compute_provider" }
+compute-provider = { git = "https://github.com/gnosisguild/enclave" }
+
 
 [profile.release]
 debug = 1

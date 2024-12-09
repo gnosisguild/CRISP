@@ -43,7 +43,7 @@ async fn broadcast_encrypted_vote(data: web::Json<EncryptedVote>) -> impl Respon
     let contract = EnclaveContract::new(CONFIG.enclave_address.clone()).await.unwrap();
     match contract.publish_input(e3_id, sol_vote).await {
         Ok(hash) => HttpResponse::Ok().json(JsonResponseTxHash {
-            response: "Vote successful".to_string(),
+            response: "Vote Successful".to_string(),
             tx_hash: hash.transaction_hash.to_string(),
         }),
         Err(e) => handle_vote_error(e, &mut state_data, &key, &vote.postId).await,
@@ -64,7 +64,7 @@ async fn validate_and_update_vote_status(vote: &EncryptedVote) -> Result<(E3, St
     
     if state_data.has_voted.contains(&vote.postId) {
         return Err(HttpResponse::BadRequest().json(JsonResponseTxHash {
-            response: "User has already voted".to_string(),
+            response: "User Has Already Voted".to_string(),
             tx_hash: "".to_string(),
         }));
     }

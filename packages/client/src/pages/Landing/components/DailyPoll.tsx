@@ -91,12 +91,17 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, e
             </div>
           )}
 
-          {endTime && !isEnded && (
+          {endTime && !isEnded && !loading && (
             <div className='flex items-center justify-center max-sm:py-5 '>
               <CountdownTimer endTime={endTime} />
             </div>
           )}
-          {loading && <LoadingAnimation isLoading={loading} />}
+          {loading && (
+            <div className='flex flex-col items-center justify-center max-sm:py-5 space-y-2'>
+              <p className='text-base font-bold uppercase text-slate-600/50'>Casting Vote</p>
+              <LoadingAnimation isLoading={loading} />
+            </div>
+          )}
           <div className=' grid w-full grid-cols-2 gap-4 md:gap-8'>
             {pollOptions.map((poll) => (
               <div key={poll.label} className='col-span-2 md:col-span-1'>
