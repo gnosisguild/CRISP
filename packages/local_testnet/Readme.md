@@ -1,4 +1,4 @@
-# CRISP - Collusion-Resistant Impartial Selection Protocol
+# CRISP - Coercion-Resistant Impartial Selection Protocol
 
 Welcome to the CRISP project! This document provides a comprehensive guide to setting up and deploying the application both locally. Follow the steps carefully to ensure that all dependencies, services, and components are properly configured.
 

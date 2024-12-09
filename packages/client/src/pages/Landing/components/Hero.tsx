@@ -15,7 +15,7 @@ const HeroSection: React.FC = () => {
           <h3 className='font-normal leading-none text-zinc-400 sm:text-xl md:text-3xl'>Introducing</h3>
           <img src={Logo} alt='CRISP Logo' className='sm:h-10 md:h-20' />
           <h4 className='w-full leading-none text-slate-800/50 sm:text-xs md:text-base'>
-            Collusion-Resistant Impartial Selection Protocol
+            Coercion-Resistant Impartial Selection Protocol
           </h4>
         </div>
         <ul className='space-y-3'>
@@ -37,7 +37,7 @@ const HeroSection: React.FC = () => {
             <ShieldCheck className='text-lime-600/80' size={32} />
             <div className='text-zinc-400 sm:text-sm md:text-lg'>
               <span className='mr-1 font-bold text-lime-600/80'>Equitable.</span>
-              Robust safeguards against collusion and tampering.
+              Robust safeguards against coercion and tampering.
             </div>
           </li>
         </ul>
