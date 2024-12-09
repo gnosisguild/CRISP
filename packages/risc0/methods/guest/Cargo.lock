@@ -476,7 +476,7 @@ checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 [[package]]
 name = "compute-provider"
 version = "0.1.0"
-source = "git+https://github.com/gnosisguild/enclave?branch=hmza/add-compute-provider#5c4d60aa5de1be1096bae03224580fbf271e5fa9"
+source = "git+https://github.com/gnosisguild/enclave#31de6e53cb35a83f59b63cb7529a8878b588d9fa"
 dependencies = [
  "ark-bn254",
  "ark-ff 0.4.2",
