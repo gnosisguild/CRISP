@@ -15,10 +15,11 @@ import FarcasterModal from '@/components/FarcasterModal'
 type DailyPollSectionProps = {
   onVoted?: (vote: Poll) => void
   loading?: boolean
+  voteCasting?: boolean
   endTime: Date | null
 }
 
-const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, endTime }) => {
+const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, voteCasting, endTime }) => {
   const { url, connect, signIn, data, error } = useSignIn({
     timeout: 300000,
     interval: 2000,
@@ -91,17 +92,18 @@ const DailyPollSection: React.FC<DailyPollSectionProps> = ({ onVoted, loading, e
             </div>
           )}
 
-          {endTime && !isEnded && !loading && (
+          {endTime && !isEnded && !voteCasting && (
             <div className='flex items-center justify-center max-sm:py-5 '>
               <CountdownTimer endTime={endTime} />
             </div>
           )}
-          {loading && (
+          {voteCasting && (
             <div className='flex flex-col items-center justify-center max-sm:py-5 space-y-2'>
               <p className='text-base font-bold uppercase text-slate-600/50'>Casting Vote</p>
-              <LoadingAnimation isLoading={loading} />
+              <LoadingAnimation isLoading={voteCasting} />
             </div>
           )}
+          {loading && (<LoadingAnimation isLoading={loading} />)}
           <div className=' grid w-full grid-cols-2 gap-4 md:gap-8'>
             {pollOptions.map((poll) => (
               <div key={poll.label} className='col-span-2 md:col-span-1'>
