@@ -11,7 +11,7 @@ const DailyPoll: React.FC = () => {
   const { showToast } = useNotificationAlertContext()
   const { encryptVote, broadcastVote, getRoundStateLite, existNewRound, setTxUrl, votingRound, roundState, user } =
     useVoteManagementContext()
-  const [loading, setLoading] = useState<boolean>(false)
+  const [voteCasting, setVoteCasting] = useState<boolean>(false)
   const [newRoundLoading, setNewRoundLoading] = useState<boolean>(false)
   const endTime = roundState && convertTimestampToDate(roundState?.start_time, roundState?.duration)
 
@@ -50,7 +50,7 @@ const DailyPoll: React.FC = () => {
   )
   const handleVoted = async (vote: Poll | null) => {
     if (!vote || !votingRound) return
-    setLoading(true)
+    setVoteCasting(true)
     
     try {
       const voteEncrypted = await handleVoteEncryption(vote)
@@ -84,13 +84,13 @@ const DailyPoll: React.FC = () => {
       console.error('Error handling vote:', error)
       showToast({ type: 'danger', message: 'Error processing the vote' })
     } finally {
-      setLoading(false)
+      setVoteCasting(false)
     }
   }
 
   return (
     <Fragment>
-      <DailyPollSection onVoted={handleVoted} loading={loading || newRoundLoading} endTime={endTime} />
+      <DailyPollSection onVoted={handleVoted} loading={newRoundLoading} voteCasting={voteCasting} endTime={endTime} />
     </Fragment>
   )
 }
