@@ -18,6 +18,12 @@ ethers = "2.0"
 getrandom = { version = "0.2.11", features = ["js"] }
 bincode = "1.0"
 
+# Halo2
+axiom-eth = { git = "https://github.com/enricobottazzi/axiom-eth", default-features = false, features = ["halo2-axiom"] }
+halo2-base = { git = "https://github.com/axiom-crypto/halo2-lib.git", tag = "v0.4.1-git", default-features = false, features = ["test-utils", "halo2-axiom"] }
+halo2_proofs = { git = "https://github.com/privacy-scaling-explorations/halo2", tag = "v0.3.0" }
+halo2_solidity_verifier = { git = "https://github.com/hmzakhalid/halo2-solidity-verifier.git", features = ["evm"] }
+
 rayon = "1.10.0"
 ndarray = "0.15.6"
 itertools = "0.13.0"

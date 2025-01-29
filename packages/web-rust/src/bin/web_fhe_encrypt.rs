@@ -2,7 +2,7 @@ mod greco;
 mod util;
 
 use console_log;
-use greco::greco::*;
+use greco::{greco::*, pk_encryption_circuit::{create_pk_enc_proof, BfvPkEncryptionCircuit}};
 use log::info; // Use log macros from the `log` crate
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::*; // For setting up logging to the browser console
@@ -18,6 +18,8 @@ use fhe::{
 use fhe_traits::{
     DeserializeParametrized, FheDecoder, FheDecrypter, FheEncoder, FheEncrypter, Serialize,
 };
+use num_bigint::BigInt;
+use num_traits::Num;
 use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
 use util::timeit::{timeit, timeit_n};
 
@@ -59,10 +61,20 @@ impl Encrypt {
             .map_err(|e| JsValue::from_str(&format!("Error encrypting vote: {}", e)))?;
 
         // Create Greco input validation ZKP proof
-        // let input_val_vectors =
-        //     InputValidationVectors::compute(&pt, &u_rns, &e0_rns, &e1_rns, &ct, &pk).map_err(
-        //         |e| JsValue::from_str(&format!("Error computing input validation vectors: {}", e)),
-        //     )?;
+        let input_val_vectors =
+            InputValidationVectors::compute(&pt, &u_rns, &e0_rns, &e1_rns, &ct, &pk).map_err(
+                |e| JsValue::from_str(&format!("Error computing input validation vectors: {}", e)),
+            )?;
+
+        // Initialize zk proving modulus
+        let p = BigInt::from_str_radix(
+            "21888242871839275222246405745257275088548364400416034343698204186575808495617",
+            10,
+        )
+        .unwrap();
+
+        let standard_input_val = input_val_vectors.standard_form(&p);
+        let proof = create_pk_enc_proof(standard_input_val);
 
         self.encrypted_vote = ct.to_bytes();
         Ok(self.encrypted_vote.clone())
