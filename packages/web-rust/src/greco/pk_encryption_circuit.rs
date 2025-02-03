@@ -455,34 +455,23 @@ pub fn create_pk_enc_proof(input_val_vectors: InputValidationVectors) -> Vec<u8>
     // --------------------------------------------------
     // (A) Generate a proof
     // --------------------------------------------------
-    log::info!("Creating proofffffFFFFFFFFFFFFFFFFFFFFFFFFFFF");
     let empty_pk_enc_circuit = BfvPkEncryptionCircuit::create_empty_circuit(1, 2048);
 
     let k = 14 as usize;
-    log::info!("k = {:?}", k);
     let kzg_params = load_params_from_memory();
-    log::info!("Finished loading params from file");
 
     // Build an RLC circuit for KeyGen
     let mut key_gen_builder =
         RlcCircuitBuilder::<Fr>::from_stage(CircuitBuilderStage::Keygen, 0).use_k(k as usize);
     key_gen_builder.base.set_lookup_bits((k - 1) as usize);
     key_gen_builder.base.set_instance_columns(1);
-    log::info!(
-        "key_gen_builder.base.lookup_bits = {:?}",
-        key_gen_builder.base.lookup_bits()
-    );
 
     let rlc_circuit_for_keygen = RlcExecutor::new(key_gen_builder, empty_pk_enc_circuit.clone());
-    log::info!("rlc_circuit_for_keygen DONE");
     let rlc_circuit_params = rlc_circuit_for_keygen.0.calculate_params(Some(9));
-    log::info!("rlc_circuit_params.len() DONE");
 
     // Keygen VerifyingKey / ProvingKey
     let vk = keygen_vk(&kzg_params, &rlc_circuit_for_keygen).unwrap();
     let pk = keygen_pk(&kzg_params, vk, &rlc_circuit_for_keygen).unwrap();
-    // let actual_num_instance_columns = pk.get_vk().cs().num_instance_columns();
-    // log::info!("VerifyingKey says num_instance_columns = {actual_num_instance_columns}");
 
     let break_points = rlc_circuit_for_keygen.0.builder.borrow().break_points();
     drop(rlc_circuit_for_keygen);
@@ -490,9 +479,6 @@ pub fn create_pk_enc_proof(input_val_vectors: InputValidationVectors) -> Vec<u8>
     // Convert input_val_vectors to BfvPkEncryptionCircuit
     let pk_enc_circuit: BfvPkEncryptionCircuit = input_val_vectors.into();
     let instances: Vec<Vec<Fr>> = pk_enc_circuit.instances();
-
-    // log::info!("instances.len() = {}", instances.len());
-    // log::info!("instances[0].len() = {}", instances[0].len());
 
     // Build the RLC circuit for the real data
     let mut builder: RlcCircuitBuilder<Fr> =
