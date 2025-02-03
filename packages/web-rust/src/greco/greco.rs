@@ -9,7 +9,7 @@ use fhe_math::rq::{Poly, Representation};
 use fhe_math::zq::Modulus;
 use serde_json::json;
 
-use crate::greco::poly::*;
+use crate::greco::poly_greco::*;
 use itertools::izip;
 use num_bigint::BigInt;
 use num_traits::*;

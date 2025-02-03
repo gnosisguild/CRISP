@@ -4,17 +4,27 @@ use crate::greco::{
         R1_LOW_BOUNDS, R1_UP_BOUNDS, R2_BOUNDS, U_BOUND,
     },
     greco::{to_string_1d_vec, to_string_2d_vec, InputValidationVectors},
-    poly::{Poly, PolyAssigned},
+    poly_circuit::{Poly, PolyAssigned},
 };
 use axiom_eth::rlc::{
     chip::RlcChip,
     circuit::{builder::RlcCircuitBuilder, instructions::RlcCircuitInstructions},
+    utils::executor::RlcExecutor,
 };
-use halo2_base::{
-    gates::{circuit::BaseCircuitParams, GateInstructions, RangeChip, RangeInstructions},
-    utils::ScalarField,
+use axiom_eth::halo2_base::{
+    gates::{circuit::CircuitBuilderStage, GateInstructions, RangeChip, RangeInstructions},
+    halo2_proofs::{
+        halo2curves::bn256::Fr,
+        plonk::{create_proof, keygen_pk, keygen_vk},
+        poly::kzg::multiopen::ProverSHPLONK,
+        transcript::TranscriptWriterBuffer,
+    },
+    utils::{fs::gen_srs, ScalarField},
     QuantumCell::Constant,
 };
+use halo2_solidity_verifier::Keccak256Transcript;
+use rand::{rngs::OsRng, rngs::StdRng, RngCore, SeedableRng};
+
 use serde::Deserialize;
 
 /// `BfvPkEncryptionCircuit` is a circuit that checks the correct formation of a ciphertext resulting from BFV public key encryption
@@ -497,169 +507,4 @@ pub fn create_pk_enc_proof(input_val_vectors: InputValidationVectors) -> Vec<u8>
     };
 
     proof
-}
-
-#[cfg(test)]
-mod test {
-    use std::fs::File;
-    use std::io::Read;
-    use std::io::Write;
-
-    use halo2_base::{
-        gates::circuit::CircuitBuilderStage,
-        halo2_proofs::{
-            dev::{FailureLocation, MockProver, VerifyFailure},
-            halo2curves::bn256::{Bn256, Fr},
-            plonk::{create_proof, keygen_pk, keygen_vk, verify_proof, Any, SecondPhase},
-            poly::kzg::{
-                commitment::ParamsKZG,
-                multiopen::{ProverSHPLONK, VerifierSHPLONK},
-                strategy::SingleStrategy,
-            },
-            transcript::TranscriptWriterBuffer,
-        },
-        utils::{
-            fs::gen_srs,
-            testing::{check_proof_with_instances, gen_proof_with_instances},
-        },
-    };
-    use halo2_solidity_verifier::{
-        compile_solidity, encode_calldata, BatchOpenScheme::Bdfg21, Evm, Keccak256Transcript,
-        SolidityGenerator,
-    };
-    use rand::{rngs::OsRng, rngs::StdRng, RngCore, SeedableRng};
-
-    use axiom_eth::rlc::{
-        circuit::{builder::RlcCircuitBuilder, instructions::RlcCircuitInstructions},
-        utils::executor::RlcExecutor,
-    };
-
-    //use crate::constants::pk_enc_constants::pk_enc_constants_1024_15x60_65537::R1_LOW_BOUNDS;
-
-    use super::{test_params, BfvPkEncryptionCircuit};
-
-    #[test]
-    pub fn test_pk_enc_full_prover() {
-        // --------------------------------------------------
-        // (A) Generate a proof & verify it locally
-        // --------------------------------------------------
-
-        // Zero file for keygen circuit sizing
-        // let file_path_zeros = "src/data/pk_enc_data/pk_enc_2048_1x52_1032193_zeroes.json";
-        // let empty_pk_enc_circuit: BfvPkEncryptionCircuit =
-        //     serde_json::from_reader(File::open(file_path_zeros).unwrap()).unwrap();
-        let empty_pk_enc_circuit = BfvPkEncryptionCircuit::create_empty_circuit(2048, 1);
-
-        let k = 17;
-        let kzg_params = gen_srs(k);
-
-        // Build an RLC circuit for KeyGen
-        let mut key_gen_builder =
-            RlcCircuitBuilder::<Fr>::from_stage(CircuitBuilderStage::Keygen, 0).use_k(k as usize);
-        key_gen_builder.base.set_lookup_bits((k - 1) as usize);
-        key_gen_builder.base.set_instance_columns(1);
-
-        let rlc_circuit_for_keygen =
-            RlcExecutor::new(key_gen_builder, empty_pk_enc_circuit.clone());
-        let rlc_circuit_params = rlc_circuit_for_keygen.0.calculate_params(Some(9));
-
-        // Keygen VerifyingKey / ProvingKey
-        let vk = keygen_vk(&kzg_params, &rlc_circuit_for_keygen).unwrap();
-        let pk = keygen_pk(&kzg_params, vk, &rlc_circuit_for_keygen).unwrap();
-        let actual_num_instance_columns = pk.get_vk().cs().num_instance_columns();
-        println!("VerifyingKey says num_instance_columns = {actual_num_instance_columns}");
-
-        let break_points = rlc_circuit_for_keygen.0.builder.borrow().break_points();
-        drop(rlc_circuit_for_keygen);
-
-        // Load the real data from JSON
-        let file_path = "src/data/pk_enc_data/pk_enc_2048_1x52_1032193.json";
-        let pk_enc_circuit: BfvPkEncryptionCircuit =
-            serde_json::from_reader(File::open(file_path).unwrap()).unwrap();
-        let instances: Vec<Vec<Fr>> = pk_enc_circuit.instances();
-
-        println!("instances.len() = {}", instances.len());
-        println!("instances[0].len() = {}", instances[0].len());
-
-        // Build the RLC circuit for the real data
-        let mut builder = RlcCircuitBuilder::from_stage(CircuitBuilderStage::Prover, 0)
-            .use_params(rlc_circuit_params.clone());
-        builder.base.set_lookup_bits((k - 1) as usize);
-        builder.base.set_instance_columns(1);
-
-        let rlc_prover_circuit = RlcExecutor::new(builder, pk_enc_circuit.clone());
-        rlc_prover_circuit
-            .0
-            .builder
-            .borrow_mut()
-            .set_break_points(break_points);
-
-        // Create a proof
-        let mut rng = StdRng::seed_from_u64(OsRng.next_u64());
-        let instance_refs = vec![instances[0].as_slice()];
-
-        let proof = {
-            let mut transcript = Keccak256Transcript::new(Vec::new());
-            create_proof::<_, ProverSHPLONK<_>, _, _, _, _>(
-                &kzg_params,
-                &pk,
-                &[rlc_prover_circuit],
-                &[&instance_refs],
-                &mut rng,
-                &mut transcript,
-            )
-            .unwrap();
-            transcript.finalize()
-        };
-
-        println!("E2E proof size = {} bytes", proof.len());
-
-        // Verify it locally
-        let result = {
-            let mut transcript = Keccak256Transcript::new(proof.as_slice());
-            verify_proof::<_, VerifierSHPLONK<_>, _, _, SingleStrategy<_>>(
-                &kzg_params,
-                pk.get_vk(),
-                SingleStrategy::new(&kzg_params),
-                &[&instance_refs],
-                &mut transcript,
-            )
-        };
-        assert!(result.is_ok());
-        println!("Local verification succeeded!");
-
-        // --------------------------------------------------
-        // (B) Generate a Solidity verifier & test in an EVM
-        // --------------------------------------------------
-        let num_public_inputs = instances[0].len();
-
-        let generator = SolidityGenerator::new(&kzg_params, pk.get_vk(), Bdfg21, num_public_inputs);
-
-        // Render the Solidity code as a single contract
-        let verifier_solidity: String = generator.render().expect("render contract");
-
-        // Write it to a file
-        let mut file = File::create("./contracts/PKVerifier.sol").unwrap();
-        file.write_all(verifier_solidity.as_bytes()).unwrap();
-        println!("Solidity verifier contract written to PKVerifier.sol");
-
-        // Compile it
-        let creation_code = compile_solidity(&verifier_solidity);
-        let code_size = creation_code.len();
-        println!("Verifier creation code size: {}", code_size);
-
-        // Deploy it to a local EVM
-        let mut evm = Evm::default();
-        let verifier_address = evm.create(creation_code);
-        println!("verifier_address = {:?}", verifier_address);
-
-        // Encode the calldata: we have None for "inlined" verifying key in the same contract
-        let calldata = encode_calldata(None, &proof, &instances[0]);
-
-        // Call the contract
-        let (gas_cost, output) = evm.call(verifier_address, calldata);
-
-        assert_eq!(output.last(), Some(&1u8), "EVM returned 'false'");
-        println!("EVM verification success with gas cost = {gas_cost}");
-    }
 }

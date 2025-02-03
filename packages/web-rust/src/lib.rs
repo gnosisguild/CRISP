@@ -2,26 +2,15 @@ mod greco;
 mod util;
 
 use console_log;
-use greco::{greco::*, pk_encryption_circuit::{create_pk_enc_proof, BfvPkEncryptionCircuit}};
-use log::info; // Use log macros from the `log` crate
+use greco::{greco::*, pk_encryption_circuit::create_pk_enc_proof};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::*; // For setting up logging to the browser console
 
-use serde::Deserialize;
-use std::{env, sync::Arc, thread, time};
-
-use fhe::{
-    bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey},
-    mbfv::{AggregateIter, CommonRandomPoly, DecryptionShare, PublicKeyShare},
-    proto::bfv::Parameters,
-};
-use fhe_traits::{
-    DeserializeParametrized, FheDecoder, FheDecrypter, FheEncoder, FheEncrypter, Serialize,
-};
+use fhe::bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey};
+use fhe_traits::{DeserializeParametrized, FheDecrypter, FheEncoder, Serialize};
 use num_bigint::BigInt;
 use num_traits::Num;
-use rand::{distributions::Uniform, prelude::Distribution, rngs::OsRng, thread_rng, SeedableRng};
-use util::timeit::{timeit, timeit_n};
+use rand::thread_rng;
 
 #[wasm_bindgen]
 pub struct Encrypt {
