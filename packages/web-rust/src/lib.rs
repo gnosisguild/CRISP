@@ -14,7 +14,29 @@ use rand::thread_rng;
 
 #[wasm_bindgen]
 pub struct Encrypt {
+    vote: Vec<u8>,
+    proof: Vec<u8>,
+}
+
+#[wasm_bindgen]
+#[derive(Clone)]
+pub struct EncryptionResult {
     encrypted_vote: Vec<u8>,
+    proof: Vec<u8>,
+}
+
+
+#[wasm_bindgen]
+impl EncryptionResult {
+    #[wasm_bindgen(getter)]
+    pub fn encrypted_vote(&self) -> Vec<u8> {
+        self.encrypted_vote.clone()
+    }
+
+    #[wasm_bindgen(getter)]
+    pub fn proof(&self) -> Vec<u8> {
+        self.proof.clone()
+    }
 }
 
 #[wasm_bindgen]
@@ -22,10 +44,11 @@ impl Encrypt {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Encrypt {
         Encrypt {
-            encrypted_vote: Vec::new(),
+            vote: Vec::new(),
+            proof: Vec::new(),
         }
     }
-    pub fn encrypt_vote(&mut self, vote: u64, public_key: Vec<u8>) -> Result<Vec<u8>, JsValue> {
+    pub fn encrypt_vote(&mut self, vote: u64, public_key: Vec<u8>) -> Result<EncryptionResult, JsValue> {
         let degree = 2048;
         let plaintext_modulus: u64 = 1032193;
         let moduli = vec![0xffffffff00001];
@@ -62,10 +85,13 @@ impl Encrypt {
         .unwrap();
 
         let standard_input_val = input_val_vectors.standard_form(&p);
-        let proof = create_pk_enc_proof(standard_input_val);
 
-        self.encrypted_vote = ct.to_bytes();
-        Ok(self.encrypted_vote.clone())
+        self.proof = create_pk_enc_proof(standard_input_val);
+        self.vote = ct.to_bytes();
+        Ok(EncryptionResult {
+            encrypted_vote: self.vote.clone(),
+            proof: self.proof.clone(),
+        })
     }
 
     pub fn test() {
@@ -102,7 +128,7 @@ fn test_encrypt_vote() {
     let vote = 10;
     test.encrypt_vote(vote, pk.to_bytes()).unwrap();
 
-    let ct = Ciphertext::from_bytes(&test.encrypted_vote, &params).unwrap();
+    let ct = Ciphertext::from_bytes(&test.vote, &params).unwrap();
     let pt = sk.try_decrypt(&ct).unwrap();
 
     assert_eq!(pt.value[0], vote);

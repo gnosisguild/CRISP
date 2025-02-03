@@ -1,6 +1,11 @@
 import { VotingConfigRequest } from '@/model/vote.model'
 import { Chain } from '@/utils/network'
 
+export type EncryptedVote = {
+  vote: Uint8Array
+  proof: Uint8Array
+}
+
 //"0x51Ec8aB3e53146134052444693Ab3Ec53663a12B" e.g votingAddress
 export const generateCrispRound = (votingAddress: string): VotingConfigRequest => {
   return {
