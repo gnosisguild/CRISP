@@ -6,22 +6,25 @@ use crate::greco::{
     greco::{to_string_1d_vec, to_string_2d_vec, InputValidationVectors},
     poly_circuit::{Poly, PolyAssigned},
 };
+use axiom_eth::halo2_base::{
+    gates::{circuit::CircuitBuilderStage, GateInstructions, RangeChip, RangeInstructions},
+    halo2_proofs::{
+        halo2curves::bn256::{Bn256, Fr},
+        plonk::{create_proof, keygen_pk, keygen_vk},
+        poly::commitment::Params,
+        poly::kzg::commitment::ParamsKZG,
+        poly::kzg::multiopen::ProverSHPLONK,
+        transcript::TranscriptWriterBuffer,
+    },
+    utils::{fs::read_params, ScalarField},
+    QuantumCell::Constant,
+};
 use axiom_eth::rlc::{
     chip::RlcChip,
     circuit::{builder::RlcCircuitBuilder, instructions::RlcCircuitInstructions},
     utils::executor::RlcExecutor,
 };
-use axiom_eth::halo2_base::{
-    gates::{circuit::CircuitBuilderStage, GateInstructions, RangeChip, RangeInstructions},
-    halo2_proofs::{
-        halo2curves::bn256::Fr,
-        plonk::{create_proof, keygen_pk, keygen_vk},
-        poly::kzg::multiopen::ProverSHPLONK,
-        transcript::TranscriptWriterBuffer,
-    },
-    utils::{fs::gen_srs, ScalarField},
-    QuantumCell::Constant,
-};
+
 use halo2_solidity_verifier::Keccak256Transcript;
 use rand::{rngs::OsRng, rngs::StdRng, RngCore, SeedableRng};
 
@@ -441,29 +444,45 @@ impl<F: ScalarField> RlcCircuitInstructions<F> for BfvPkEncryptionCircuit {
     }
 }
 
+const PARAMS_BIN: &[u8] = include_bytes!("../../params/kzg_bn254_14.bin");
+
+pub fn load_params_from_memory() -> ParamsKZG<Bn256> {
+    log::info!("Loading params from memory...");
+    ParamsKZG::<Bn256>::read(&mut &PARAMS_BIN[..]).expect("Failed to parse ParamsKZG")
+}
+
 pub fn create_pk_enc_proof(input_val_vectors: InputValidationVectors) -> Vec<u8> {
     // --------------------------------------------------
     // (A) Generate a proof
     // --------------------------------------------------
-    let empty_pk_enc_circuit = BfvPkEncryptionCircuit::create_empty_circuit(2048, 1);
+    log::info!("Creating proofffffFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+    let empty_pk_enc_circuit = BfvPkEncryptionCircuit::create_empty_circuit(1, 2048);
 
-    let k = 17;
-    let kzg_params = gen_srs(k);
+    let k = 14 as usize;
+    log::info!("k = {:?}", k);
+    let kzg_params = load_params_from_memory();
+    log::info!("Finished loading params from file");
 
     // Build an RLC circuit for KeyGen
     let mut key_gen_builder =
         RlcCircuitBuilder::<Fr>::from_stage(CircuitBuilderStage::Keygen, 0).use_k(k as usize);
     key_gen_builder.base.set_lookup_bits((k - 1) as usize);
     key_gen_builder.base.set_instance_columns(1);
+    log::info!(
+        "key_gen_builder.base.lookup_bits = {:?}",
+        key_gen_builder.base.lookup_bits()
+    );
 
     let rlc_circuit_for_keygen = RlcExecutor::new(key_gen_builder, empty_pk_enc_circuit.clone());
+    log::info!("rlc_circuit_for_keygen DONE");
     let rlc_circuit_params = rlc_circuit_for_keygen.0.calculate_params(Some(9));
+    log::info!("rlc_circuit_params.len() DONE");
 
     // Keygen VerifyingKey / ProvingKey
     let vk = keygen_vk(&kzg_params, &rlc_circuit_for_keygen).unwrap();
     let pk = keygen_pk(&kzg_params, vk, &rlc_circuit_for_keygen).unwrap();
-    let actual_num_instance_columns = pk.get_vk().cs().num_instance_columns();
-    println!("VerifyingKey says num_instance_columns = {actual_num_instance_columns}");
+    // let actual_num_instance_columns = pk.get_vk().cs().num_instance_columns();
+    // log::info!("VerifyingKey says num_instance_columns = {actual_num_instance_columns}");
 
     let break_points = rlc_circuit_for_keygen.0.builder.borrow().break_points();
     drop(rlc_circuit_for_keygen);
@@ -472,12 +491,13 @@ pub fn create_pk_enc_proof(input_val_vectors: InputValidationVectors) -> Vec<u8>
     let pk_enc_circuit: BfvPkEncryptionCircuit = input_val_vectors.into();
     let instances: Vec<Vec<Fr>> = pk_enc_circuit.instances();
 
-    println!("instances.len() = {}", instances.len());
-    println!("instances[0].len() = {}", instances[0].len());
+    // log::info!("instances.len() = {}", instances.len());
+    // log::info!("instances[0].len() = {}", instances[0].len());
 
     // Build the RLC circuit for the real data
-    let mut builder = RlcCircuitBuilder::from_stage(CircuitBuilderStage::Prover, 0)
-        .use_params(rlc_circuit_params.clone());
+    let mut builder: RlcCircuitBuilder<Fr> =
+        RlcCircuitBuilder::from_stage(CircuitBuilderStage::Prover, 0)
+            .use_params(rlc_circuit_params.clone());
     builder.base.set_lookup_bits((k - 1) as usize);
     builder.base.set_instance_columns(1);
 
