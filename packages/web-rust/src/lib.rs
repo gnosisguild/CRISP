@@ -11,11 +11,13 @@ use fhe_traits::{DeserializeParametrized, FheDecrypter, FheEncoder, Serialize};
 use num_bigint::BigInt;
 use num_traits::Num;
 use rand::thread_rng;
+use js_sys::{Uint8Array, Array};
 
 #[wasm_bindgen]
 pub struct Encrypt {
     vote: Vec<u8>,
     proof: Vec<u8>,
+    instances: Vec<Vec<u8>>,
 }
 
 #[wasm_bindgen]
@@ -23,6 +25,7 @@ pub struct Encrypt {
 pub struct EncryptionResult {
     encrypted_vote: Vec<u8>,
     proof: Vec<u8>,
+    instances: Vec<Vec<u8>>,
 }
 
 
@@ -37,6 +40,15 @@ impl EncryptionResult {
     pub fn proof(&self) -> Vec<u8> {
         self.proof.clone()
     }
+
+    #[wasm_bindgen(getter)]
+    pub fn instances(&self) -> Array {
+        let instances = Array::new();
+        for instance in self.instances.iter() {
+            instances.push(&Uint8Array::from(instance.as_slice()));
+        }
+        instances
+    }
 }
 
 #[wasm_bindgen]
@@ -46,6 +58,7 @@ impl Encrypt {
         Encrypt {
             vote: Vec::new(),
             proof: Vec::new(),
+            instances: Vec::new(),
         }
     }
     pub fn encrypt_vote(&mut self, vote: u64, public_key: Vec<u8>) -> Result<EncryptionResult, JsValue> {
@@ -86,21 +99,16 @@ impl Encrypt {
 
         let standard_input_val = input_val_vectors.standard_form(&p);
 
-        self.proof = create_pk_enc_proof(standard_input_val);
+        let (proof, instances) = create_pk_enc_proof(standard_input_val);
+        self.proof = proof;
+        self.instances = instances.clone();
         self.vote = ct.to_bytes();
         Ok(EncryptionResult {
             encrypted_vote: self.vote.clone(),
             proof: self.proof.clone(),
+            instances: instances.clone(),
         })
     }
-
-    pub fn test() {
-        web_sys::console::log_1(&"Test Function Working".into());
-    }
-}
-
-fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
-    Ok(())
 }
 
 // Tests

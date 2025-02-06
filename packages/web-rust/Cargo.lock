@@ -1127,7 +1127,7 @@ dependencies = [
 [[package]]
 name = "halo2_solidity_verifier"
 version = "0.1.0"
-source = "git+https://github.com/hmzakhalid/halo2-solidity-verifier.git#476f86ac3096780e796719c5a1c4473884544b5b"
+source = "git+https://github.com/hmzakhalid/halo2-solidity-verifier.git#6f7ca83d348f8047fff33f6eb80690b12b6a5594"
 dependencies = [
  "askama",
  "halo2-base",

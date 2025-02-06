@@ -39,6 +39,3 @@ js-sys = "0.3"
 
 [lib]
 crate-type = ["cdylib", "rlib"]
-
-# [profile.release]
-# debug = true

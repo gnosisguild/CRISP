@@ -16,7 +16,7 @@ use axiom_eth::halo2_base::{
         poly::kzg::multiopen::ProverSHPLONK,
         transcript::TranscriptWriterBuffer,
     },
-    utils::{fs::read_params, ScalarField},
+    utils::ScalarField,
     QuantumCell::Constant,
 };
 use axiom_eth::rlc::{
@@ -25,7 +25,7 @@ use axiom_eth::rlc::{
     utils::executor::RlcExecutor,
 };
 
-use halo2_solidity_verifier::Keccak256Transcript;
+use halo2_solidity_verifier::{fr_to_u256, Keccak256Transcript};
 use rand::{rngs::OsRng, rngs::StdRng, RngCore, SeedableRng};
 
 use serde::Deserialize;
@@ -444,20 +444,20 @@ impl<F: ScalarField> RlcCircuitInstructions<F> for BfvPkEncryptionCircuit {
     }
 }
 
-const PARAMS_BIN: &[u8] = include_bytes!("../../params/kzg_bn254_14.bin");
+const PARAMS_BIN: &[u8] = include_bytes!("../../params/kzg_bn254_15.bin");
 
 pub fn load_params_from_memory() -> ParamsKZG<Bn256> {
     log::info!("Loading params from memory...");
     ParamsKZG::<Bn256>::read(&mut &PARAMS_BIN[..]).expect("Failed to parse ParamsKZG")
 }
 
-pub fn create_pk_enc_proof(input_val_vectors: InputValidationVectors) -> Vec<u8> {
+pub fn create_pk_enc_proof(input_val_vectors: InputValidationVectors) -> (Vec<u8>, Vec<Vec<u8>>) {
     // --------------------------------------------------
     // (A) Generate a proof
     // --------------------------------------------------
     let empty_pk_enc_circuit = BfvPkEncryptionCircuit::create_empty_circuit(1, 2048);
 
-    let k = 14 as usize;
+    let k = 15;
     let kzg_params = load_params_from_memory();
 
     // Build an RLC circuit for KeyGen
@@ -512,5 +512,14 @@ pub fn create_pk_enc_proof(input_val_vectors: InputValidationVectors) -> Vec<u8>
         transcript.finalize()
     };
 
-    proof
+    let instance_bytes: Vec<Vec<u8>> = instances[0]
+        .iter()
+        .map(|fr| {
+            let fr_u256 = fr_to_u256(fr);
+            let bytes: [u8; 32] = fr_u256.to_be_bytes();
+            bytes.to_vec()
+        })
+        .collect();
+
+    (proof, instance_bytes)
 }
