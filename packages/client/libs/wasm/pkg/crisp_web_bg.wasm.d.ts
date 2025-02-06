@@ -1,13 +1,13 @@
 /* tslint:disable */
 /* eslint-disable */
 export const __wbg_encrypt_free: (a: number, b: number) => void;
+export const __wbg_encryptionresult_free: (a: number, b: number) => void;
 export const encryptionresult_encrypted_vote: (a: number) => [number, number];
 export const encryptionresult_proof: (a: number) => [number, number];
+export const encryptionresult_instances: (a: number) => any;
 export const encrypt_new: () => number;
 export const encrypt_encrypt_vote: (a: number, b: bigint, c: number, d: number) => [number, number, number];
 export const __wbgt__crisp_web::test_encrypt_vote: (a: number) => void;
-export const encrypt_test: () => void;
-export const __wbg_encryptionresult_free: (a: number, b: number) => void;
 export const __wbg_wasmbindgentestcontext_free: (a: number, b: number) => void;
 export const wasmbindgentestcontext_new: () => number;
 export const wasmbindgentestcontext_include_ignored: (a: number, b: number) => void;

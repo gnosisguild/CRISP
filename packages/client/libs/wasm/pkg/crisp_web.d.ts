@@ -30,13 +30,13 @@ export class Encrypt {
   free(): void;
   constructor();
   encrypt_vote(vote: bigint, public_key: Uint8Array): EncryptionResult;
-  static test(): void;
 }
 export class EncryptionResult {
   private constructor();
   free(): void;
   readonly encrypted_vote: Uint8Array;
   readonly proof: Uint8Array;
+  readonly instances: Array<any>;
 }
 /**
  * Runtime test harness support instantiated in JS.
@@ -80,13 +80,13 @@ export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembl
 
 export interface InitOutput {
   readonly __wbg_encrypt_free: (a: number, b: number) => void;
+  readonly __wbg_encryptionresult_free: (a: number, b: number) => void;
   readonly encryptionresult_encrypted_vote: (a: number) => [number, number];
   readonly encryptionresult_proof: (a: number) => [number, number];
+  readonly encryptionresult_instances: (a: number) => any;
   readonly encrypt_new: () => number;
   readonly encrypt_encrypt_vote: (a: number, b: bigint, c: number, d: number) => [number, number, number];
   readonly __wbgt__crisp_web::test_encrypt_vote: (a: number) => void;
-  readonly encrypt_test: () => void;
-  readonly __wbg_encryptionresult_free: (a: number, b: number) => void;
   readonly __wbg_wasmbindgentestcontext_free: (a: number, b: number) => void;
   readonly wasmbindgentestcontext_new: () => number;
   readonly wasmbindgentestcontext_include_ignored: (a: number, b: number) => void;

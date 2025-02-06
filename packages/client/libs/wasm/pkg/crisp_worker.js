@@ -25,7 +25,8 @@ self.onmessage = async function (event) {
                     type: 'encrypt_vote',
                     success: true,
                     encryptedVote: result.encrypted_vote,
-                    proof: result.proof
+                    proof: result.proof,
+                    instances: result.instances
                 });
             } catch (error) {
                 self.postMessage({ type: 'encrypt_vote', success: false, error: error.message });
