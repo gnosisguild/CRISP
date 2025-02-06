@@ -44,6 +44,8 @@ pub struct CTRequest {
 pub struct EncryptedVote {
     pub round_id: u64,
     pub enc_vote_bytes: Vec<u8>,
+    pub proof_bytes: Vec<u8>,
+    pub instances: Vec<Vec<u8>>,
     pub postId: String,
 }
 

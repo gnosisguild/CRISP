@@ -26,9 +26,7 @@ tokio = { version = "1.37.0", features = ["full"] }
 futures = "0.3.31"
 
 # Cryptography and blockchain
-alloy = { version = "0.2.1", features = ["full", "rpc-types-eth"] }
-alloy-primitives = { version = "0.6", default-features = false, features = ["rlp", "serde", "std"] }
-alloy-sol-types = { version = "0.6" }
+alloy = { version = "0.9", features = ["full", "rpc-types-eth"] }
 fhe = { git = "https://github.com/gnosisguild/fhe.rs", branch = "feature/greco-integration", version = "0.1.0-beta.7" }
 fhe-traits = { git = "https://github.com/gnosisguild/fhe.rs", branch = "feature/greco-integration", version = "0.1.0-beta.7" }
 hmac = "0.12.1"

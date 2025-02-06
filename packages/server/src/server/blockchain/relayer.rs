@@ -4,6 +4,7 @@ use alloy::{
     primitives::{Address, Bytes, U256},
     providers::fillers::{
         ChainIdFiller, FillProvider, GasFiller, JoinFill, NonceFiller, WalletFiller,
+        BlobGasFiller
     },
     providers::{Identity, Provider, ProviderBuilder, RootProvider},
     rpc::types::TransactionReceipt,
@@ -53,7 +54,10 @@ sol! {
 
 type CRISPProvider = FillProvider<
     JoinFill<
-        JoinFill<JoinFill<JoinFill<Identity, GasFiller>, NonceFiller>, ChainIdFiller>,
+        JoinFill<
+            Identity,
+            JoinFill<GasFiller, JoinFill<BlobGasFiller, JoinFill<NonceFiller, ChainIdFiller>>>,
+        >,
         WalletFiller<EthereumWallet>,
     >,
     RootProvider<BoxTransport>,
