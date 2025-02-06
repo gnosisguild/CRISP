@@ -18,6 +18,8 @@ export interface CurrentRound {
 export interface BroadcastVoteRequest {
   round_id: number
   enc_vote_bytes: number[] //bytes
+  proof_bytes: number[]
+  instances: number[][]
   postId: string
 }
 

@@ -3,6 +3,7 @@ import { BroadcastVoteRequest, BroadcastVoteResponse, VoteStateLite, VotingRound
 import { Poll, PollRequestResult, PollResult } from '@/model/poll.model'
 import { StatusAPIResponse } from '@farcaster/auth-client'
 import { Auth } from '@/model/auth.model'
+import { EncryptedVote } from '@/utils/vote'
 
 export type VoteManagementContextType = {
   isLoading: boolean
@@ -24,7 +25,7 @@ export type VoteManagementContextType = {
   getPastPolls: () => Promise<void>
   setVotingRound: React.Dispatch<React.SetStateAction<VotingRound | null>>
   setUser: (value: StatusAPIResponse | null) => void
-  encryptVote: (voteId: bigint, publicKey: Uint8Array) => Promise<Uint8Array | undefined>
+  encryptVote: (voteId: bigint, publicKey: Uint8Array) => Promise<EncryptedVote | undefined>
   broadcastVote: (vote: BroadcastVoteRequest) => Promise<BroadcastVoteResponse | undefined>
   getRoundStateLite: (roundCount: number) => Promise<void>
   setPastPolls: React.Dispatch<React.SetStateAction<PollResult[]>>

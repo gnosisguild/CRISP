@@ -5,6 +5,7 @@ import { useVoteManagementContext } from '@/context/voteManagement'
 import { useNotificationAlertContext } from '@/context/NotificationAlert'
 import { useNavigate } from 'react-router-dom'
 import { convertTimestampToDate } from '@/utils/methods'
+import { EncryptedVote } from '@/utils/vote'
 
 const DailyPoll: React.FC = () => {
   const navigate = useNavigate()
@@ -38,11 +39,13 @@ const DailyPoll: React.FC = () => {
   )
 
   const handleVoteBroadcast = useCallback(
-    async (voteEncrypted: Uint8Array) => {
+    async (voteEncrypted: EncryptedVote) => {
       if (!user || !votingRound) throw new Error('User or voting round not available')
       return broadcastVote({
         round_id: votingRound.round_id,
-        enc_vote_bytes: Array.from(voteEncrypted),
+        enc_vote_bytes: Array.from(voteEncrypted.vote),
+        proof_bytes: Array.from(voteEncrypted.proof),
+        instances: voteEncrypted.instances.map((instance) => Array.from(instance)),
         postId: user.fid?.toString() ?? '',
       })
     },

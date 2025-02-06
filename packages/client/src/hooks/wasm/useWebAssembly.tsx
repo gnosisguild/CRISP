@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { handleGenericError } from '@/utils/handle-generic-error'
 import { useNotificationAlertContext } from '@/context/NotificationAlert'
+import { EncryptedVote } from '@/utils/vote'
 
 export const useWebAssemblyHook = () => {
   const { showToast } = useNotificationAlertContext()
@@ -17,20 +18,24 @@ export const useWebAssemblyHook = () => {
     }
   }, [])
 
-  const encryptVote = async (voteId: bigint, publicKey: Uint8Array): Promise<Uint8Array | undefined> => {
+  const encryptVote = async (voteId: bigint, publicKey: Uint8Array): Promise<EncryptedVote | undefined> => {
     if (!worker) {
       console.error('WebAssembly worker not initialized')
       return
     }
 
-    return new Promise<Uint8Array | undefined>((resolve, reject) => {
+    return new Promise<EncryptedVote | undefined>((resolve, reject) => {
       setIsLoading(true)
       worker.postMessage({ type: 'encrypt_vote', data: { voteId, publicKey } })
       worker.onmessage = (event) => {
-        const { type, success, encryptedVote, error } = event.data
+        const { type, success, encryptedVote, proof, instances, error } = event.data
         if (type === 'encrypt_vote') {
           if (success) {
-            resolve(encryptedVote)
+            resolve({
+              vote: encryptedVote,
+              proof: proof,
+              instances: instances
+            })
           } else {
             showToast({
               type: 'danger',
