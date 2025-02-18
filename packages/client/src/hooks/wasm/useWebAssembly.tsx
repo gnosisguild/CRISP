@@ -26,9 +26,13 @@ export const useWebAssemblyHook = () => {
 
     return new Promise<EncryptedVote | undefined>((resolve, reject) => {
       setIsLoading(true)
+      let startTime = performance.now()
+      console.log("Start Time:", startTime);
       worker.postMessage({ type: 'encrypt_vote', data: { voteId, publicKey } })
       worker.onmessage = (event) => {
         const { type, success, encryptedVote, proof, instances, error } = event.data
+        let endTime = performance.now()
+        console.log(`Time taken: ${endTime - startTime} milliseconds`)
         if (type === 'encrypt_vote') {
           if (success) {
             resolve({

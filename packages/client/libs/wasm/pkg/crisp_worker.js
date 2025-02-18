@@ -6,6 +6,19 @@ let encryptInstance = null;
 async function initWasm() {
     if (!wasmInstance) {
         wasmInstance = await WasmInstance.default();
+        console.log("Hardware Concurrency:", navigator.hardwareConcurrency);
+        const maxThreads = 4;
+        const numThreads = Math.max(
+            navigator.hardwareConcurrency || 1,
+            maxThreads
+        );
+        console.log("Number of Threads:", numThreads);
+
+        try {
+            await wasmInstance.initThreadPool(numThreads);
+        } catch (error) {
+            console.warn('Thread pool initialization failed:', error);
+        }
         encryptInstance = new WasmInstance.Encrypt();
     }
 }

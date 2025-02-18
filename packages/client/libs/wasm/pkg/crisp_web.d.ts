@@ -26,6 +26,8 @@ export function __wbgtest_console_warn(args: Array<any>): void;
  */
 export function __wbgtest_console_error(args: Array<any>): void;
 export function __wbgtest_cov_dump(): Uint8Array | undefined;
+export function initThreadPool(num_threads: number): Promise<any>;
+export function wbg_rayon_start_worker(receiver: number): void;
 export class Encrypt {
   free(): void;
   constructor();
@@ -75,6 +77,13 @@ export class WasmBindgenTestContext {
    */
   run(tests: any[]): Promise<any>;
 }
+export class wbg_rayon_PoolBuilder {
+  private constructor();
+  free(): void;
+  numThreads(): number;
+  receiver(): number;
+  build(): void;
+}
 
 export type InitInput = RequestInfo | URL | Response | BufferSource | WebAssembly.Module;
 
@@ -87,6 +96,12 @@ export interface InitOutput {
   readonly encrypt_new: () => number;
   readonly encrypt_encrypt_vote: (a: number, b: bigint, c: number, d: number) => [number, number, number];
   readonly __wbgt__crisp_web::test_encrypt_vote: (a: number) => void;
+  readonly __wbg_wbg_rayon_poolbuilder_free: (a: number, b: number) => void;
+  readonly wbg_rayon_poolbuilder_numThreads: (a: number) => number;
+  readonly wbg_rayon_poolbuilder_receiver: (a: number) => number;
+  readonly wbg_rayon_poolbuilder_build: (a: number) => void;
+  readonly initThreadPool: (a: number) => any;
+  readonly wbg_rayon_start_worker: (a: number) => void;
   readonly __wbg_wasmbindgentestcontext_free: (a: number, b: number) => void;
   readonly wasmbindgentestcontext_new: () => number;
   readonly wasmbindgentestcontext_include_ignored: (a: number, b: number) => void;

@@ -5,6 +5,7 @@ use console_log;
 use greco::{greco::*, pk_encryption_circuit::create_pk_enc_proof};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_test::*; // For setting up logging to the browser console
+pub use wasm_bindgen_rayon::init_thread_pool;
 
 use fhe::bfv::{BfvParametersBuilder, Ciphertext, Encoding, Plaintext, PublicKey, SecretKey};
 use fhe_traits::{DeserializeParametrized, FheDecrypter, FheEncoder, Serialize};
