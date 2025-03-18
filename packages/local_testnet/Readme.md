@@ -206,7 +206,7 @@ E3_COMPUTE_PROVIDER_BATCH_SIZE=4 # Must be a power of 2
 
 ## Running Ciphernodes
 
-In the root `enclave` directory, you have to run the Ciphernodes. To run 4 Ciphernodes, use the provided script `run_ciphernodes.sh`. Ensure you run the script from the root `enclave` directory to set the environment variables correctly:
+In the root `enclave` directory, you have to run the Ciphernodes. To run 3 Ciphernodes, use the provided script `run_ciphernodes.sh`. Ensure you run the script from the root `enclave` directory to set the environment variables correctly:
 
 ```sh
 ./run_ciphernodes.sh
@@ -233,6 +233,12 @@ cargo run --bin server
 ```
 
 ## Interacting with CRISP via CLI
+
+To run the CLI client, navigate to the `server` directory and execute the following command:
+
+```sh
+cargo run --bin cli
+```
 
 Once the CLI client is running, you can interact with the CRISP voting protocol by following these steps:
 
