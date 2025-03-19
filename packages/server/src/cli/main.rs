@@ -42,10 +42,10 @@ pub async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         0 => {
             initialize_crisp_round().await?;
         }
-        1 => {
+        2 => {
             activate_e3_round().await?;
         }
-        2 => {
+        1 => {
             participate_in_existing_round(&client).await?;
         }
         3 => {
@@ -70,9 +70,9 @@ fn select_environment() -> Result<usize, Box<dyn std::error::Error + Send + Sync
 fn select_action() -> Result<usize, Box<dyn std::error::Error + Send + Sync>> {
     let selections = &[
         "Initialize new E3 round.",
-        "Activate an E3 round.",
         "Participate in an E3 round.",
-        "Decrypt Ciphertext & Publish Results",
+        // "Activate an E3 round.",
+        // "Decrypt Ciphertext & Publish Results",
     ];
     Ok(FuzzySelect::with_theme(&ColorfulTheme::default())
         .with_prompt("Create a new CRISP round or participate in an existing round.")
