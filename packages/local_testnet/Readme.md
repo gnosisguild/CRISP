@@ -157,13 +157,19 @@ Note down the first four addresses as they will be needed to configure `risc0`, 
 
 1. Navigate to the `CRISP/packages/risc0` directory.
 
-2. Set up environment variables by creating a `.cargo` directory and `config.toml` file:
+---
+
+__Faster Proving w/ Bonsai__
+
+The following steps are optional. You can config [Bonsai](https://dev.risczero.com/api/generating-proofs/remote-proving) for faster proving.
+
+- Set up environment variables by creating a `.cargo` directory and `config.toml` file:
 
    ```sh
    mkdir .cargo && cd .cargo && touch config.toml
    ```
 
-3. Add the following configuration to `config.toml`:
+- Add the following configuration to `config.toml`:
 
    > **_Note:_** _This requires having access to a Bonsai API Key. To request an API key [complete the form here](https://bonsai.xyz/apply)._
 
@@ -172,24 +178,25 @@ Note down the first four addresses as they will be needed to configure `risc0`, 
    BONSAI_API_KEY="your_api_key"
    BONSAI_API_URL="your_api_url"
    ```
+---
 
-4. In the `risc0/script` directory, update the `config.toml` with the deployed contract addresses. The following configuration is based on default deployment addresses using local Anvil node:
+2. In the `risc0/script` directory, update the `config.toml` with the deployed contract addresses. The following configuration is based on default deployment addresses using local Anvil node:
 
    ```toml
    [profile.custom]
    chainId = 31337
-   riscZeroVerifierAddress = "0x0165878A594ca255338adfa4d48449f69242Eb8F"
+   riscZeroVerifierAddress = "0x0000000000000000000000000000000000000000"
    enclaveAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
    inputValidatorAddress = "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853"
    ```
 
-5. Export the ETH_WALLET_PRIVATE_KEY environment variable (Anvil's default private key):
+3. Export the ETH_WALLET_PRIVATE_KEY environment variable (Anvil's default private key):
 
    ```sh
    export ETH_WALLET_PRIVATE_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
    ```
 
-6. Deploy the contracts:
+4. Deploy the contracts:
 
    ```sh
    forge script --rpc-url http://localhost:8545 --broadcast script/Deploy.s.sol
