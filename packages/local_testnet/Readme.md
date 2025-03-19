@@ -275,11 +275,7 @@ Once the CLI client is running, you can interact with the CRISP voting protocol 
 
 2. To initiate a new CRISP round, choose the option `Initialize new CRISP round`.
 
-3. To activate a CRISP round, choose the option `Activate an E3 round`.
-
-4. To vote in a CRISP round, choose the option `Participate in an E3 round`.
-
-4. To decrypt and publish the results of a CRISP round, choose the option `Decrypt Ciphertext & Publish Results`.
+3. To vote in a CRISP round, choose the option `Participate in an E3 round`.
 
 Ensure all services are running correctly and that components are communicating as expected before starting a new CRISP round.
 
