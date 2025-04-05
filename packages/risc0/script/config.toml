@@ -2,8 +2,8 @@
 # RISC Zero Verifier contract deployed on mainnet (see https://dev.risczero.com/api/blockchain-integration/contracts/verifier#deployed-verifiers)
 chainId = 1
 riscZeroVerifierAddress = "0x8EaB2D97Dfce405A1692a21b3ff3A172d593D319"
-enclaveAddress = "0xE3000000000000000000000000000000000000E3"
-inputValidatorAddress = "0x0000000000000000000000000000000000000000"
+enclaveAddress = "0x610178dA211FEF7D417bC0e6FeD39F05609AD788"
+inputValidatorAddress = "0x959922bE3CAee4b8Cd9a407cc3ac1C251C2007B1"
 
 [profile.sepolia]
 # RISC Zero Verifier contract deployed on sepolia (see https://dev.risczero.com/api/blockchain-integration/contracts/verifier#deployed-verifiers)

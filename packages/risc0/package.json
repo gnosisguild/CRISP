@@ -2,11 +2,11 @@
   "name": "crisp-risc0",
   "version": "0.0.0",
   "description": "Risc0 implementation of CRISP",
-  "repository": "https://github.com/gnosisguild/CRISP",
-  "author": {
-    "name": "gnosisguild",
-    "url": "https://github.com/gnosisguild"
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gnosisguild/CRISP.git"
   },
+  "author": "gnosisguild (https://github.com/gnosisguild)",
   "dependencies": {
     "@gnosis-guild/enclave": "^0.0.3"
   },
@@ -35,5 +35,16 @@
   "scripts": {
     "hardhat": "hardhat",
     "compile": "forge compile"
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/gnosisguild/CRISP/issues"
+  },
+  "homepage": "https://github.com/gnosisguild/CRISP#readme",
+  "main": "index.js",
+  "directories": {
+    "lib": "lib",
+    "test": "tests"
+  },
+  "keywords": [],
+  "license": "ISC"
 }
