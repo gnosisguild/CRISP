@@ -41,3 +41,13 @@ export interface VoteStateLite {
   committee_public_key: number[]
   emojis: [string, string]
 }
+
+export interface SemaphoreRegistrationRequest {
+  round_id: number
+  identity_commitment: string
+  group_id: number
+}
+
+export interface SemaphoreRegistrationResponse {
+  response: string
+}

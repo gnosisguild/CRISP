@@ -1,5 +1,5 @@
 import { ReactNode } from 'react'
-import { BroadcastVoteRequest, BroadcastVoteResponse, VoteStateLite, VotingRound } from '@/model/vote.model'
+import { BroadcastVoteRequest, BroadcastVoteResponse,SemaphoreRegistrationRequest, SemaphoreRegistrationResponse, VoteStateLite, VotingRound } from '@/model/vote.model'
 import { Poll, PollRequestResult, PollResult } from '@/model/poll.model'
 import { StatusAPIResponse } from '@farcaster/auth-client'
 import { Auth } from '@/model/auth.model'
@@ -30,6 +30,7 @@ export type VoteManagementContextType = {
   setPastPolls: React.Dispatch<React.SetStateAction<PollResult[]>>
   getWebResult: () => Promise<PollRequestResult[] | undefined>
   logout: () => void
+  registerWithSemaphore: (request: SemaphoreRegistrationRequest) => Promise<SemaphoreRegistrationResponse | undefined>
 }
 
 export type VoteManagementProviderProps = {

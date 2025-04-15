@@ -4,10 +4,11 @@ use alloy::primitives::{Address, U256, Bytes};
 use chrono::Utc;
 use fhe_traits::Serialize;
 use crate::server::utils::generate_bfv_parameters;
-use crate::server::blockchain::relayer::EnclaveContract;
+use crate::server::blockchain::relayer::{EnclaveContract, CRISPRegistryContract};
 use crate::server::config::CONFIG;
-use crate::server::models::{CTRequest, CurrentRound, AppState, PKRequest, CronRequestE3, JsonResponse, ComputeProviderParams};
+use crate::server::models::{CTRequest, CurrentRound, AppState, PKRequest, CronRequestE3, JsonResponse, ComputeProviderParams, SemaphoreRegistrationRequest};
 use crate::server::database::get_e3;
+
 
 pub fn setup_routes(config: &mut web::ServiceConfig) {
     config
@@ -17,6 +18,7 @@ pub fn setup_routes(config: &mut web::ServiceConfig) {
                 .route("/public-key", web::post().to(get_public_key))
                 .route("/ciphertext", web::post().to(get_ciphertext))
                 .route("/request", web::post().to(request_new_round))
+                .route("/register", web::post().to(register_semaphore_identity))
         );
 }
 
@@ -161,3 +163,61 @@ pub async fn initialize_crisp_round() -> Result<(), Box<dyn std::error::Error + 
     Ok(())
 }
 
+pub async fn register_semaphore_identity(
+    data: web::Json<SemaphoreRegistrationRequest>,
+) -> impl Responder {
+    let mut incoming = data.into_inner();
+
+    match get_e3(incoming.round_id).await {
+        Ok((state_data, _)) => {
+            // Add the identity commitment to the Semaphore group
+            match register_with_semaphore(
+                incoming.group_id,
+                incoming.identity_commitment
+            ).await {
+                Ok(_) => HttpResponse::Ok().json(JsonResponse {
+                    response: "Successfully registered with Semaphore group".to_string(),
+                }),
+                Err(e) => HttpResponse::InternalServerError().json(JsonResponse {
+                    response: format!("Failed to register with Semaphore: {}", e),
+                }),
+            }
+        },
+        Err(_) => HttpResponse::NotFound().json(JsonResponse {
+            response: "Round not found".to_string(),
+        }),
+    }
+}
+async fn register_with_semaphore(
+    round_id: u64,
+    identity_commitment_str: String
+) -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
+
+    let provider = CRISPProvider::new().await?;
+    let registry_contract = CRISPRegistryContract::new(
+        CONFIG.crisp_registry_address.clone(),
+        Arc::new(provider)
+    ).await?;
+
+
+    let identity_commitment = U256::from_dec_str(&identity_commitment_str)
+        .map_err(|e| format!("Failed to parse identity commitment: {}", e))?;
+
+    // Convert round_id to U256
+    let round_id_u256 = U256::from(round_id);
+
+    // Check if group exists for this round, create if not
+    let group_exists = registry_contract.has_group(round_id_u256).await?;
+
+    if !group_exists {
+        info!("Creating new Semaphore group for round {}", round_id);
+        let tx = registry_contract.create_group_for_round(round_id_u256).await?;
+        info!("Created Semaphore group for round {}. TxHash: {:?}", round_id, tx.transaction_hash);
+    }
+
+    // Register the identity with the group
+    let tx = registry_contract.join_round(round_id_u256, identity_commitment).await?;
+    info!("Added identity to Semaphore group for round {}. TxHash: {:?}", round_id, tx.transaction_hash);
+
+    Ok(())
+}

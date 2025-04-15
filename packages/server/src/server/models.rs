@@ -71,6 +71,13 @@ pub struct AuthenticationResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct SemaphoreRegistrationRequest {
+    pub round_id: u64,
+    pub identity_commitment: String,
+    pub group_id: u64
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ComputeProviderParams {
     pub name: String,
     pub parallel: bool,

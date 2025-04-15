@@ -192,3 +192,55 @@ impl EnclaveContract {
         Ok(enabled.allowed)
     }
 }
+sol! {
+    // Keep your existing E3 struct and Enclave contract definitions...
+
+    #[derive(Debug)]
+    #[sol(rpc)]
+    contract CRISPRegistry {
+        function createGroupForRound(uint256 roundId) public;
+        function joinRound(uint256 roundId, uint256 identityCommitment) public;
+        function hasGroup(uint256 roundId) public view returns (bool);
+        function roundToGroupId(uint256 roundId) public view returns (uint256);
+    }
+}
+
+pub struct CRISPRegistryContract {
+    pub provider: Arc<CRISPProvider>,
+    pub contract_address: Address,
+}
+
+impl CRISPRegistryContract {
+    pub async fn new(contract_address: String, provider: Arc<CRISPProvider>) -> Result<Self> {
+        Ok(Self {
+            provider,
+            contract_address: contract_address.parse()?,
+        })
+    }
+
+    pub async fn create_group_for_round(&self, round_id: U256) -> Result<TransactionReceipt> {
+        let contract = CRISPRegistry::new(self.contract_address, &self.provider);
+        let builder = contract.createGroupForRound(round_id);
+        let receipt = builder.send().await?.get_receipt().await?;
+        Ok(receipt)
+    }
+
+    pub async fn join_round(&self, round_id: U256, identity_commitment: U256) -> Result<TransactionReceipt> {
+        let contract = CRISPRegistry::new(self.contract_address, &self.provider);
+        let builder = contract.joinRound(round_id, identity_commitment);
+        let receipt = builder.send().await?.get_receipt().await?;
+        Ok(receipt)
+    }
+
+    pub async fn has_group(&self, round_id: U256) -> Result<bool> {
+        let contract = CRISPRegistry::new(self.contract_address, &self.provider);
+        let result = contract.hasGroup(round_id).call().await?;
+        Ok(result._0)
+    }
+
+    pub async fn get_group_id(&self, round_id: U256) -> Result<U256> {
+        let contract = CRISPRegistry::new(self.contract_address, &self.provider);
+        let result = contract.roundToGroupId(round_id).call().await?;
+        Ok(result._0)
+    }
+}

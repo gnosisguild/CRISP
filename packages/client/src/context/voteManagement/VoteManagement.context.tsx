@@ -3,8 +3,9 @@ import { VoteManagementContextType, VoteManagementProviderProps } from '@/contex
 import { useWebAssemblyHook } from '@/hooks/wasm/useWebAssembly'
 import { useEffect, useState } from 'react'
 import useLocalStorage from '@/hooks/generic/useLocalStorage'
-import { VoteStateLite, VotingRound } from '@/model/vote.model'
+import {SemaphoreRegistrationRequest, VoteStateLite, VotingRound} from '@/model/vote.model'
 import { useEnclaveServer } from '@/hooks/enclave/useEnclaveServer'
+import {useSemaphoreIdentity } from "@/hooks/semaphore/useSemaphoreIdentity.ts";
 import { convertPollData, convertTimestampToDate } from '@/utils/methods'
 import { Poll, PollResult } from '@/model/poll.model'
 import { generatePoll } from '@/utils/generate-random-poll'
@@ -41,7 +42,10 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
     getCurrentRound,
     broadcastVote,
   } = useEnclaveServer()
-
+    const {
+        isLoading: semaphoreLoading,
+        registerWithSemaphoreGroup
+    } = useSemaphoreIdentity()
   const initialLoad = async () => {
     console.log("Loading wasm");
     const currentRound = await getCurrentRound()
@@ -92,13 +96,16 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
       setIsLoading(false)
     }
   }
+  const registerWithSemaphore = (request: SemaphoreRegistrationRequest) => {
+      return registerWithSemaphoreGroup(request)
+  }
 
   useEffect(() => {
-    if ([wasmLoading, enclaveLoading].includes(true)) {
+    if ([wasmLoading, enclaveLoading, semaphoreLoading].includes(true)) {
       return setIsLoading(true)
     }
     setIsLoading(false)
-  }, [wasmLoading, enclaveLoading])
+  }, [wasmLoading, enclaveLoading, semaphoreLoading])
 
   return (
     <VoteManagementContextProvider
@@ -128,6 +135,7 @@ const VoteManagementProvider = ({ children }: VoteManagementProviderProps) => {
         setUser,
         encryptVote,
         logout,
+          registerWithSemaphore,
       }}
     >
       {children}
